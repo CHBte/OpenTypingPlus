@@ -37,12 +37,12 @@ namespace OpenTyping
             {
                 return hangulCompatJamoTable[ch - (char)0x3131];
             }
-            if (ch < (char)0xAC00 || ch > (char)0xD79F) // ch가 Hangul Syllables 유니코드 블럭에 없음
+            if (!Hangul.IsSyllable(ch)) // ch가 Hangul Syllables 유니코드 블럭에 없음
             {
                 return new List<char>();
             }
 
-            int code = ch - (char)0xAC00;
+            int code = ch - Hangul.FirstSyllable;
             var result = new List<char>();
 
             int choseongIndex = code / (21 * 28);

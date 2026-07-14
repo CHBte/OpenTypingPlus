@@ -63,6 +63,7 @@
                          PreviewKeyDown="CurrentTextBox_PreviewKeyDown"
                          TextChanged="CurrentTextBox_TextChanged"
                          CommandManager.PreviewExecuted="CurrentTextBox_PreviewExecuted"
+                         AllowDrop="False"
                          ContextMenu="{x:Null}"/>
                 <StackPanel DataContext="{Binding ElementName=SelfWindow}"
                             Orientation="Horizontal"

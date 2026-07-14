@@ -76,7 +76,10 @@
                              Width="110"
                              Height="125"
                              SelectionBrush="Transparent"
-                             TextChanged="CurrentTextBox_TextChanged"/>
+                             TextChanged="CurrentTextBox_TextChanged"
+                             CommandManager.PreviewExecuted="CurrentTextBox_PreviewExecuted"
+                             AllowDrop="False"
+                             ContextMenu="{x:Null}"/>
                 </StackPanel>
             </Border>
         </StackPanel>

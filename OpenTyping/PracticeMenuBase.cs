@@ -40,11 +40,19 @@ namespace OpenTyping
             }
             catch (Exception ex)
             {
-                if (ex is PracticeDataLoadFail || ex is InvalidPracticeDataException)
+                // 연습 데이터는 없어도 앱은 계속 쓸 수 있고 설정에서 복구할 수 있으므로,
+                // 종료하지 않고 알린 뒤 빈 목록으로 진행한다. (설정창을 닫을 때마다 재호출되는 경로이기도 함)
+                string message = ex is PracticeDataLoadFail || ex is InvalidPracticeDataException
+                    ? ex.Message
+                    : "연습 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.\n" + ex.Message;
+
+                MessageBox.Show(message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                if (PracticeDataList is null)
                 {
-                    MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Environment.Exit(-1);
+                    PracticeDataList = new ObservableCollection<PracticeData>();
                 }
+                // 기존에 불러온 목록이 있으면 그대로 유지한다.
             }
 
             SelectedPracticeData = null;

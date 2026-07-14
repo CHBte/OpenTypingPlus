@@ -18,7 +18,14 @@ namespace OpenTyping
             {
                 string[] splitedValue = s.Split(',');
 
-                return new KeyPos(Int32.Parse(splitedValue[0]), Int32.Parse(splitedValue[1]));
+                if (splitedValue.Length != 2 ||
+                    !Int32.TryParse(splitedValue[0], out int row) ||
+                    !Int32.TryParse(splitedValue[1], out int column))
+                {
+                    throw new FormatException("키 위치 값 \"" + s + "\" 이 올바른 형식(\"행,열\")이 아닙니다.");
+                }
+
+                return new KeyPos(row, column);
             }
 
             return base.ConvertFrom(context, culture, value);

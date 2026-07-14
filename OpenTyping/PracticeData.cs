@@ -31,6 +31,12 @@ namespace OpenTyping
         {
             PracticeData practiceData = JsonConvert.DeserializeObject<PracticeData>(data);
 
+            if (practiceData is null) // 파일 내용이 "null" 등일 때 역직렬화 결과가 null이 될 수 있음
+            {
+                const string message = "연습 데이터가 비어 있습니다.";
+                throw new InvalidPracticeDataException(message);
+            }
+
             if (string.IsNullOrEmpty(practiceData.Name))
             {
                 const string message = "연습 데이터의 이름(Name 필드)이 주어지지 않았습니다.";
@@ -72,6 +78,10 @@ namespace OpenTyping
             catch (InvalidPracticeDataException ex)
             {
                 throw new InvalidPracticeDataException(dataFileLocation + " : " + ex.Message, ex);
+            }
+            catch (JsonException ex) // JSON 형식 오류 등으로 파일을 읽지 못한 경우
+            {
+                throw new InvalidPracticeDataException(dataFileLocation + " : 연습 데이터 파일을 읽을 수 없습니다. (" + ex.Message + ")", ex);
             }
         }
 
@@ -127,7 +137,7 @@ namespace OpenTyping
                 IList<string> splited = line.Split(' ').ToList();
                 if (splited.Count == 1) return splited;
 
-                for (int i = 1; i <= splited.Count; i++)
+                for (int i = 2; i <= splited.Count; i++) // 첫 단어 하나는 더 쪼갤 수 없으므로(넘쳐도 한 줄로 확정) i = 2 부터 측정
                 {
                     var formattedText = new FormattedText(
                         string.Join(" ", splited.Take(i)),

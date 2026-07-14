@@ -15,6 +15,7 @@ namespace OpenTyping
     {
         private static readonly Random Randomizer = new Random();
         private readonly string syllablesList;
+        private readonly bool hasVariety; // 서로 다른 음절이 2개 이상인지 (무한 루프 방지용)
 
         private char previousSyllable = ' ';
         public char PreviousSyllable
@@ -56,6 +57,7 @@ namespace OpenTyping
             // 음절 입력 텍스트 박스 포커스 항상 유지
 
             this.syllablesList = syllablesList;
+            hasVariety = syllablesList.Distinct().Count() > 1;
 
             NextSyllable = RandomSyllable();
             MoveSyllable();
@@ -75,7 +77,7 @@ namespace OpenTyping
             do
             {
                 newSyllable = RandomSyllable();
-            } while (newSyllable == CurrentSyllable); // 새 음절과 전 음절 중복 확인
+            } while (hasVariety && newSyllable == CurrentSyllable); // 새 음절과 전 음절 중복 확인
 
             NextSyllable = newSyllable;
 
@@ -95,6 +97,17 @@ namespace OpenTyping
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+
+        private void CurrentTextBox_PreviewExecuted(object sender, System.Windows.Input.ExecutedRoutedEventArgs e)
+        {
+            // 다른 연습 창과 동일하게 복사/잘라내기/붙여넣기를 차단한다 (타자 없이 정답 입력 방지)
+            if (e.Command == System.Windows.Input.ApplicationCommands.Copy ||
+                e.Command == System.Windows.Input.ApplicationCommands.Cut ||
+                e.Command == System.Windows.Input.ApplicationCommands.Paste)
+            {
+                e.Handled = true;
+            }
         }
 
         private void CurrentTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)

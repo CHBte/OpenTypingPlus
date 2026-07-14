@@ -7,8 +7,10 @@ namespace OpenTyping
     {
         private readonly Stopwatch stopwatch = new Stopwatch();
 
+        public bool IsRunning => stopwatch.IsRunning; // 측정이 시작된 상태인지 (시작 안 된 입력은 통계에서 제외하는 용도)
+
         private static bool IsHangulSyllable(char ch)
-            => ch >= (char)0xAC00 && ch <= (char)0xD79F;
+            => Hangul.IsSyllable(ch);
 
         private static int CountLetter(string text)
         {
@@ -30,6 +32,9 @@ namespace OpenTyping
             int count = CountLetter(text);
 
             stopwatch.Reset();
+
+            if (elapsed <= 0) return 0; // 측정 시작 전 입력 등 비정상 상황에서 0으로 나누기 방지
+
             return count / elapsed;
         }
     }
