@@ -31,7 +31,7 @@ namespace OpenTyping
             InitializeComponent();
 
             modernHangulList = "";
-            for (long i = 0xAC00; i <= 0xD7AF; i++) // 현대 한글 음절 모두 추가
+            for (long i = Hangul.FirstSyllable; i <= Hangul.LastSyllable; i++) // 현대 한글 음절 모두 추가
             {
                 modernHangulList += (char)i;
             }
@@ -61,11 +61,11 @@ namespace OpenTyping
             if (result.HasValue && result.Value)
             {
                 string content = File.ReadAllText(practiceFileDialog.FileName);
-                string hangulList = string.Concat(content.Where((ch) => 0xAC00 <= ch && ch <= 0xD7AF));
+                string hangulList = string.Concat(content.Where(Hangul.IsSyllable));
 
-                if (hangulList.Length <= 1)
+                if (hangulList.Distinct().Count() <= 1) // 서로 다른 음절이 2개 이상이어야 함 (전부 같은 글자면 다음 음절 선택이 불가능)
                 {
-                    MessageBox.Show("파일 내 한글 음절 개수가 1개 이하입니다.",
+                    MessageBox.Show("파일 내 서로 다른 한글 음절 개수가 1개 이하입니다.",
                                     "열린타자",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);

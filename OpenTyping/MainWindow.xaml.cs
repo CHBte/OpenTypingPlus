@@ -71,11 +71,14 @@ namespace OpenTyping
             }
             catch (Exception ex)
             {
-                if (ex is KeyLayoutLoadFail || ex is InvalidKeyLayoutDataException)
-                {
-                    MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Environment.Exit(-1);
-                }
+                // 어떤 이유로든 자판을 못 불러오면 계속 진행할 수 없으므로(CurrentKeyLayout == null)
+                // 원인을 보여주고 종료한다. 조용히 넘어가면 이후 NullReferenceException으로 죽는다.
+                string message = ex is KeyLayoutLoadFail || ex is InvalidKeyLayoutDataException
+                    ? ex.Message
+                    : "자판 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.\n" + ex.Message;
+
+                MessageBox.Show(message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                Environment.Exit(-1);
             }
 
             if (string.IsNullOrEmpty((string)Settings.Default[PracticeDataDirStr]))
@@ -105,7 +108,18 @@ namespace OpenTyping
         {
             KeyLayout.SaveKeyLayout(CurrentKeyLayout);
 
-            var settingsWindow = new SettingsWindow();
+            SettingsWindow settingsWindow;
+            try
+            {
+                settingsWindow = new SettingsWindow();
+            }
+            catch (Exception ex) when (ex is KeyLayoutLoadFail || ex is InvalidKeyLayoutDataException ||
+                                       ex is PracticeDataLoadFail || ex is InvalidPracticeDataException)
+            {
+                // 앱 실행 중 데이터 폴더의 파일이 손상된 경우: 설정창만 열지 못하게 하고 앱은 유지한다.
+                MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             settingsWindow.ShowDialog();
 
             if (settingsWindow.KeyLayoutUpdated || settingsWindow.KeyLayoutDataDirUpdated)

@@ -139,12 +139,15 @@ namespace OpenTyping
                 currentTextBlock.Inlines.Add(run);
             }
 
-            double accuracy = Differ.CalculateAccuracy(diffs);
-            accuracyList.Add(Convert.ToInt32(accuracy * 100));
-            typingSpeedList.Add(Convert.ToInt32(typingMeasurer.Finish(currentTextBox.Text) * accuracy));
+            if (typingMeasurer.IsRunning) // 측정이 시작된 입력만 통계에 기록
+            {
+                double accuracy = Differ.CalculateAccuracy(diffs);
+                accuracyList.Add(Convert.ToInt32(accuracy * 100));
+                typingSpeedList.Add(Convert.ToInt32(typingMeasurer.Finish(currentTextBox.Text) * accuracy));
 
-            TypingAccuracy = Convert.ToInt32(accuracyList.Average());
-            TypingSpeed = Convert.ToInt32(typingSpeedList.Average());
+                TypingAccuracy = Convert.ToInt32(accuracyList.Average());
+                TypingSpeed = Convert.ToInt32(typingSpeedList.Average());
+            }
 
             if (currentLine == 2) // 다음 페이지로 이동
             {

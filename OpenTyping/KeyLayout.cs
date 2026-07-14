@@ -40,6 +40,12 @@ namespace OpenTyping
         {
             KeyLayout keyLayout = JsonConvert.DeserializeObject<KeyLayout>(data);
 
+            if (keyLayout is null) // 파일 내용이 "null" 등일 때 역직렬화 결과가 null이 될 수 있음
+            {
+                const string message = "자판 데이터가 비어 있습니다.";
+                throw new InvalidKeyLayoutDataException(message);
+            }
+
             if (string.IsNullOrEmpty(keyLayout.Name))
             {
                 const string message = "자판 데이터의 이름(Name 필드)이 주어지지 않았습니다.";
@@ -71,6 +77,13 @@ namespace OpenTyping
                 Tuple.Create("셋째 열", 10)
             };
 
+            if (keyLayout.KeyLayoutData.Count != rowNumberData.Count)
+            {
+                string message = "자판 데이터의 열 개수는 " + rowNumberData.Count + " 이어야 하는데 "
+                               + keyLayout.KeyLayoutData.Count + "개가 주어졌습니다.";
+                throw new InvalidKeyLayoutDataException(message);
+            }
+
             for (int i = 0; i < keyLayout.KeyLayoutData.Count; i++)
             {
                 if (keyLayout.KeyLayoutData[i].Count != rowNumberData[i].Item2)
@@ -98,6 +111,13 @@ namespace OpenTyping
             catch (InvalidKeyLayoutDataException ex)
             {
                 throw new InvalidKeyLayoutDataException(dataFileLocation + " : " + ex.Message, ex);
+            }
+            catch (Exception ex) when (ex is JsonException || ex is FormatException)
+            {
+                // JSON 형식 오류, 또는 키 위치 값 등 개별 값의 형식 오류로 파일을 읽지 못한 경우
+                // (Newtonsoft가 변환기 예외를 JsonSerializationException으로 감싸므로 내부 메시지를 우선 사용)
+                string reason = ex.InnerException?.Message ?? ex.Message;
+                throw new InvalidKeyLayoutDataException(dataFileLocation + " : 자판 데이터 파일을 읽을 수 없습니다. (" + reason + ")", ex);
             }
         }
 

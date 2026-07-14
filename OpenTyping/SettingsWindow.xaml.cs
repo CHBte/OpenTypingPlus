@@ -110,8 +110,22 @@ namespace OpenTyping
                 }
                 else
                 {
+                    KeyLayout keyLayout;
+                    try
+                    {
+                        // 데이터 경로에 복사하기 전에 원본을 먼저 검증한다.
+                        // (잘못된 파일이 복사되면 다음 실행부터 앱이 시작되지 않는다.)
+                        keyLayout = KeyLayout.Load(dataFileLocation);
+                    }
+                    catch (Exception ex) when (ex is InvalidKeyLayoutDataException || ex is KeyLayoutLoadFail)
+                    {
+                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Focus();
+                        return;
+                    }
+
                     File.Copy(dataFileLocation, destLocation);
-                    KeyLayout keyLayout = KeyLayout.Load(destLocation);
+                    keyLayout.Location = destLocation;
                     KeyLayouts.Add(keyLayout);
                     SelectedKeyLayout = keyLayout;
                 }
@@ -215,8 +229,21 @@ namespace OpenTyping
                 }
                 else
                 {
+                    PracticeData practiceData;
+                    try
+                    {
+                        // 데이터 경로에 복사하기 전에 원본을 먼저 검증한다.
+                        practiceData = PracticeData.Load(dataFileLocation);
+                    }
+                    catch (Exception ex) when (ex is InvalidPracticeDataException || ex is PracticeDataLoadFail)
+                    {
+                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Focus();
+                        return;
+                    }
+
                     File.Copy(dataFileLocation, destLocation);
-                    PracticeData practiceData = PracticeData.Load(destLocation);
+                    practiceData.Location = destLocation;
                     PracticeDataList.Add(practiceData);
                 }
 
