@@ -11,7 +11,9 @@
                  Style="{StaticResource WindowTitleStyle}"
                  Height="400" 
                  Width="700"
-                 ResizeMode="CanMinimize"
+                 MinWidth="700"
+                 MinHeight="400"
+                 ResizeMode="CanResize"
                  Icon="{StaticResource AppIcon}"
                  Closed="ArticlePracticeWindow_Closed">
     <mah:MetroWindow.Resources>
@@ -44,6 +46,8 @@
             <EventSetter Event="CommandManager.PreviewExecuted" Handler="LineTextBox_PreviewExcuted"/>
         </Style>
     </mah:MetroWindow.Resources>
+    <Viewbox Stretch="Uniform">
+        <Grid Width="700" Height="370">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -153,5 +157,7 @@
             </Border>
         </Grid>
     </Grid>
+        </Grid>
+    </Viewbox>
 </mah:MetroWindow>
 

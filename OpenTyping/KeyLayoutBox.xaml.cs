@@ -43,10 +43,19 @@ namespace OpenTyping
 
             keyLayout = new List<List<KeyBox>>();
 
+            // 검지손가락 홈 포지션의 물리적 위치: 두벌식 표준 기준 2행(SecondRow)의 3번째(ㄹ=F)와
+            // 6번째(ㅓ=J) 칸(0-인덱스). 어떤 자판이든 행/열 구조가 같으므로(4행, 각 행 길이 동일)
+            // 이 위치 기준으로 밑줄을 매기면 자판과 무관하게 항상 같은 물리적 자리가 표시된다.
+            const int HomeRowIndex = 2;
+            const int HomeColumnF = 3;
+            const int HomeColumnJ = 6;
+
+            int rowIndex = 0;
             foreach (IList<Key> keyRow in MainWindow.CurrentKeyLayout.KeyLayoutData)
             {
                 var keyBoxes = new List<KeyBox>();
 
+                int colIndex = 0;
                 foreach (Key key in keyRow)
                 {
                     var keyBox = new KeyBox
@@ -54,7 +63,9 @@ namespace OpenTyping
                         Key = key,
                         Width = 50,
                         Height = 50,
-                        Margin = new Thickness(0, 0, 2, 0)
+                        Margin = new Thickness(0, 0, 2, 0),
+                        IsHomePosition = rowIndex == HomeRowIndex &&
+                                         (colIndex == HomeColumnF || colIndex == HomeColumnJ)
                     };
 
                     if (Clickable)
@@ -63,9 +74,11 @@ namespace OpenTyping
                     }
 
                     keyBoxes.Add(keyBox);
+                    colIndex++;
                 }
 
                 keyLayout.Add(keyBoxes);
+                rowIndex++;
             }
 
             var keyRows = new List<StackPanel> { NumberRow, FirstRow, SecondRow, ThirdRow };

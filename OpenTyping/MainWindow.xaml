@@ -12,7 +12,9 @@
                  FontFamily="{StaticResource NanumGothic}"
                  Width="800" 
                  Height="450" 
-                 ResizeMode="CanMinimize"
+                 MinWidth="800"
+                 MinHeight="450"
+                 ResizeMode="CanResize"
                  Icon="{StaticResource AppIcon}">
     <mah:MetroWindow.RightWindowCommands>
         <mah:WindowCommands>
@@ -39,7 +41,9 @@
             </Button>
         </mah:WindowCommands>
     </mah:MetroWindow.RightWindowCommands>
-    <TabControl x:Name="MenuTabControl">
+    <Viewbox Stretch="Uniform">
+        <Grid Width="800" Height="420">
+            <TabControl x:Name="MenuTabControl">
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
@@ -132,4 +136,6 @@
             <local:ArticlePracticeMenu x:Name="ArticlePracticeMenu"/>
         </TabItem>
     </TabControl>
+        </Grid>
+    </Viewbox>
 </mah:MetroWindow>

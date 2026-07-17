@@ -1,0 +1,255 @@
+{
+  "Name": "세벌식 390",
+  "Character": "한글",
+  "KeyLayoutData": [
+    [
+      {
+        "KeyData": "`",
+        "ShiftKeyData": "~"
+      },
+      {
+        "KeyData": "ㅎ (받침)",
+        "ShiftKeyData": "ㅈ (받침)"
+      },
+      {
+        "KeyData": "ㅆ (받침)",
+        "ShiftKeyData": "@"
+      },
+      {
+        "KeyData": "ㅂ (받침)",
+        "ShiftKeyData": "#"
+      },
+      {
+        "KeyData": "ㅛ",
+        "ShiftKeyData": "$"
+      },
+      {
+        "KeyData": "ㅠ",
+        "ShiftKeyData": "%"
+      },
+      {
+        "KeyData": "ㅑ",
+        "ShiftKeyData": "^"
+      },
+      {
+        "KeyData": "ㅖ",
+        "ShiftKeyData": "&"
+      },
+      {
+        "KeyData": "ㅢ",
+        "ShiftKeyData": "*"
+      },
+      {
+        "KeyData": "ㅜ (이중 모음)",
+        "ShiftKeyData": "("
+      },
+      {
+        "KeyData": "ㅋ",
+        "ShiftKeyData": ")"
+      },
+      {
+        "KeyData": "-",
+        "ShiftKeyData": "_"
+      },
+      {
+        "KeyData": "+",
+        "ShiftKeyData": "="
+      }
+    ],
+    [
+      {
+        "KeyData": "ㅅ (받침)",
+        "ShiftKeyData": "ㅍ (받침)"
+      },
+      {
+        "KeyData": "ㄹ (받침)",
+        "ShiftKeyData": "ㅌ (받침)"
+      },
+      {
+        "KeyData": "ㅕ",
+        "ShiftKeyData": "ㅋ (받침)"
+      },
+      {
+        "KeyData": "ㅐ",
+        "ShiftKeyData": "ㅒ"
+      },
+      {
+        "KeyData": "ㅓ",
+        "ShiftKeyData": ";"
+      },
+      {
+        "KeyData": "ㄹ",
+        "ShiftKeyData": "<"
+      },
+      {
+        "KeyData": "ㄷ",
+        "ShiftKeyData": "7"
+      },
+      {
+        "KeyData": "ㅁ",
+        "ShiftKeyData": "8"
+      },
+      {
+        "KeyData": "ㅊ",
+        "ShiftKeyData": "9"
+      },
+      {
+        "KeyData": "ㅍ",
+        "ShiftKeyData": ">"
+      },
+      {
+        "KeyData": "[",
+        "ShiftKeyData": "{"
+      },
+      {
+        "KeyData": "]",
+        "ShiftKeyData": "}"
+      },
+      {
+        "KeyData": "⧵",
+        "ShiftKeyData": "|"
+      }
+    ],
+    [
+      {
+        "KeyData": "ㅇ (받침)",
+        "ShiftKeyData": "ㄷ (받침)"
+      },
+      {
+        "KeyData": "ㄴ (받침)",
+        "ShiftKeyData": "ㄶ (받침)"
+      },
+      {
+        "KeyData": "ㅣ",
+        "ShiftKeyData": "ㄺ (받침)"
+      },
+      {
+        "KeyData": "ㅏ",
+        "ShiftKeyData": "ㄲ (받침)"
+      },
+      {
+        "KeyData": "ㅡ",
+        "ShiftKeyData": "/"
+      },
+      {
+        "KeyData": "ㄴ",
+        "ShiftKeyData": "'"
+      },
+      {
+        "KeyData": "ㅇ",
+        "ShiftKeyData": "4"
+      },
+      {
+        "KeyData": "ㄱ",
+        "ShiftKeyData": "5"
+      },
+      {
+        "KeyData": "ㅈ",
+        "ShiftKeyData": "6"
+      },
+      {
+        "KeyData": "ㅂ",
+        "ShiftKeyData": ":"
+      },
+      {
+        "KeyData": "ㅌ",
+        "ShiftKeyData": "\""
+      }
+    ],
+    [
+      {
+        "KeyData": "ㅁ (받침)",
+        "ShiftKeyData": "ㅊ (받침)"
+      },
+      {
+        "KeyData": "ㄱ (받침)",
+        "ShiftKeyData": "ㅄ (받침)"
+      },
+      {
+        "KeyData": "ㅔ",
+        "ShiftKeyData": "ㄻ (받침)"
+      },
+      {
+        "KeyData": "ㅗ",
+        "ShiftKeyData": "ㅀ (받침)"
+      },
+      {
+        "KeyData": "ㅜ",
+        "ShiftKeyData": "!"
+      },
+      {
+        "KeyData": "ㅅ",
+        "ShiftKeyData": "0"
+      },
+      {
+        "KeyData": "ㅎ",
+        "ShiftKeyData": "1"
+      },
+      {
+        "KeyData": ",",
+        "ShiftKeyData": "2"
+      },
+      {
+        "KeyData": ".",
+        "ShiftKeyData": "3"
+      },
+      {
+        "KeyData": "ㅗ (이중 모음)",
+        "ShiftKeyData": "?"
+      }
+    ]
+  ],
+  "DefaultKeys": [
+    "0,1",
+    "0,2",
+    "0,3",
+    "0,4",
+    "0,5",
+    "0,6",
+    "0,7",
+    "0,8",
+    "0,9",
+    "0,10",
+    "1,0",
+    "1,1",
+    "1,2",
+    "1,3",
+    "1,4",
+    "1,5",
+    "1,6",
+    "1,7",
+    "1,8",
+    "1,9",
+    "2,0",
+    "2,1",
+    "2,2",
+    "2,3",
+    "2,4",
+    "2,5",
+    "2,6",
+    "2,7",
+    "2,8",
+    "2,9",
+    "2,10",
+    "3,0",
+    "3,1",
+    "3,2",
+    "3,3",
+    "3,4",
+    "3,5",
+    "3,6",
+    "3,7",
+    "3,8",
+    "3,9"
+  ],
+  "Stats": {
+    "KeyIncorrectCount": {},
+    "MostIncorrect": {
+      "Key": null,
+      "Value": 0
+    },
+    "SentencePracticeCount": 0,
+    "AverageTypingSpeed": 0,
+    "AverageAccuracy": 0
+  }
+}

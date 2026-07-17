@@ -12,7 +12,9 @@
                  Style="{StaticResource WindowTitleStyle}"
                  Width="500" 
                  Height="500"
-                 ResizeMode="CanMinimize"
+                 MinWidth="500"
+                 MinHeight="500"
+                 ResizeMode="CanResize"
                  Icon="{StaticResource AppIcon}">
     <mah:MetroWindow.Resources>
         <Style x:Key="SettingNameTextBlock" 
@@ -22,6 +24,8 @@
             <Setter Property="Margin" Value="0 15 0 10"/>
         </Style>
     </mah:MetroWindow.Resources>
+    <Viewbox Stretch="Uniform">
+        <Grid Width="500" Height="470">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -300,4 +304,6 @@
             </Button>
         </StackPanel>
     </Grid>
+        </Grid>
+    </Viewbox>
 </mah:MetroWindow>
