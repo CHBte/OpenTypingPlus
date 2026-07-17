@@ -5,7 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             d:DesignHeight="50" 
+             d:DesignHeight="50"
              d:DesignWidth="50">
     <Canvas>
         <Border x:Name="KeyBack"
@@ -27,20 +27,42 @@
                 BorderBrush="#212529"
                 BorderThickness="2 2 2 1"
                 Width="{Binding ActualWidth}"
-                Height="43">
-            <StackPanel Orientation="Vertical"
-                        VerticalAlignment="Center">
-                <Viewbox StretchDirection="DownOnly" Stretch="Uniform">
-                    <TextBlock Text="{Binding Key.ShiftKeyData}"
-                               Style="{StaticResource NormalTextBlock}"
-                               FontSize="11pt"/>
-                </Viewbox>
-                <Viewbox StretchDirection="DownOnly" Stretch="Uniform">
-                    <TextBlock Text="{Binding Key.KeyData}"
-                               Style="{StaticResource NormalTextBlock}"
-                               FontSize="11pt"/>
-                </Viewbox>
-            </StackPanel>
+                Height="43.7">
+            <Grid>
+                <StackPanel Orientation="Vertical"
+                            VerticalAlignment="Center">
+                    <Viewbox StretchDirection="DownOnly" Stretch="Uniform">
+                        <TextBlock Text="{Binding Key.ShiftKeyData}"
+                                   Style="{StaticResource NormalTextBlock}"
+                                   FontSize="11pt"/>
+                    </Viewbox>
+                    <Viewbox StretchDirection="DownOnly" Stretch="Uniform">
+                        <TextBlock Text="{Binding Key.KeyData}"
+                                   Style="{StaticResource NormalTextBlock}"
+                                   FontSize="11pt"/>
+                    </Viewbox>
+                </StackPanel>
+                <!-- 홈 포지션(물리적 F/J 자리) 표시용 밑줄. 문자에 속한 밑줄이 아니라
+                     KeyTop 바닥 바로 위에 별도로 그려지는 작은 선이다. -->
+                <Border x:Name="HomePositionUnderline"
+                        Width="14"
+                        Height="1.5"
+                        Background="#212529"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0 0 0 1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsHomePosition}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+            </Grid>
         </Border>
     </Canvas>
 </UserControl>

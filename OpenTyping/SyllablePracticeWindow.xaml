@@ -12,7 +12,11 @@
                  Icon="{StaticResource AppIcon}"
                  Height="400"
                  Width="700"
-                 ResizeMode="CanMinimize">
+                 MinWidth="700"
+                 MinHeight="400"
+                 ResizeMode="CanResize">
+    <Viewbox Stretch="Uniform">
+        <Grid Width="700" Height="370">
     <Grid>
         <Grid.Resources>
             <Style x:Key="PrevNextTextBlock" TargetType="TextBlock">
@@ -69,17 +73,35 @@
                                FontSize="80pt"
                                Margin="0 8 30 0"
                                Text="{Binding Path=CurrentSyllable}"/>
-                    <TextBox x:Name="CurrentTextBox"
-                             FontFamily="{StaticResource NanumBarunGothic}"
-                             FontSize="80pt"
-                             Background="#f8f9fa"
-                             Width="110"
-                             Height="125"
-                             SelectionBrush="Transparent"
-                             TextChanged="CurrentTextBox_TextChanged"
-                             CommandManager.PreviewExecuted="CurrentTextBox_PreviewExecuted"
-                             AllowDrop="False"
-                             ContextMenu="{x:Null}"/>
+                    <!-- 입력된 글자를 코드로 지우면 한글 IME 조합이 깨져 음절이 안 넘어가는
+                         버그가 생기므로, 글자는 누적한 채 처리된 글자들을 왼쪽 시야 밖으로
+                         밀어내(RenderTransform) 빈 입력 칸처럼 보이게 한다.
+                         배경 피드백(흰색/분홍)은 이 Border가 담당한다. -->
+                    <Border x:Name="CurrentTextBoxBorder"
+                            Width="110"
+                            Height="125"
+                            Background="#f8f9fa"
+                            BorderBrush="#ababab"
+                            BorderThickness="1"
+                            ClipToBounds="True">
+                        <TextBox x:Name="CurrentTextBox"
+                                 FontFamily="{StaticResource NanumBarunGothic}"
+                                 FontSize="80pt"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 MinWidth="108"
+                                 HorizontalAlignment="Left"
+                                 SelectionBrush="Transparent"
+                                 TextChanged="CurrentTextBox_TextChanged"
+                                 CommandManager.PreviewExecuted="CurrentTextBox_PreviewExecuted"
+                                 AllowDrop="False"
+                                 ContextMenu="{x:Null}">
+                            <TextBox.RenderTransform>
+                                <TranslateTransform x:Name="HiddenTextTranslate"/>
+                            </TextBox.RenderTransform>
+                        </TextBox>
+                    </Border>
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -88,5 +110,7 @@
                    Style="{StaticResource PrevNextTextBlock}"
                    Text="{Binding Path=NextSyllable}"/>
     </Grid>
+        </Grid>
+    </Viewbox>
 </mah:MetroWindow>
 

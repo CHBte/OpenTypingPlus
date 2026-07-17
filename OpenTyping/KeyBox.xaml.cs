@@ -33,9 +33,21 @@ namespace OpenTyping
         public static readonly DependencyProperty KeyProperty =
             DependencyProperty.Register("Key", typeof(Key), typeof(KeyBox));
 
+        // 검지손가락 홈 포지션(두벌식 표준 기준 ㄹ·ㅓ 자리, 즉 물리적 F/J 위치)인지 여부.
+        // 어떤 자판이 로드되어 있든 이 자리에 나타나는 값에는 밑줄을 긋는다.
+        public bool IsHomePosition
+        {
+            get => (bool)GetValue(IsHomePositionProperty);
+            set => SetValue(IsHomePositionProperty, value);
+        }
+        public static readonly DependencyProperty IsHomePositionProperty =
+            DependencyProperty.Register("IsHomePosition", typeof(bool), typeof(KeyBox), new PropertyMetadata(false));
+
         public bool Pressed { get; private set; } = false;
 
-        private const double PressDiff = 1.7;
+        private const double PressDiff = 2.8;
+        private const double PressedKeyTopHeight = 43.7; // 눌린 KeyTop 높이 (PressDiff와 무관하게 고정)
+        private double originalKeyTopHeight;
         private Brush defaultKeyColor;
         private Brush defaultShadowColor;
 
@@ -49,6 +61,7 @@ namespace OpenTyping
         {
             InitializeComponent();
 
+            originalKeyTopHeight = KeyTop.Height;
             defaultKeyColor = KeyColor;
             defaultShadowColor = ShadowColor;
             Loaded += OnLoaded;
@@ -64,7 +77,7 @@ namespace OpenTyping
         {
             if (!Pressed)
             {
-                KeyTop.Height += PressDiff;
+                KeyTop.Height = PressedKeyTopHeight;
                 Canvas.SetTop(KeyTop, PressDiff);
                 KeyBack.Height -= PressDiff;
                 Canvas.SetTop(KeyBack, PressDiff);
@@ -90,7 +103,7 @@ namespace OpenTyping
         {
             if (Pressed)
             {
-                KeyTop.Height -= PressDiff;
+                KeyTop.Height = originalKeyTopHeight;
                 Canvas.SetTop(KeyTop, 0);
                 KeyBack.Height += PressDiff;
                 Canvas.SetTop(KeyBack, 0);

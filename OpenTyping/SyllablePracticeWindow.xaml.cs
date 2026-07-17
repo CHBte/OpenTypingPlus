@@ -81,7 +81,13 @@ namespace OpenTyping
 
             NextSyllable = newSyllable;
 
-            CurrentTextBox.Clear();
+            // 주의: 여기서 CurrentTextBox 내용을 지우면 안 된다.
+            // 한글 IME 조합이 진행 중일 때 코드로 텍스트를 바꾸면(Clear 등)
+            // 조합 세션이 깨져 이후 입력이 TextChanged로 전달되지 않는 버그가 생긴다
+            // (제시된 글자를 입력해도 넘어가지 않고 Space+Backspace를 눌러야 하는 원본 버그).
+            // 대신 입력을 그대로 누적시키고, TextChanged에서 confirmedTextLength
+            // 이후의 글자만 현재 음절과 비교한다.
+            CurrentTextBoxBorder.Background = Brushes.White;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -110,34 +116,58 @@ namespace OpenTyping
             }
         }
 
+        private int confirmedTextLength; // 이미 정답 처리되어 소비된 입력 길이
+
         private void CurrentTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
-            switch (CurrentTextBox.Text.Length)
+            string text = CurrentTextBox.Text;
+
+            if (text.Length < confirmedTextLength) // 사용자가 처리된 영역까지 지운 경우
+            {
+                confirmedTextLength = text.Length;
+            }
+
+            // 처리된 글자들이 항상 시야 왼쪽 밖에 있도록 이동량을 동기화한다.
+            // 텍스트를 바꾸지 않는 순수 시각 이동이라 IME 조합이 깨지지 않으며,
+            // 레이아웃 갱신 뒤 좌표가 유효하도록 지연 호출한다.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var confirmedEdge = CurrentTextBox.GetRectFromCharacterIndex(confirmedTextLength);
+                if (!confirmedEdge.IsEmpty && !double.IsInfinity(confirmedEdge.X))
+                {
+                    HiddenTextTranslate.X = -confirmedEdge.X;
+                }
+            }), System.Windows.Threading.DispatcherPriority.Render);
+
+            string input = text.Substring(confirmedTextLength); // 아직 처리되지 않은 입력
+
+            switch (input.Length)
             {
                 case 0:
-                    CurrentTextBox.Background = Brushes.White;
+                    CurrentTextBoxBorder.Background = Brushes.White;
                     return;
                 case 1:
                     List<char> decomposedCurrentSyllable = new List<char>(Differ.DecomposeHangul(CurrentSyllable)),
-                               decomposedInput = new List<char>(Differ.DecomposeHangul(CurrentTextBox.Text[0]));
+                               decomposedInput = new List<char>(Differ.DecomposeHangul(input[0]));
 
                     if (decomposedInput.SequenceEqual(decomposedCurrentSyllable))
                     {
                         CorrectCount++;
+                        confirmedTextLength = text.Length;
                         MoveSyllable();
                         return;
                     }
                     if (decomposedInput.Any() &&
                         decomposedInput.SequenceEqual(decomposedCurrentSyllable.Take(decomposedInput.Count))) // 부분 일치
                     {
-                        CurrentTextBox.Background = Brushes.White;
+                        CurrentTextBoxBorder.Background = Brushes.White;
                         return;
                     }
 
                     break;
             }
 
-            CurrentTextBox.Background = incorrectBackground;
+            CurrentTextBoxBorder.Background = incorrectBackground;
         }
     }
 }

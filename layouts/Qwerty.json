@@ -1,0 +1,216 @@
+{
+  "Name": "QWERTY",
+  "Character": "영문",
+  "KeyLayoutData": [
+    [
+      {
+        "KeyData": "`",
+        "ShiftKeyData": "~"
+      },
+      {
+        "KeyData": "1",
+        "ShiftKeyData": "!"
+      },
+      {
+        "KeyData": "2",
+        "ShiftKeyData": "@"
+      },
+      {
+        "KeyData": "3",
+        "ShiftKeyData": "#"
+      },
+      {
+        "KeyData": "4",
+        "ShiftKeyData": "$"
+      },
+      {
+        "KeyData": "5",
+        "ShiftKeyData": "%"
+      },
+      {
+        "KeyData": "6",
+        "ShiftKeyData": "^"
+      },
+      {
+        "KeyData": "7",
+        "ShiftKeyData": "&"
+      },
+      {
+        "KeyData": "8",
+        "ShiftKeyData": "*"
+      },
+      {
+        "KeyData": "9",
+        "ShiftKeyData": "("
+      },
+      {
+        "KeyData": "0",
+        "ShiftKeyData": ")"
+      },
+      {
+        "KeyData": "-",
+        "ShiftKeyData": "_"
+      },
+      {
+        "KeyData": "=",
+        "ShiftKeyData": "+"
+      }
+    ],
+    [
+      {
+        "KeyData": "q",
+        "ShiftKeyData": "Q"
+      },
+      {
+        "KeyData": "w",
+        "ShiftKeyData": "W"
+      },
+      {
+        "KeyData": "e",
+        "ShiftKeyData": "E"
+      },
+      {
+        "KeyData": "r",
+        "ShiftKeyData": "R"
+      },
+      {
+        "KeyData": "t",
+        "ShiftKeyData": "T"
+      },
+      {
+        "KeyData": "y",
+        "ShiftKeyData": "Y"
+      },
+      {
+        "KeyData": "u",
+        "ShiftKeyData": "U"
+      },
+      {
+        "KeyData": "i",
+        "ShiftKeyData": "I"
+      },
+      {
+        "KeyData": "o",
+        "ShiftKeyData": "O"
+      },
+      {
+        "KeyData": "p",
+        "ShiftKeyData": "P"
+      },
+      {
+        "KeyData": "[",
+        "ShiftKeyData": "{"
+      },
+      {
+        "KeyData": "]",
+        "ShiftKeyData": "}"
+      },
+      {
+        "KeyData": "⧵",
+        "ShiftKeyData": "|"
+      }
+    ],
+    [
+      {
+        "KeyData": "a",
+        "ShiftKeyData": "A"
+      },
+      {
+        "KeyData": "s",
+        "ShiftKeyData": "S"
+      },
+      {
+        "KeyData": "d",
+        "ShiftKeyData": "D"
+      },
+      {
+        "KeyData": "f",
+        "ShiftKeyData": "F"
+      },
+      {
+        "KeyData": "g",
+        "ShiftKeyData": "G"
+      },
+      {
+        "KeyData": "h",
+        "ShiftKeyData": "H"
+      },
+      {
+        "KeyData": "j",
+        "ShiftKeyData": "J"
+      },
+      {
+        "KeyData": "k",
+        "ShiftKeyData": "K"
+      },
+      {
+        "KeyData": "l",
+        "ShiftKeyData": "L"
+      },
+      {
+        "KeyData": ";",
+        "ShiftKeyData": ":"
+      },
+      {
+        "KeyData": "'",
+        "ShiftKeyData": "\""
+      }
+    ],
+    [
+      {
+        "KeyData": "z",
+        "ShiftKeyData": "Z"
+      },
+      {
+        "KeyData": "x",
+        "ShiftKeyData": "X"
+      },
+      {
+        "KeyData": "c",
+        "ShiftKeyData": "C"
+      },
+      {
+        "KeyData": "v",
+        "ShiftKeyData": "V"
+      },
+      {
+        "KeyData": "b",
+        "ShiftKeyData": "B"
+      },
+      {
+        "KeyData": "n",
+        "ShiftKeyData": "N"
+      },
+      {
+        "KeyData": "m",
+        "ShiftKeyData": "M"
+      },
+      {
+        "KeyData": ",",
+        "ShiftKeyData": "<"
+      },
+      {
+        "KeyData": ".",
+        "ShiftKeyData": ">"
+      },
+      {
+        "KeyData": "/",
+        "ShiftKeyData": "?"
+      }
+    ]
+  ],
+  "DefaultKeys": [
+    "1,0",
+    "2,0"
+  ],
+  "Stats": {
+    "KeyIncorrectCount": {},
+    "MostIncorrect": {
+      "Key": null,
+      "Value": 0
+    },
+    "SentencePracticeCount": 0,
+    "AverageTypingSpeed": 0,
+    "AverageAccuracy": 0
+  }
+}
