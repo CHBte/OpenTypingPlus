@@ -1,15 +1,18 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using LiveCharts;
-using LiveCharts.Wpf;
+using LiveChartsCore;
+using LiveChartsCore.Measure;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
 using MahApps.Metro.Controls;
+using SkiaSharp;
 
 namespace OpenTyping
 {
@@ -50,8 +53,8 @@ namespace OpenTyping
             private set => SetField(ref typingAccuracy, value);
         }
 
-        public ChartValues<int> TypingSpeedList { get; set; } = new ChartValues<int>();
-        public ChartValues<int> AccuracyList { get; set; } = new ChartValues<int>();
+        public ObservableCollection<int> TypingSpeedList { get; } = new ObservableCollection<int>();
+        public ObservableCollection<int> AccuracyList { get; } = new ObservableCollection<int>();
 
         private int? currentSentenceIndex;
 
@@ -73,7 +76,56 @@ namespace OpenTyping
                 // 학습 데이터 무작위로 섞기
             }
 
-            SpeedChart.AxisX[0].Separator.Step = 1;
+            var speedColor = SKColor.Parse("#1c7ed6");
+            var accuracyColor = SKColor.Parse("#f03e3e");
+
+            SpeedChart.Series = new ISeries[]
+            {
+                new LineSeries<int>
+                {
+                    Values = TypingSpeedList,
+                    Name = "타속",
+                    Stroke = new SolidColorPaint(speedColor, 2),
+                    Fill = new SolidColorPaint(speedColor.WithAlpha(0x26)),
+                    GeometryStroke = new SolidColorPaint(speedColor, 2),
+                    GeometryFill = new SolidColorPaint(SKColors.White),
+                    GeometrySize = 10
+                },
+                new LineSeries<int>
+                {
+                    Values = AccuracyList,
+                    Name = "정확도",
+                    Stroke = new SolidColorPaint(accuracyColor, 2),
+                    Fill = null,
+                    GeometryStroke = new SolidColorPaint(accuracyColor, 2),
+                    GeometryFill = new SolidColorPaint(SKColors.White),
+                    GeometrySize = 10,
+                    ScalesYAt = 1
+                }
+            };
+
+            SpeedChart.YAxes = new[]
+            {
+                new Axis
+                {
+                    MinLimit = 0,
+                    LabelsPaint = new SolidColorPaint(speedColor)
+                },
+                new Axis
+                {
+                    MinLimit = 0,
+                    MaxLimit = 100,
+                    Position = AxisPosition.End,
+                    LabelsPaint = new SolidColorPaint(accuracyColor),
+                    SeparatorsPaint = null
+                }
+            };
+
+            SpeedChart.XAxes = new[]
+            {
+                new Axis { LabelsPaint = null, SeparatorsPaint = null, MinStep = 1 }
+            };
+
             this.Loaded += SentencePracticeWindow_Loaded;
         }
 

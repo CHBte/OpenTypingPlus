@@ -131,6 +131,7 @@ namespace OpenTyping
             };
 
             var newTextData = new List<string>();
+            double pixelsPerDip = VisualTreeHelper.GetDpi(textBlock).PixelsPerDip;
 
             IList<string> FitLine(string line)
             {
@@ -150,7 +151,8 @@ namespace OpenTyping
                         textBlock.FontSize,
                         Brushes.Black,
                         new NumberSubstitution(),
-                        TextFormattingMode.Display);
+                        TextFormattingMode.Display,
+                        pixelsPerDip);
 
                     if (formattedText.Width > textBlock.ActualWidth - 10)
                     {

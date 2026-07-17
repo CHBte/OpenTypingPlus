@@ -31,9 +31,23 @@ namespace OpenTyping
 
         public Key this[KeyPos pos] => KeyLayoutData[pos.Row][pos.Column];
 
-        public static void SaveKeyLayout(KeyLayout keyLayout)
+        // 통계 저장 실패(읽기 전용 설치 폴더, 파일 잠금 등)로 앱이 죽지 않도록 한다.
+        // 실패하면 false를 반환하고 errorMessage에 원인을 담는다.
+        public static bool TrySaveKeyLayout(KeyLayout keyLayout, out string errorMessage)
         {
-            File.WriteAllText(keyLayout.Location, JsonConvert.SerializeObject(keyLayout, Formatting.Indented));
+            try
+            {
+                File.WriteAllText(keyLayout.Location, JsonConvert.SerializeObject(keyLayout, Formatting.Indented));
+                errorMessage = null;
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException ||
+                                       ex is UnauthorizedAccessException ||
+                                       ex is System.Security.SecurityException)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
         }
 
         public static KeyLayout Parse(string data)
@@ -93,6 +107,24 @@ namespace OpenTyping
                     throw new InvalidKeyLayoutDataException(message);
                 }
             }
+
+            // 손상되었거나 조작된 파일에 대비해 파싱 단계에서 정리한다.
+            // 격자 범위를 벗어난 키 위치가 남아 있으면 이후 인덱싱(홈 화면 통계 표시 등)에서 앱이 죽는다.
+            bool InRange(KeyPos pos) => pos != null &&
+                                        pos.Row >= 0 && pos.Row < keyLayout.KeyLayoutData.Count &&
+                                        pos.Column >= 0 && pos.Column < keyLayout.KeyLayoutData[pos.Row].Count;
+
+            keyLayout.DefaultKeys = keyLayout.DefaultKeys.Where(InRange).ToList();
+
+            keyLayout.Stats ??= new KeyLayoutStats(); // "Stats": null 로 저장된 파일
+            keyLayout.Stats.KeyIncorrectCount ??= new Dictionary<KeyPos, int>(); // "KeyIncorrectCount": null 로 저장된 파일
+
+            keyLayout.Stats.KeyIncorrectCount =
+                keyLayout.Stats.KeyIncorrectCount.Where(kv => InRange(kv.Key))
+                                                 .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // MostIncorrect도 파일에서 읽히므로 신뢰하지 않고 정리된 딕셔너리에서 다시 계산한다.
+            keyLayout.Stats.RecomputeMostIncorrect();
 
             return keyLayout;
         }
