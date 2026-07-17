@@ -6,7 +6,7 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:local="clr-namespace:OpenTyping"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
-                 xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+                 xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
                  mc:Ignorable="d"
                  Title="열린타자"
                  Style="{StaticResource WindowTitleStyle}"
@@ -132,48 +132,11 @@
         <Separator Grid.Row="1"
                    Margin="0 0 0 10"/>
 
+            <!-- 시리즈·축 구성은 코드 비하인드에서 설정한다 (LiveCharts2). -->
             <lvc:CartesianChart x:Name="SpeedChart"
                                 Grid.Row="2"
-                                DataContext="{Binding ElementName=SelfWindow}"
-                                LegendLocation="Bottom"
-                                FontFamily="{StaticResource NanumGothic}"
-                                FontSize="11pt"
-                                Height="125">
-                <lvc:CartesianChart.ChartLegend>
-                    <lvc:DefaultLegend Margin="0 5 0 0"/>
-                </lvc:CartesianChart.ChartLegend>
-
-                <lvc:CartesianChart.DataTooltip>
-                    <lvc:DefaultTooltip ShowTitle="False"/>
-                </lvc:CartesianChart.DataTooltip>
-
-                <lvc:CartesianChart.AxisY>
-                    <lvc:Axis MinValue="0"
-                              Foreground="#1c7ed6"/>
-                    <lvc:Axis MinValue="0" MaxValue="100"
-                              Position="RightTop"
-                              Foreground="#f03e3e">
-                        <lvc:Axis.Separator>
-                            <lvc:Separator IsEnabled="False"/>
-                        </lvc:Axis.Separator>
-                    </lvc:Axis>
-                </lvc:CartesianChart.AxisY>
-
-                <lvc:CartesianChart.AxisX>
-                    <lvc:Axis ShowLabels="False"/>
-                </lvc:CartesianChart.AxisX>
-
-                <lvc:CartesianChart.Series>
-                    <lvc:LineSeries Values="{Binding Path=TypingSpeedList}"
-                                    Title="타속"
-                                    Foreground="#1c7ed6"/>
-                    <lvc:LineSeries Values="{Binding Path=AccuracyList}"
-                                    Title="정확도"
-                                    Foreground="#f03e3e"
-                                    Fill="Transparent"
-                                    ScalesYAt="1"/>
-                </lvc:CartesianChart.Series>
-            </lvc:CartesianChart>
+                                LegendPosition="Bottom"
+                                Height="125"/>
     </Grid>
 </mah:MetroWindow>
 

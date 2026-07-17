@@ -72,7 +72,7 @@
                        Margin="0 0 5 0"
                        Fill="#37b24d">
                 <Rectangle.OpacityMask>
-                    <VisualBrush Visual="{iconPacks:FontAwesome Kind=CheckCircleSolid}"/>
+                    <VisualBrush Visual="{iconPacks:FontAwesome Kind=CircleCheckSolid}"/>
                 </Rectangle.OpacityMask>
             </Rectangle>
             <TextBlock DataContext="{Binding ElementName=SelfWindow}"
@@ -91,7 +91,7 @@
                        Margin="0 0 5 0"
                        Fill="#f03e3e">
                 <Rectangle.OpacityMask>
-                    <VisualBrush Visual="{iconPacks:FontAwesome Kind=TimesCircleSolid}"/>
+                    <VisualBrush Visual="{iconPacks:FontAwesome Kind=CircleXmarkSolid}"/>
                 </Rectangle.OpacityMask>
             </Rectangle>
             <TextBlock DataContext="{Binding ElementName=SelfWindow}"

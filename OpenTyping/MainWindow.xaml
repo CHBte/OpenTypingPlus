@@ -43,7 +43,8 @@
     </mah:MetroWindow.RightWindowCommands>
     <Viewbox Stretch="Uniform">
         <Grid Width="800" Height="420">
-            <TabControl x:Name="MenuTabControl">
+            <TabControl x:Name="MenuTabControl"
+                        Style="{DynamicResource MahApps.Styles.TabControl.Animated}">
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
@@ -109,7 +110,7 @@
                                Margin="0 0 2 0">
                         <Rectangle.OpacityMask>
                             <VisualBrush Stretch="Uniform" 
-                                         Visual="{iconPacks:FontAwesome Kind=PencilAltSolid}" />
+                                         Visual="{iconPacks:FontAwesome Kind=PencilSolid}" />
                         </Rectangle.OpacityMask>
                     </Rectangle>
                     <Label Style="{StaticResource TabItemLabel}"

@@ -10,12 +10,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <!-- MahApps.Metro resource dictionaries. Make sure that all file names are Case Sensitive! -->
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.AnimatedTabControl.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colors.xaml" />
                 <!-- Accent and AppTheme setting -->
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/Cobalt.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Light.Cobalt.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BitmapImage x:Key="AppIcon">pack://application:,,,/Resources/icon.png</BitmapImage>
@@ -33,14 +30,14 @@
                                        VerticalAlignment="Center"
                                        Margin="5 -1 8 0"
                                        FontWeight="Light"
-                                       FontSize="{DynamicResource WindowTitleFontSize}"
+                                       FontSize="{DynamicResource MahApps.Font.Size.Window.Title}"
                                        FontFamily="{StaticResource NanumGothic}" />
                         </DataTemplate>
                     </Setter.Value>
                 </Setter>
             </Style>
 
-            <Style x:Key="TabItemLabel" TargetType="Label" BasedOn="{StaticResource MetroLabel}">
+            <Style x:Key="TabItemLabel" TargetType="Label" BasedOn="{StaticResource MahApps.Styles.Label}">
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Foreground"
                         Value="{Binding RelativeSource={RelativeSource AncestorType={x:Type ContentPresenter}}, Path=(TextElement.Foreground)}" />

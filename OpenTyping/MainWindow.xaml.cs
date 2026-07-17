@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -25,8 +24,10 @@ namespace OpenTyping
 
         public MainWindow()
         {
-            string exeDirectory = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            if (exeDirectory is null)
+            // 단일 파일 게시(PublishSingleFile)에서는 Assembly.Location이 빈 문자열이므로
+            // AppContext.BaseDirectory를 사용한다.
+            string exeDirectory = AppContext.BaseDirectory;
+            if (string.IsNullOrEmpty(exeDirectory))
             {
                 MessageBox.Show("응용 프로그램 경로를 찾는 도중 에러가 발생했습니다.",
                                 "열린타자",
@@ -100,13 +101,21 @@ namespace OpenTyping
 
         private static void MainWindow_Closed(object sender, EventArgs e)
         {
-            KeyLayout.SaveKeyLayout(CurrentKeyLayout);
+            if (!KeyLayout.TrySaveKeyLayout(CurrentKeyLayout, out string error))
+            {
+                MessageBox.Show("연습 통계를 저장하지 못했습니다.\n" + error,
+                                "열린타자",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+            }
             Settings.Default.Save();
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            KeyLayout.SaveKeyLayout(CurrentKeyLayout);
+            // 설정창이 자판 목록을 파일에서 다시 읽으므로, 현재 통계를 먼저 파일에 반영해 둔다.
+            // 저장 실패는 설정창 이용을 막을 이유가 아니므로 알리지 않고 계속 진행한다 (종료 시 다시 시도됨).
+            KeyLayout.TrySaveKeyLayout(CurrentKeyLayout, out _);
 
             SettingsWindow settingsWindow;
             try
@@ -122,7 +131,8 @@ namespace OpenTyping
             }
             settingsWindow.ShowDialog();
 
-            if (settingsWindow.KeyLayoutUpdated || settingsWindow.KeyLayoutDataDirUpdated)
+            if ((settingsWindow.KeyLayoutUpdated || settingsWindow.KeyLayoutDataDirUpdated) &&
+                settingsWindow.SelectedKeyLayout != null) // null이 대입되면 이후 모든 연습 기능이 죽는다
             {
                 CurrentKeyLayout = settingsWindow.SelectedKeyLayout;
 

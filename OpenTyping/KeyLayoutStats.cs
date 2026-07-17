@@ -52,6 +52,20 @@ namespace OpenTyping
             return result;
         }
 
+        // KeyIncorrectCount로부터 가장 많이 틀린 키를 다시 계산한다.
+        // 비어 있으면(오타 없이 연습을 마친 경우 등) 기본값으로 둔다 — 빈 딕셔너리에 Max()를 호출하면 예외가 발생한다.
+        public void RecomputeMostIncorrect()
+        {
+            if (KeyIncorrectCount.Count == 0)
+            {
+                MostIncorrect = default;
+                return;
+            }
+
+            int maxCount = KeyIncorrectCount.Values.Max();
+            MostIncorrect = KeyIncorrectCount.First(kv => kv.Value == maxCount);
+        }
+
         public void AddStats(KeyLayoutStats other)
         {
             if (other.KeyIncorrectCount != null)
@@ -59,7 +73,7 @@ namespace OpenTyping
                 int AddInt(int lhs, int rhs) => lhs + rhs;
 
                 KeyIncorrectCount = MergeBy(KeyIncorrectCount, other.KeyIncorrectCount, AddInt);
-                MostIncorrect = KeyIncorrectCount.FirstOrDefault(x => x.Value == KeyIncorrectCount.Values.Max());
+                RecomputeMostIncorrect();
             }
 
             if (other.SentencePracticeCount > 0)
