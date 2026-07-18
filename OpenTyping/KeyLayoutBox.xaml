@@ -32,6 +32,16 @@
                    KeyData="Enter"/>
         <local:Key x:Key="ShiftKey"
                    KeyData="Shift"/>
+        <local:Key x:Key="CtrlKey"
+                   KeyData="Ctrl"/>
+        <local:Key x:Key="AltKey"
+                   KeyData="Alt"/>
+        <local:Key x:Key="HanjaKey"
+                   KeyData="한자"/>
+        <local:Key x:Key="SpaceKey"
+                   KeyData="Space"/>
+        <local:Key x:Key="HanYoungKey"
+                   KeyData="한/영"/>
     </UserControl.Resources>
     <StackPanel Orientation="Vertical">
         <StackPanel Orientation="Horizontal">
@@ -69,6 +79,35 @@
                           Style="{StaticResource ModKeyBoxStyle}"
                           Key="{StaticResource ShiftKey}"
                           Width="125"/>
+        </StackPanel>
+        <!-- 맨 아래 행: Win·Menu 키가 없는 실제 106키 한글 자판 변형을 참고한 배치이다.
+             (그런 자판은 Ctrl·Alt·한자·Space·한/영·Alt·Ctrl 7키로 이루어지고 스페이스바가 크다.)
+             폭은 실제 키 비율(1u=50px)을 따른다: Ctrl·Alt 1.25u(62.5), 한자·한/영 1u(50).
+             Space 폭은 위 Shift 행 오른쪽 끝(777px)에 오른쪽 Ctrl의 오른쪽 끝을 맞추도록 정한다:
+             777 - (간격 6×2) - (62.5×4 + 50×2) = 765 - 350 = 415. 결과적으로 스페이스바가
+             정확히 가운데 정렬되고, 좌우 Ctrl이 각각 왼쪽/오른쪽 Shift와 세로로 정렬된다. -->
+        <StackPanel Orientation="Horizontal">
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource CtrlKey}"
+                          Width="62.5"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource AltKey}"
+                          Width="62.5"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource HanjaKey}"
+                          Width="50"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource SpaceKey}"
+                          Width="415"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource HanYoungKey}"
+                          Width="50"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource AltKey}"
+                          Width="62.5"/>
+            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+                          Key="{StaticResource CtrlKey}"
+                          Width="62.5"/>
         </StackPanel>
     </StackPanel>
 </UserControl>

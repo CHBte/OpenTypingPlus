@@ -101,21 +101,29 @@ namespace OpenTyping
             }
         }
 
-        public void PressCorrectKey(KeyPos pos)
+        // ===== 연습 창 타이핑 트리거용 (KeyBox의 SetTarget/PressPhysical/ReleasePhysical 위임) =====
+
+        public void SetTargetKey(KeyPos pos, bool target)
         {
-            keyLayout[pos.Row][pos.Column].PressCorrect();
+            keyLayout[pos.Row][pos.Column].SetTarget(target);
         }
 
-        public void PressIncorrectKey(KeyPos pos)
+        public void PressPhysicalKey(KeyPos pos)
         {
-            keyLayout[pos.Row][pos.Column].PressIncorrect();
+            keyLayout[pos.Row][pos.Column].PressPhysical();
         }
 
-        public void ReleaseKey(KeyPos pos)
+        public void ReleasePhysicalKey(KeyPos pos)
         {
-            keyLayout[pos.Row][pos.Column].Release();
+            keyLayout[pos.Row][pos.Column].ReleasePhysical();
         }
 
+        public KeyBox GetKeyBox(KeyPos pos)
+        {
+            return keyLayout[pos.Row][pos.Column];
+        }
+
+        // 선택된(연습할) 키는 녹색·안 눌린 모양(SetTarget)으로 표시한다 (<260718_5-1>).
         public void PressDefaultKeys()
         {
             List<KeyPos> defaultKeys = MainWindow.CurrentKeyLayout.DefaultKeys;
@@ -126,12 +134,13 @@ namespace OpenTyping
                 {
                     if (defaultKeys.Contains(new KeyPos(i, j)))
                     {
-                        keyLayout[i][j].PressCorrect();
+                        keyLayout[i][j].SetTarget(true);
                     }
                 }
             }
         }
 
+        // 현재 선택된(녹색·제시 상태인) 키 목록. 이름은 기존 유지하되 선택 상태(IsTarget)를 읽는다 (<260718_5-1>).
         public List<KeyPos> PressedKeys()
         {
             var result = new List<KeyPos>();
@@ -140,7 +149,7 @@ namespace OpenTyping
             {
                 for (int j=0; j<keyLayout[i].Count; j++)
                 {
-                    if (keyLayout[i][j].Pressed)
+                    if (keyLayout[i][j].IsTarget)
                     {
                         result.Add(new KeyPos(i, j));
                     }
@@ -152,7 +161,9 @@ namespace OpenTyping
 
         private void KeyBox_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            ((KeyBox)sender).PressToggle();
+            // 클릭으로 연습할 키를 선택/해제: 두벌식 표준 트리거와 동일하게 녹색·안 눌린 모양으로 표시 (<260718_5-1>)
+            var keyBox = (KeyBox)sender;
+            keyBox.SetTarget(!keyBox.IsTarget);
             MainWindow.CurrentKeyLayout.DefaultKeys = PressedKeys();
         }
     }

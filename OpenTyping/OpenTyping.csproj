@@ -5,12 +5,15 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>OpenTyping</RootNamespace>
-    <AssemblyName>열린타자</AssemblyName>
+    <!-- 이 값은 `dotnet build`를 직접 실행할 때만 쓰인다. 실제 배포용 exe는
+         build.bat이 `/p:AssemblyName=OpenTypingPlus`로 이 값을 덮어써
+         항상 OpenTypingPlus.exe로 나온다. -->
+    <AssemblyName>열린타자플러스</AssemblyName>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyTitle>OpenTyping</AssemblyTitle>
-    <Product>OpenTyping</Product>
+    <AssemblyTitle>Open Typing Plus</AssemblyTitle>
+    <Product>Open Typing Plus</Product>
     <Copyright>Copyright © 2018</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>

@@ -58,5 +58,53 @@ namespace OpenTyping.Properties {
                 this["PracticeDataDir"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool FingerLayerEnabled {
+            get {
+                return ((bool)(this["FingerLayerEnabled"]));
+            }
+            set {
+                this["FingerLayerEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3.5")]
+        public double FingerLayerThickness {
+            get {
+                return ((double)(this["FingerLayerThickness"]));
+            }
+            set {
+                this["FingerLayerThickness"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("#3BC9DB")]
+        public string FingerLayerColor {
+            get {
+                return ((string)(this["FingerLayerColor"]));
+            }
+            set {
+                this["FingerLayerColor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.65")]
+        public double FingerLayerOpacity {
+            get {
+                return ((double)(this["FingerLayerOpacity"]));
+            }
+            set {
+                this["FingerLayerOpacity"] = value;
+            }
+        }
     }
 }

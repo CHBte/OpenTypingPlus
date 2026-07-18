@@ -40,13 +40,13 @@ namespace OpenTyping
         private void Start2350Tile_Click(object sender, RoutedEventArgs e)
         {
             var window = new SyllablePracticeWindow(Hangul2350List);
-            window.ShowDialog();
+            MainWindow.ShowDialogDimmed(window);
         }
 
         private void StartModernHangulTile_Click(object sender, RoutedEventArgs e)
         {
             var window = new SyllablePracticeWindow(modernHangulList);
-            window.ShowDialog();
+            MainWindow.ShowDialogDimmed(window);
         }
 
         private void StartCustomTile_Click(object sender, RoutedEventArgs e)
@@ -66,14 +66,14 @@ namespace OpenTyping
                 if (hangulList.Distinct().Count() <= 1) // 서로 다른 음절이 2개 이상이어야 함 (전부 같은 글자면 다음 음절 선택이 불가능)
                 {
                     MessageBox.Show("파일 내 서로 다른 한글 음절 개수가 1개 이하입니다.",
-                                    "열린타자",
+                                    "열린타자+",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);
                 }
                 else
                 {
                     var window = new SyllablePracticeWindow(hangulList);
-                    window.ShowDialog();
+                    MainWindow.ShowDialogDimmed(window);
                 }
             }
         }

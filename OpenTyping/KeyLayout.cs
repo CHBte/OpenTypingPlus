@@ -109,7 +109,7 @@ namespace OpenTyping
             }
 
             // 손상되었거나 조작된 파일에 대비해 파싱 단계에서 정리한다.
-            // 격자 범위를 벗어난 키 위치가 남아 있으면 이후 인덱싱(홈 화면 통계 표시 등)에서 앱이 죽는다.
+            // 격자 범위를 벗어난 키 위치가 남아 있으면 이후 인덱싱(대문 화면 통계 표시 등)에서 앱이 죽는다.
             bool InRange(KeyPos pos) => pos != null &&
                                         pos.Row >= 0 && pos.Row < keyLayout.KeyLayoutData.Count &&
                                         pos.Column >= 0 && pos.Column < keyLayout.KeyLayoutData[pos.Row].Count;
