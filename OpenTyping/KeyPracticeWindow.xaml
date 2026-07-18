@@ -8,19 +8,31 @@
                  xmlns:local="clr-namespace:OpenTyping"
                  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
                  mc:Ignorable="d"
-                 Title="열린타자"
+                 Title="열린타자+"
                  Style="{StaticResource WindowTitleStyle}"
-                 Width="810" 
-                 Height="390"
+                 Width="810"
+                 Height="468"
                  MinWidth="810"
-                 MinHeight="390"
+                 MinHeight="468"
                  ResizeMode="CanResize"
                  Icon="{StaticResource AppIcon}"
                  Closed="KeyPracticeWindow_Closed">
     <Viewbox Stretch="Uniform">
-        <Grid Width="810" Height="360">
-            <StackPanel Orientation="Vertical">
+        <!-- 행 구조: 상단 표시 / 카운트 / 안내문(카운트 바로 아래, 한 줄 고정) / (남는 공간) / 키보드.
+             안내문 행은 텍스트 표시 여부와 무관하게 항상 한 줄 높이(30)로 고정하므로 1단계에서
+             안내문이 나타나도 키보드가 움직이지 않고(점프 없음), 안내문 영역이 딱 한 줄이라 창 세로가
+             짧다 (<260718_3-1>). 남는 공간(*)은 거의 0이라 키보드는 창 바닥 15px 위에 붙는다
+             (<260718_1>, <260718_3>). -->
+        <Grid x:Name="RootGrid" Width="810" Height="438">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition x:Name="GuideRow" Height="30"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
         <Grid x:Name="KeyGrid"
+              Grid.Row="0"
               Margin="0 10 0 0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -65,9 +77,29 @@
                        VerticalAlignment="Center"/>
         </Grid>
 
-        <StackPanel Orientation="Horizontal"
-                    Margin="20 0 0 10">
-            <Rectangle Width="23" 
+        <DockPanel Grid.Row="1"
+                   Margin="20 0 20 10"
+                   LastChildFill="False">
+            <!-- 손가락 레이어 설정을 여는 버튼 ('→ 연습 시작' 버튼 디자인 재사용) -->
+            <Button x:Name="HandButton"
+                    DockPanel.Dock="Right"
+                    VerticalAlignment="Center"
+                    Click="HandButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Width="16"
+                               Height="18"
+                               Fill="#1c7ed6">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Visual="{iconPacks:FontAwesome Kind=HandRegular}"/>
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                    <TextBlock Style="{StaticResource ControlButtonText}"
+                               Text="손 모양"/>
+                </StackPanel>
+            </Button>
+            <StackPanel DockPanel.Dock="Left"
+                        Orientation="Horizontal">
+            <Rectangle Width="23"
                        Height="23"
                        Margin="0 0 5 0"
                        Fill="#37b24d">
@@ -99,11 +131,84 @@
                        Text="{Binding IncorrectCount}"
                        Margin="0 3 0 0"
                        FontSize="14pt"/>
-        </StackPanel>
-        <local:KeyLayoutBox x:Name="KeyLayoutBox"
-                            Clickable="False"
-                            HorizontalAlignment="Center"/>
             </StackPanel>
+        </DockPanel>
+
+        <!-- 손가락 놓기 안내 (1단계 창에서만 표시; 카운트 영역 바로 아래 한 줄 고정 자리) (<260718_3>, <260718_3-1>) -->
+        <StackPanel x:Name="GuideTextPanel"
+                    Grid.Row="2"
+                    Orientation="Vertical"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="0"
+                    Visibility="Collapsed">
+            <TextBlock Style="{StaticResource NormalTextBlock}"
+                       Text="10개의 손가락을 그림과 같이 키보드 위에 올려 놓으세요."
+                       FontFamily="{StaticResource NanumGothic}"
+                       FontWeight="Bold"
+                       FontSize="14pt"
+                       Foreground="#1c7ed6"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- 키보드와 그 위에 겹치는 손가락 레이어·안내 문구 (좌표계 공유를 위해 같은 Grid에 둔다).
+             창 바닥으로부터 15px 간격을 둔다 (<260718_3>). -->
+        <Grid Grid.Row="4"
+              HorizontalAlignment="Center"
+              Margin="0 0 0 15">
+            <local:KeyLayoutBox x:Name="KeyLayoutBox"
+                                Clickable="False"/>
+            <local:FingerLayer x:Name="FingerLayer"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Visibility="Collapsed"/>
+            <!-- 1단계 전용 오버레이 안내 (15초 또는 첫 키 입력 중 먼저 오는 시점에 사라짐, <260717_29-3>).
+                 키보드 좌표계(777x260) 기준 배치 (<260717_29-4>, <260717_29-5>): 검지 안내는 [ㄹ](중심 283)·
+                 [ㅓ](중심 439)의 가운데(361)에 좌우 가운데 정렬(폭 280 → Left=221), 엄지 안내는 손가락 레이어
+                 (합친 경계 96.2~625.8, 중심 361)에 좌우 가운데 정렬(폭 301 → Left=210.5) -->
+            <Canvas Width="777"
+                    Height="260"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    IsHitTestVisible="False">
+                <Border x:Name="IndexGuideOverlay"
+                        Canvas.Left="221"
+                        Canvas.Top="58"
+                        Width="280"
+                        CornerRadius="5"
+                        Background="#E6FFFFFF"
+                        BorderBrush="#1c7ed6"
+                        BorderThickness="1.5"
+                        Padding="6 4 6 4"
+                        Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                               Text="검지를 [ㄹ]과 [ㅓ] 위에 댑니다."
+                               FontFamily="{StaticResource NanumGothic}"
+                               FontWeight="Bold"
+                               FontSize="12pt"
+                               Foreground="#1c7ed6"
+                               TextAlignment="Center"/>
+                </Border>
+                <Border x:Name="ThumbGuideOverlay"
+                        Canvas.Left="210.5"
+                        Canvas.Top="164"
+                        Width="301"
+                        CornerRadius="5"
+                        Background="#E6FFFFFF"
+                        BorderBrush="#1c7ed6"
+                        BorderThickness="1.5"
+                        Padding="6 4 6 4"
+                        Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                               Text="두 엄지는 [Space] 위에 놓습니다."
+                               FontFamily="{StaticResource NanumGothic}"
+                               FontWeight="Bold"
+                               FontSize="12pt"
+                               Foreground="#1c7ed6"
+                               TextAlignment="Center"/>
+                </Border>
+            </Canvas>
+        </Grid>
         </Grid>
     </Viewbox>
 </mah:MetroWindow>

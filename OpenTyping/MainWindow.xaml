@@ -7,13 +7,13 @@
                  xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
                  mc:Ignorable="d"
-                 Title="열린타자"
+                 Title="열린타자+"
                  Style="{StaticResource WindowTitleStyle}"
                  FontFamily="{StaticResource NanumGothic}"
-                 Width="800" 
-                 Height="450" 
+                 Width="800"
+                 Height="502"
                  MinWidth="800"
-                 MinHeight="450"
+                 MinHeight="502"
                  ResizeMode="CanResize"
                  Icon="{StaticResource AppIcon}">
     <mah:MetroWindow.RightWindowCommands>
@@ -42,7 +42,7 @@
         </mah:WindowCommands>
     </mah:MetroWindow.RightWindowCommands>
     <Viewbox Stretch="Uniform">
-        <Grid Width="800" Height="420">
+        <Grid Width="800" Height="472">
             <TabControl x:Name="MenuTabControl"
                         Style="{DynamicResource MahApps.Styles.TabControl.Animated}">
         <TabItem>
@@ -57,7 +57,7 @@
                         </Rectangle.OpacityMask>
                     </Rectangle>
                     <Label Style="{StaticResource TabItemLabel}"
-                           Content="홈"/>
+                           Content="대문"/>
                 </StackPanel>
             </TabItem.Header>
             <local:HomeMenu x:Name="HomeMenu"/>
@@ -137,6 +137,13 @@
             <local:ArticlePracticeMenu x:Name="ArticlePracticeMenu"/>
         </TabItem>
     </TabControl>
+        <!-- 자식 모달(2단계 창)이 떠 있는 동안만 보이는 반투명 회색 오버레이: 내용의 채도를 낮춰
+             비활성 상태를 표현한다 (<260718_7-1>). 히트테스트에서 제외한다. -->
+        <Rectangle x:Name="DesaturateOverlay"
+                   Fill="#808080"
+                   Opacity="0.4"
+                   Visibility="Collapsed"
+                   IsHitTestVisible="False"/>
         </Grid>
     </Viewbox>
 </mah:MetroWindow>

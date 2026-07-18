@@ -48,7 +48,7 @@
                    Margin="0 0 13 0"/>
             <TextBlock Grid.Row="0"
                        Grid.Column="1"
-                       Text="열린타자"
+                       Text="열린타자+"
                        Style="{StaticResource NormalTextBlock}" 
                        FontWeight="Light" 
                        FontSize="42pt"/>

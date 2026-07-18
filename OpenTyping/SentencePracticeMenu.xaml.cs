@@ -26,14 +26,14 @@ namespace OpenTyping
             if (selectedPracticeData is null)
             {
                 MessageBox.Show("연습하실 연습 데이터를 선택해주세요.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Information);
                 return;
             }
 
             var sentencePracticeWindow = new SentencePracticeWindow(selectedPracticeData, IsRandom);
-            sentencePracticeWindow.ShowDialog();
+            MainWindow.ShowDialogDimmed(sentencePracticeWindow);
         }
     }
 }

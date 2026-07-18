@@ -106,7 +106,7 @@ namespace OpenTyping
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
                 MessageBox.Show(failureMessage + "\n" + ex.Message,
-                                "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                                "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -124,7 +124,7 @@ namespace OpenTyping
                 if (File.Exists(destLocation))
                 {
                     MessageBox.Show("같은 이름의 파일이 이미 자판 데이터 경로에 존재합니다.",
-                                    "열린타자",
+                                    "열린타자+",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);
                 }
@@ -141,7 +141,7 @@ namespace OpenTyping
                                                ex is IOException || ex is UnauthorizedAccessException)
                     {
                         // IO 예외: 파일이 잠겨 있거나 읽기 권한이 없는 경우 (대화 상자의 존재 검사는 통과했어도 읽기는 실패할 수 있음)
-                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                         Focus();
                         return;
                     }
@@ -166,7 +166,7 @@ namespace OpenTyping
             if (SelectedKeyLayout is null)
             {
                 MessageBox.Show("삭제할 자판 데이터를 먼저 선택해주세요.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Information);
                 return;
@@ -175,7 +175,7 @@ namespace OpenTyping
             if (KeyLayouts.Count == 1)
             {
                 MessageBox.Show("자판 데이터가 한 개 존재하여 삭제할 수 없습니다.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Error);
                 return;
@@ -183,7 +183,7 @@ namespace OpenTyping
 
             MessageBoxResult result
                 = MessageBox.Show("선택된 자판 데이터 \"" + SelectedKeyLayout.Name + "\" 를 삭제하시겠습니까?",
-                                  "열린타자",
+                                  "열린타자+",
                                   MessageBoxButton.OKCancel,
                                   MessageBoxImage.Warning);
             if (result == MessageBoxResult.OK)
@@ -203,7 +203,7 @@ namespace OpenTyping
             if (SelectedKeyLayout is null)
             {
                 MessageBox.Show("통계를 삭제할 자판 데이터를 먼저 선택해주세요.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Information);
                 return;
@@ -211,7 +211,7 @@ namespace OpenTyping
 
             MessageBoxResult result
                 = MessageBox.Show("선택된 자판 데이터 \"" + SelectedKeyLayout.Name + "\" 의 통계 정보를 삭제하시겠습니까?",
-                                  "열린타자",
+                                  "열린타자+",
                                   MessageBoxButton.OKCancel,
                                   MessageBoxImage.Warning);
             if (result == MessageBoxResult.OK)
@@ -220,7 +220,7 @@ namespace OpenTyping
                 if (!KeyLayout.TrySaveKeyLayout(SelectedKeyLayout, out string error))
                 {
                     MessageBox.Show("자판 데이터 파일에 저장하지 못했습니다.\n" + error,
-                                    "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                                    "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
 
                 KeyLayoutUpdated = true;
@@ -247,7 +247,7 @@ namespace OpenTyping
                 {
                     if (ex is KeyLayoutLoadFail || ex is InvalidKeyLayoutDataException)
                     {
-                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     else throw;
                 }
@@ -270,7 +270,7 @@ namespace OpenTyping
                 if (File.Exists(destLocation))
                 {
                     MessageBox.Show("같은 이름의 파일이 이미 연습 데이터 경로에 존재합니다.",
-                                    "열린타자",
+                                    "열린타자+",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);
                 }
@@ -286,7 +286,7 @@ namespace OpenTyping
                                                ex is IOException || ex is UnauthorizedAccessException)
                     {
                         // IO 예외: 파일이 잠겨 있거나 읽기 권한이 없는 경우 (대화 상자의 존재 검사는 통과했어도 읽기는 실패할 수 있음)
-                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                         Focus();
                         return;
                     }
@@ -310,7 +310,7 @@ namespace OpenTyping
             if (SelectedPracticeData is null)
             {
                 MessageBox.Show("삭제할 연습 데이터를 먼저 선택해주세요.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Information);
                 return;
@@ -319,7 +319,7 @@ namespace OpenTyping
             if (PracticeDataList.Count == 1)
             {
                 MessageBox.Show("연습 데이터가 한 개 존재하여 삭제할 수 없습니다.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Error);
                 return;
@@ -327,7 +327,7 @@ namespace OpenTyping
 
             MessageBoxResult result
                 = MessageBox.Show("선택된 연습 데이터 \"" + SelectedPracticeData.Name + "\" 를 삭제하시겠습니까?",
-                                  "열린타자",
+                                  "열린타자+",
                                   MessageBoxButton.OKCancel,
                                   MessageBoxImage.Warning);
             if (result == MessageBoxResult.OK)
@@ -362,7 +362,7 @@ namespace OpenTyping
                 {
                     if (ex is PracticeDataLoadFail || ex is InvalidPracticeDataException)
                     {
-                        MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     else throw; // 자판 데이터 경로 선택과 동일하게, 알 수 없는 예외는 삼키지 않는다
                 }

@@ -7,7 +7,7 @@
                  xmlns:local="clr-namespace:OpenTyping"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  mc:Ignorable="d"
-                 Title="열린타자" 
+                 Title="열린타자+" 
                  Style="{StaticResource WindowTitleStyle}"
                  Height="400" 
                  Width="700"

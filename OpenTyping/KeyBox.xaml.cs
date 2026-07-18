@@ -1,6 +1,8 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace OpenTyping
 {
@@ -43,8 +45,6 @@ namespace OpenTyping
         public static readonly DependencyProperty IsHomePositionProperty =
             DependencyProperty.Register("IsHomePosition", typeof(bool), typeof(KeyBox), new PropertyMetadata(false));
 
-        public bool Pressed { get; private set; } = false;
-
         private const double PressDiff = 2.8;
         private const double PressedKeyTopHeight = 43.7; // 눌린 KeyTop 높이 (PressDiff와 무관하게 고정)
         private double originalKeyTopHeight;
@@ -56,6 +56,14 @@ namespace OpenTyping
 
         private static readonly Brush IncorrectKeyColor = new SolidColorBrush(Color.FromRgb(255, 168, 168));
         private static readonly Brush IncorrectKeyShadowColor = new SolidColorBrush(Color.FromRgb(255, 135, 135));
+
+        // 연습 창 타이핑 트리거용: 제시된 키를 맞게 눌렀을 때의 색 (짙은 노란색)
+        private static readonly Brush PhysicalPressKeyColor = new SolidColorBrush(Color.FromRgb(250, 176, 5));
+        private static readonly Brush PhysicalPressKeyShadowColor = new SolidColorBrush(Color.FromRgb(245, 159, 0));
+
+        // 1단계 창 검지 자리 안내([ㄹ]·[ㅓ]) 강조색 (#1c7ed6)
+        private static readonly Brush GuideKeyColor = new SolidColorBrush(Color.FromRgb(0x1C, 0x7E, 0xD6));
+        private static readonly Brush GuideKeyShadowColor = new SolidColorBrush(Color.FromRgb(0x18, 0x64, 0xAB));
 
         public KeyBox()
         {
@@ -73,35 +81,16 @@ namespace OpenTyping
             defaultShadowColor = ShadowColor;
         }
 
-        private void Press(Brush keyColor, Brush shadowColor)
+        private void SetPressedShape(bool pressed)
         {
-            if (!Pressed)
+            if (pressed && !shapePressed)
             {
                 KeyTop.Height = PressedKeyTopHeight;
                 Canvas.SetTop(KeyTop, PressDiff);
                 KeyBack.Height -= PressDiff;
                 Canvas.SetTop(KeyBack, PressDiff);
             }
-
-            KeyColor = keyColor;
-            ShadowColor = shadowColor;
-
-            Pressed = true;
-        }
-
-        public void PressCorrect()
-        {
-            Press(CorrectKeyColor, CorrectKeyShadowColor);
-        }
-
-        public void PressIncorrect()
-        {
-            Press(IncorrectKeyColor, IncorrectKeyShadowColor);
-        }
-
-        public void Release()
-        {
-            if (Pressed)
+            else if (!pressed && shapePressed)
             {
                 KeyTop.Height = originalKeyTopHeight;
                 Canvas.SetTop(KeyTop, 0);
@@ -109,16 +98,102 @@ namespace OpenTyping
                 Canvas.SetTop(KeyBack, 0);
             }
 
-            KeyColor = defaultKeyColor;
-            ShadowColor = defaultShadowColor;
-
-            Pressed = false;
+            shapePressed = pressed;
         }
 
-        public void PressToggle()
+        private bool shapePressed; // 현재 키가 눌린 모양인지 (색과 별개로 추적)
+
+        // ===== 연습 창 타이핑 트리거 (제시 키 = 녹색·안 눌림 / 물리로 누른 키 = 주황·눌림) =====
+
+        private bool isTarget;                  // 상단에 제시된 키값의 키인지
+        private bool physicallyPressed;         // 사용자가 지금 물리적으로 누르고 있는지
+        private bool physicallyPressedIncorrect; // 눌린 키가 오답인지 (빨간색 표시)
+        private bool guideHighlighted;          // 1단계 검지 자리 안내 강조인지 (#1c7ed6)
+
+        // 색만 상태에 맞게 다시 칠한다.
+        // 우선순위: 물리적으로 눌림(정답=주황, 오답=빨강) > 안내 강조(파랑) > 제시 키(녹색) > 기본(흰색)
+        private void ApplyTriggerColor()
         {
-            if (Pressed) Release();
-            else PressCorrect();
+            if (physicallyPressed)
+            {
+                KeyColor = physicallyPressedIncorrect ? IncorrectKeyColor : PhysicalPressKeyColor;
+                ShadowColor = physicallyPressedIncorrect ? IncorrectKeyShadowColor : PhysicalPressKeyShadowColor;
+            }
+            else if (guideHighlighted)
+            {
+                KeyColor = GuideKeyColor;
+                ShadowColor = GuideKeyShadowColor;
+            }
+            else if (isTarget)
+            {
+                KeyColor = CorrectKeyColor;
+                ShadowColor = CorrectKeyShadowColor;
+            }
+            else
+            {
+                KeyColor = defaultKeyColor;
+                ShadowColor = defaultShadowColor;
+            }
+        }
+
+        /// <summary>제시 키 여부를 지정한다. 제시 키는 녹색이지만 모양은 눌리지 않은 채로 둔다.</summary>
+        public void SetTarget(bool target)
+        {
+            isTarget = target;
+            ApplyTriggerColor();
+        }
+
+        /// <summary>연습할 키로 지정(선택)돼 녹색·안 눌린 모양인지 여부. 키 선택 UI가 선택 상태를 읽는 데 쓴다 (<260718_5-1>).</summary>
+        public bool IsTarget => isTarget;
+
+        /// <summary>1단계 검지 자리 안내 강조(#1c7ed6)를 켜거나 끈다.</summary>
+        public void SetGuideHighlight(bool on)
+        {
+            guideHighlighted = on;
+            ApplyTriggerColor();
+        }
+
+        /// <summary>제시된 키를 맞게 눌렀다: 눌린 모양 + 짙은 오렌지색.</summary>
+        public void PressPhysical()
+        {
+            physicallyPressed = true;
+            physicallyPressedIncorrect = false;
+            SetPressedShape(true);
+            ApplyTriggerColor();
+        }
+
+        /// <summary>제시된 키가 아닌 키를 눌렀다: 눌린 모양 + 빨간색 (원본 프로그램과 동일한 오답 표시).</summary>
+        public void PressPhysicalIncorrect()
+        {
+            physicallyPressed = true;
+            physicallyPressedIncorrect = true;
+            SetPressedShape(true);
+            ApplyTriggerColor();
+        }
+
+        /// <summary>사용자가 이 키에서 손을 뗐다: 안 눌린 모양 + 원래 색(제시 키면 녹색, 아니면 흰색).</summary>
+        public void ReleasePhysical()
+        {
+            physicallyPressed = false;
+            physicallyPressedIncorrect = false;
+            SetPressedShape(false);
+            ApplyTriggerColor();
+        }
+
+        /// <summary>홈 포지션 밑줄을 StopBlink()가 호출될 때까지 계속 깜빡인다 (1단계 창의 검지 자리 안내용, <260717_29-3>).</summary>
+        public void BlinkHomeUnderline()
+        {
+            var blink = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
+            blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.3))));
+            blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.6))));
+            HomePositionUnderline.BeginAnimation(OpacityProperty, blink);
+        }
+
+        /// <summary>BlinkHomeUnderline()으로 시작한 깜빡임을 멈추고 밑줄을 원래(항상 보임) 상태로 되돌린다.</summary>
+        public void StopBlink()
+        {
+            HomePositionUnderline.BeginAnimation(OpacityProperty, null);
         }
     }
 }

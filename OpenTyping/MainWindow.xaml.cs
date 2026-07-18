@@ -22,6 +22,26 @@ namespace OpenTyping
         public const string KeyLayoutStr = "KeyLayout";
         public const string PracticeDataDirStr = "PracticeDataDir";
 
+        /// <summary>
+        /// 자식 모달 대화상자(각 탭 화면에서 여는 2단계 창)를 띄우는 동안 메인 창 내용에 반투명 회색
+        /// 오버레이를 덮어 채도를 낮춰(비활성 표시) 보여 준다. ShowDialog가 닫힐 때까지 블로킹하므로
+        /// 효과는 그 사이에만 적용되고 끝나면 반드시 해제된다 (<260718_7-1>, <260718_7-2>).
+        /// </summary>
+        public static void ShowDialogDimmed(Window dialog)
+        {
+            var main = Application.Current?.MainWindow as MainWindow;
+            if (main?.DesaturateOverlay != null)
+            {
+                main.DesaturateOverlay.Visibility = Visibility.Visible;
+                try { dialog.ShowDialog(); }
+                finally { main.DesaturateOverlay.Visibility = Visibility.Collapsed; }
+            }
+            else
+            {
+                dialog.ShowDialog();
+            }
+        }
+
         public MainWindow()
         {
             // 단일 파일 게시(PublishSingleFile)에서는 Assembly.Location이 빈 문자열이므로
@@ -30,7 +50,7 @@ namespace OpenTyping
             if (string.IsNullOrEmpty(exeDirectory))
             {
                 MessageBox.Show("응용 프로그램 경로를 찾는 도중 에러가 발생했습니다.",
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Error);
                 Environment.Exit(-1);
@@ -78,7 +98,7 @@ namespace OpenTyping
                     ? ex.Message
                     : "자판 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.\n" + ex.Message;
 
-                MessageBox.Show(message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(-1);
             }
 
@@ -104,7 +124,7 @@ namespace OpenTyping
             if (!KeyLayout.TrySaveKeyLayout(CurrentKeyLayout, out string error))
             {
                 MessageBox.Show("연습 통계를 저장하지 못했습니다.\n" + error,
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Warning);
             }
@@ -126,7 +146,7 @@ namespace OpenTyping
                                        ex is PracticeDataLoadFail || ex is InvalidPracticeDataException)
             {
                 // 앱 실행 중 데이터 폴더의 파일이 손상된 경우: 설정창만 열지 못하게 하고 앱은 유지한다.
-                MessageBox.Show(ex.Message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
             settingsWindow.ShowDialog();
@@ -136,7 +156,8 @@ namespace OpenTyping
             {
                 CurrentKeyLayout = settingsWindow.SelectedKeyLayout;
 
-                KeyPracticeMenu.KeyLayoutBox.LoadKeyLayout();
+                // 자판이 바뀌면 '자리연습' 화면 UI(단계 타일 ↔ 키 선택)도 함께 전환된다.
+                KeyPracticeMenu.RefreshLayout();
 
                 var currentKeyLayoutNameBinding = new Binding
                 {

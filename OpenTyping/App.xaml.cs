@@ -19,7 +19,7 @@ namespace OpenTyping
             DispatcherUnhandledException += (sender, args) =>
             {
                 MessageBox.Show("예상하지 못한 오류가 발생했습니다.\n" + args.Exception.Message,
-                                "열린타자",
+                                "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Error);
                 args.Handled = true;

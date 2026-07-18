@@ -1,0 +1,21 @@
+<UserControl x:Class="OpenTyping.FingerLayer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             IsHitTestVisible="False"
+             d:DesignWidth="777" d:DesignHeight="260">
+    <!-- 키보드(KeyLayoutBox)와 같은 좌표계(777 x 260)에 겹쳐 놓는 손가락 레이어.
+         Canvas는 자식을 잘라내지 않으므로 손바닥이 아래(260 밖)로 이어져도 그려진다. -->
+    <Canvas Width="777" Height="260">
+        <Path x:Name="LeftHandPath"
+              StrokeStartLineCap="Round"
+              StrokeEndLineCap="Round"
+              StrokeLineJoin="Round"/>
+        <Path x:Name="RightHandPath"
+              StrokeStartLineCap="Round"
+              StrokeEndLineCap="Round"
+              StrokeLineJoin="Round"/>
+    </Canvas>
+</UserControl>

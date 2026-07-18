@@ -40,29 +40,40 @@
                            Text=": 자판 위 글자들 각각의 자리를 연습합니다."
                            FontSize="14pt"/>
             </StackPanel>
-            <local:KeyLayoutBox x:Name="KeyLayoutBox"
-                                Clickable="True"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Margin="0 0 0 5"/>
-            <StackPanel Orientation="Horizontal"
-                        Margin="4 0 0 5">
-                <Rectangle Width="23" 
-                           Height="23"
-                           Margin="0 0 5 0"
-                           Fill="#1c7ed6">
-                    <Rectangle.OpacityMask>
-                        <VisualBrush Visual="{iconPacks:FontAwesome CircleQuestionSolid}"/>
-                    </Rectangle.OpacityMask>
-                </Rectangle>
-                <TextBlock Style="{StaticResource NormalTextBlock}"
-                           Text="연습하고 싶은 위치의 키를 클릭하여 설정/해제하세요."
-                           VerticalAlignment="Bottom"
-                           FontSize="14pt"/>
+            <!-- '두벌식 표준' 자판: 13개 연습 단계 타일 (코드 비하인드에서 생성) -->
+            <StackPanel x:Name="StageTilePanel"
+                        Orientation="Vertical"
+                        HorizontalAlignment="Center"
+                        Margin="0 8 0 0"
+                        Visibility="Collapsed"/>
+            <!-- 그 외 자판: 기존 방식 (키 직접 선택) -->
+            <StackPanel x:Name="ClassicBody"
+                        Orientation="Vertical">
+                <local:KeyLayoutBox x:Name="KeyLayoutBox"
+                                    Clickable="True"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="0 0 0 5"/>
+                <StackPanel Orientation="Horizontal"
+                            Margin="4 0 0 5">
+                    <Rectangle Width="23"
+                               Height="23"
+                               Margin="0 0 5 0"
+                               Fill="#1c7ed6">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Visual="{iconPacks:FontAwesome CircleQuestionSolid}"/>
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                               Text="연습하고 싶은 위치의 키를 클릭하여 설정/해제하세요."
+                               VerticalAlignment="Bottom"
+                               FontSize="14pt"/>
+                </StackPanel>
             </StackPanel>
         </StackPanel>
 
-        <DockPanel Grid.Row="1"
+        <DockPanel x:Name="ClassicBottomBar"
+                   Grid.Row="1"
                    LastChildFill="False"
                    Margin="10 0 10 10">
             <StackPanel DockPanel.Dock="Left"

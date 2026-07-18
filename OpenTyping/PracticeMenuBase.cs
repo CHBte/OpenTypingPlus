@@ -46,7 +46,7 @@ namespace OpenTyping
                     ? ex.Message
                     : "연습 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.\n" + ex.Message;
 
-                MessageBox.Show(message, "열린타자", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 if (PracticeDataList is null)
                 {
