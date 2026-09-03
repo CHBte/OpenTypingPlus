@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -179,7 +179,10 @@ namespace OpenTyping
                     TypingAccuracy = Convert.ToInt32(accuracy * 100);
                     AccuracyList.Add(TypingAccuracy);
 
-                    TypingSpeed = Convert.ToInt32(typingMeasurer.Finish(CurrentTextBox.Text) * accuracy);
+                    // <260812_14>(2) 지금 걸린 계산 방식을 따른다(기본은 통일 공식 '정타 수 ÷ 분',
+                    // 치트 창에서 '원래 방식'을 고르면 옛 공식). 간단 방식은 맞게 친 부분만 세므로
+                    // 정확도를 따로 곱하지 않는다.
+                    TypingSpeed = typingMeasurer.FinishSpeed(CurrentTextBox.Text, diffs, accuracy);
                     TypingSpeedList.Add(TypingSpeed);
                     AverageTypingSpeed = Convert.ToInt32(TypingSpeedList.Average());
                 }

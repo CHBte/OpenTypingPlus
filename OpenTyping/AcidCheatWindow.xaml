@@ -1,0 +1,71 @@
+<mah:MetroWindow x:Class="OpenTyping.AcidCheatWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                 mc:Ignorable="d"
+                 Title="열린타자+"
+                 Style="{StaticResource WindowTitleStyle}"
+                 SizeToContent="WidthAndHeight"
+                 ResizeMode="NoResize"
+                 WindowStartupLocation="CenterOwner"
+                 ShowMinButton="False"
+                 ShowMaxRestoreButton="False"
+                 Icon="{StaticResource AppIcon}">
+    <!-- <260812_15> 산성비 타자 오락의 치트 창. 파란 글씨 산성비의 비율과 나올 효과를 고른다. -->
+    <StackPanel Orientation="Vertical"
+                Margin="24 16 24 18">
+        <TextBlock Style="{StaticResource NormalTextBlock}"
+                   FontFamily="{StaticResource NanumGothic}"
+                   FontWeight="Bold"
+                   FontSize="13pt"
+                   Text="파란 글씨 산성비"/>
+        <TextBlock x:Name="StateText"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontSize="10pt"
+                   Foreground="#868e96"
+                   TextWrapping="Wrap"
+                   MaxWidth="380"
+                   Margin="0 6 0 0"/>
+
+        <StackPanel Orientation="Horizontal"
+                    Margin="0 10 0 0">
+            <Button x:Name="HalfButton" Margin="0 0 10 0" Click="Half_Click">
+                <TextBlock Style="{StaticResource ControlButtonText}" Text="파란 글씨 산성비를 50%로"/>
+            </Button>
+            <Button x:Name="NormalButton" Click="Normal_Click">
+                <TextBlock Style="{StaticResource ControlButtonText}" Text="원래대로"/>
+            </Button>
+        </StackPanel>
+
+        <Rectangle Height="1" Fill="#dee2e6" Margin="0 16 0 0"/>
+        <TextBlock Style="{StaticResource NormalTextBlock}"
+                   FontFamily="{StaticResource NanumGothic}"
+                   FontWeight="Bold"
+                   FontSize="13pt"
+                   Text="나올 효과"
+                   Margin="0 12 0 0"/>
+        <TextBlock Style="{StaticResource NormalTextBlock}"
+                   FontSize="10pt"
+                   Foreground="#868e96"
+                   Text="체크한 효과들이 고루 나옵니다."
+                   Margin="0 6 0 0"/>
+        <!-- <260812_27> 한 번에 전부 체크/해제 -->
+        <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
+            <Button x:Name="CheckAllButton" Margin="0 0 10 0" Click="CheckAll_Click">
+                <TextBlock Style="{StaticResource ControlButtonText}" Text="전부 체크"/>
+            </Button>
+            <Button x:Name="UncheckAllButton" Click="UncheckAll_Click">
+                <TextBlock Style="{StaticResource ControlButtonText}" Text="전부 해제"/>
+            </Button>
+        </StackPanel>
+        <StackPanel x:Name="EffectPanel"
+                    Orientation="Vertical"
+                    Margin="0 8 0 0"/>
+
+        <Button HorizontalAlignment="Right" Margin="0 18 0 0" Click="Close_Click">
+            <TextBlock Style="{StaticResource ControlButtonText}" Text="닫기"/>
+        </Button>
+    </StackPanel>
+</mah:MetroWindow>

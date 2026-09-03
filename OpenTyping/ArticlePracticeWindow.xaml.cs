@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -121,7 +121,10 @@ namespace OpenTyping
             currentTextBlock.Inlines.Clear();
             var diffs = new List<Differ.DiffData>(Differ.Diff(currentTextBox.Text, currentText, currentTextBox.Text));
 
-            for (int i = 0; i < diffs.Count() - 1; i++)
+            // 줄이 확정된 뒤(Enter)라 더 이상 '입력 중'인 글자가 없으므로, 마지막 항목도 포함해
+            // Intermediate 를 정리한다(SentencePracticeWindow.NextSentence()와 같은 규칙; 아직 입력
+            // 중일 때만 도는 LineTextBox_TextChanged 는 마지막 한 글자를 일부러 남겨 둔다).
+            for (int i = 0; i < diffs.Count(); i++)
             {
                 if (diffs[i].State == Differ.DiffData.DiffState.Intermediate)
                 {
@@ -143,7 +146,8 @@ namespace OpenTyping
             {
                 double accuracy = Differ.CalculateAccuracy(diffs);
                 accuracyList.Add(Convert.ToInt32(accuracy * 100));
-                typingSpeedList.Add(Convert.ToInt32(typingMeasurer.Finish(currentTextBox.Text) * accuracy));
+                // <260812_14>(2) 지금 걸린 계산 방식을 따른다(치트 창에서 '원래 방식'을 고르면 옛 공식).
+                typingSpeedList.Add(typingMeasurer.FinishSpeed(currentTextBox.Text, diffs, accuracy));
 
                 TypingAccuracy = Convert.ToInt32(accuracyList.Average());
                 TypingSpeed = Convert.ToInt32(typingSpeedList.Average());

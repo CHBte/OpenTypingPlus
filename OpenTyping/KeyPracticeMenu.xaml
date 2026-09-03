@@ -36,9 +36,21 @@
                                FontSize="32pt"
                                Margin="0 2 0 0"/>
                 </StackPanel>
-                <TextBlock Style="{StaticResource NormalTextBlock}" 
-                           Text=": 자판 위 글자들 각각의 자리를 연습합니다."
-                           FontSize="14pt"/>
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                               Text=": 자판 위 글자들 각각의 자리를 연습합니다."
+                               FontSize="14pt"
+                               VerticalAlignment="Center"/>
+                    <!-- 산성비 게임(오락) 단계 드롭다운. 자리연습을 목표 타수 이상으로 마친 단계만
+                         열린다(그 외는 회색·비활성). '두벌식 표준'에서만 보인다. (<260723_2>) -->
+                    <ComboBox x:Name="GameStageCombo"
+                              Margin="18 0 0 0"
+                              MinWidth="168"
+                              FontSize="11pt"
+                              VerticalAlignment="Center"
+                              SelectionChanged="GameStageCombo_SelectionChanged"/>
+                </StackPanel>
             </StackPanel>
             <!-- '두벌식 표준' 자판: 13개 연습 단계 타일 (코드 비하인드에서 생성) -->
             <StackPanel x:Name="StageTilePanel"

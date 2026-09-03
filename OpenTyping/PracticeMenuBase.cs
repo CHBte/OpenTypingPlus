@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using OpenTyping.Properties;
 
 namespace OpenTyping
 {
@@ -36,7 +35,7 @@ namespace OpenTyping
             {
                 PracticeDataList =
                     new ObservableCollection<PracticeData>(
-                        PracticeData.LoadFromDirectory((string)Settings.Default[MainWindow.PracticeDataDirStr], MainWindow.CurrentKeyLayout.Character));
+                        PracticeData.LoadFromDirectory((string)UserSettingsStore.Get(MainWindow.PracticeDataDirStr), MainWindow.CurrentKeyLayout.Character));
             }
             catch (Exception ex)
             {

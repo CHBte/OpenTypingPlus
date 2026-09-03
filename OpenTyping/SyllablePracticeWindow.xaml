@@ -104,6 +104,69 @@
                     </Border>
                 </StackPanel>
             </Border>
+
+            <!-- 타속·평균·정확도 타일 (<260812_20>): 문장연습 창의 디자인·간격(5)을 그대로 쓴다.
+                 '타속' 타일이 입력 칸과 좌우 가운데가 맞도록, 창이 뜬 뒤 코드에서 왼쪽 여백을 잡는다. -->
+            <!-- Canvas 안에 두는 이유: 타일 줄이 길어져도 위쪽 StackPanel 의 폭에 영향을 주지 않는다.
+                 (그냥 두면 타일 줄이 폭을 넓혀 가운데 정렬된 입력 칸까지 밀려나 정렬이 겉돈다.) -->
+            <Canvas x:Name="TileCanvas"
+                    Height="34"
+                    Margin="0 10 0 0">
+            <StackPanel x:Name="TileRow"
+                        Orientation="Horizontal">
+                <Border x:Name="SpeedTile"
+                        Background="#1c7ed6"
+                        Margin="0 0 5 0">
+                    <StackPanel Margin="5 2 5 2" Orientation="Horizontal">
+                        <TextBlock Text="타속 "
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumGothic}"
+                                   FontSize="11pt"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock DataContext="{Binding ElementName=SelfWindow}"
+                                   Text="{Binding TypingSpeed, Mode=OneWay}"
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumBarunGothic}"
+                                   FontSize="16pt"
+                                   VerticalAlignment="Center"
+                                   Margin="0 3 0 0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="#37b24d"
+                        Margin="0 0 5 0">
+                    <StackPanel Margin="5 2 5 2" Orientation="Horizontal">
+                        <TextBlock Text="평균 타속 "
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumGothic}"
+                                   FontSize="11pt"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock DataContext="{Binding ElementName=SelfWindow}"
+                                   Text="{Binding AverageTypingSpeed, Mode=OneWay}"
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumBarunGothic}"
+                                   FontSize="16pt"
+                                   VerticalAlignment="Center"
+                                   Margin="0 3 0 0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="#f03e3e">
+                    <StackPanel Margin="5 2 5 2" Orientation="Horizontal">
+                        <TextBlock Text="정확도 "
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumGothic}"
+                                   FontSize="11pt"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock DataContext="{Binding ElementName=SelfWindow}"
+                                   Text="{Binding TypingAccuracy, StringFormat={}{0}%, Mode=OneWay}"
+                                   Foreground="White"
+                                   FontFamily="{StaticResource NanumBarunGothic}"
+                                   FontSize="16pt"
+                                   VerticalAlignment="Center"
+                                   Margin="0 3 0 0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            </Canvas>
         </StackPanel>
         <TextBlock Grid.Column="2"
                    DataContext="{Binding ElementName=SelfWindow}"

@@ -1,5 +1,6 @@
 {
-  "Name": "QWERTY",
+  "Name": "QWERTY 영문",
+  "Order": 2,
   "Character": "영문",
   "KeyLayoutData": [
     [
