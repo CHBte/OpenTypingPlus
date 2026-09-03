@@ -1,0 +1,115 @@
+<mah:MetroWindow x:Class="OpenTyping.AboutWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                 xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+                 mc:Ignorable="d"
+                 Title="프로그램 정보"
+                 Style="{StaticResource WindowTitleStyle}"
+                 FontFamily="{StaticResource NanumGothic}"
+                 Width="440"
+                 Height="340"
+                 ResizeMode="NoResize"
+                 ShowMinButton="False"
+                 ShowMaxRestoreButton="False"
+                 WindowStartupLocation="CenterOwner"
+                 Icon="{StaticResource AppIcon}">
+    <Grid Margin="24 20 24 18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 로고 + 프로그램명/버전 -->
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal">
+            <Image Source="{StaticResource AppLogo}"
+                   Width="48"
+                   Height="48"
+                   VerticalAlignment="Top"
+                   Margin="0 0 14 0"/>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource NormalTextBlock}"
+                           Text="열린타자+(Open Typing Plus)"
+                           FontFamily="{StaticResource NanumGothic}"
+                           FontWeight="Bold"
+                           FontSize="15pt"/>
+                <TextBlock x:Name="VersionText"
+                           Style="{StaticResource NormalTextBlock}"
+                           FontSize="11pt"
+                           Foreground="#495057"
+                           Margin="0 3 0 0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 제작자 -->
+        <TextBlock Grid.Row="1"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontSize="11pt"
+                   Margin="0 18 0 0">
+            <Run Text="원작자: Gear"/>
+            <Run Text="    "/>
+            <Run Text="PLUS 제작자: CHB"/>
+        </TextBlock>
+
+        <!-- 빌드 시각 -->
+        <TextBlock x:Name="BuildText"
+                   Grid.Row="2"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontSize="11pt"
+                   Foreground="#495057"
+                   Margin="0 8 0 0"/>
+
+        <!-- 라이선스 안내 -->
+        <TextBlock Grid.Row="3"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontSize="10.5pt"
+                   Foreground="#495057"
+                   TextWrapping="Wrap"
+                   Margin="0 16 0 0"
+                   Text="이 프로그램은 Gear의 열린타자(OpenTyping)를 포크하여 제작했으며, MIT 라이선스를 따릅니다."/>
+
+        <!-- 하단 버튼: 라이선스 / 닫기 -->
+        <DockPanel Grid.Row="5"
+                   LastChildFill="False"
+                   Margin="0 12 0 0">
+            <Button x:Name="LicenseButton"
+                    DockPanel.Dock="Left"
+                    Click="LicenseButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Width="15"
+                               Height="16"
+                               Fill="#1c7ed6">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Visual="{iconPacks:FontAwesome Kind=ScaleBalancedSolid}"/>
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                    <TextBlock Style="{StaticResource ControlButtonText}"
+                               Text="라이선스"/>
+                </StackPanel>
+            </Button>
+            <!-- 설정 창의 '확인' 버튼과 같은 모양(초록 체크 아이콘 + 텍스트) (<260718_11-1>) -->
+            <Button x:Name="CloseButton"
+                    DockPanel.Dock="Right"
+                    Click="CloseButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Width="18"
+                               Height="13"
+                               Fill="#2b8a3e">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Visual="{iconPacks:Modern check}"/>
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                    <TextBlock Style="{StaticResource ControlButtonText}"
+                               Text="확인"/>
+                </StackPanel>
+            </Button>
+        </DockPanel>
+    </Grid>
+</mah:MetroWindow>
