@@ -11,5 +11,20 @@
     <Setting Name="PracticeDataDir" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="TpmMethod" Type="System.String" Scope="User">
+      <Value Profile="(Default)">simple</Value>
+    </Setting>
+    <Setting Name="FingerLayerEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="FingerLayerThickness" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">3.5</Value>
+    </Setting>
+    <Setting Name="FingerLayerColor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">#F76707</Value>
+    </Setting>
+    <Setting Name="FingerLayerOpacity" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.65</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

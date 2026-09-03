@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using MahApps.Metro.Controls;
 using Microsoft.Win32;
-using OpenTyping.Properties;
 
 namespace OpenTyping
 {
@@ -23,7 +22,7 @@ namespace OpenTyping
             private set => SetField(ref keyLayouts, value);
         }
 
-        private string keyLayoutDataDir = (string)Settings.Default[MainWindow.KeyLayoutDataDirStr];
+        private string keyLayoutDataDir = (string)UserSettingsStore.Get(MainWindow.KeyLayoutDataDirStr);
         public string KeyLayoutDataDir
         {
             get => keyLayoutDataDir;
@@ -37,7 +36,7 @@ namespace OpenTyping
             private set => SetField(ref practiceDataList, value);
         }
 
-        private string practiceDataDir = (string)Settings.Default[MainWindow.PracticeDataDirStr];
+        private string practiceDataDir = (string)UserSettingsStore.Get(MainWindow.PracticeDataDirStr);
         public string PracticeDataDir
         {
             get => practiceDataDir;
@@ -69,7 +68,7 @@ namespace OpenTyping
 
             KeyLayouts = new ObservableCollection<KeyLayout>(KeyLayout.LoadFromDirectory(KeyLayoutDataDir));
 
-            var currentKeyLayout = (string)Settings.Default[MainWindow.KeyLayoutStr];
+            var currentKeyLayout = (string)UserSettingsStore.Get(MainWindow.KeyLayoutStr);
             foreach (KeyLayout item in KeyLayouts)
             {
                 if (item.Name == currentKeyLayout)
@@ -380,21 +379,21 @@ namespace OpenTyping
         {
             // SelectedKeyLayout은 실행 중 자판 파일이 바뀌어 현재 자판을 목록에서 찾지 못하면 null일 수 있다.
             if (SelectedKeyLayout != null &&
-                (string)Settings.Default[MainWindow.KeyLayoutStr] != SelectedKeyLayout.Name)
+                (string)UserSettingsStore.Get(MainWindow.KeyLayoutStr) != SelectedKeyLayout.Name)
             {
-                Settings.Default[MainWindow.KeyLayoutStr] = SelectedKeyLayout.Name;
+                UserSettingsStore.Set(MainWindow.KeyLayoutStr, SelectedKeyLayout.Name);
                 KeyLayoutUpdated = true;
             }
 
-            if ((string)Settings.Default[MainWindow.KeyLayoutDataDirStr] != KeyLayoutDataDir)
+            if ((string)UserSettingsStore.Get(MainWindow.KeyLayoutDataDirStr) != KeyLayoutDataDir)
             {
-                Settings.Default[MainWindow.KeyLayoutDataDirStr] = KeyLayoutDataDir;
+                UserSettingsStore.Set(MainWindow.KeyLayoutDataDirStr, KeyLayoutDataDir);
                 KeyLayoutDataDirUpdated = true;
             }
 
-            Settings.Default[MainWindow.PracticeDataDirStr] = PracticeDataDir;
+            UserSettingsStore.Set(MainWindow.PracticeDataDirStr, PracticeDataDir);
 
-            Settings.Default.Save();
+            UserSettingsStore.Save();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
