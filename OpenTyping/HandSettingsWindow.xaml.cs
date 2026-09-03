@@ -16,16 +16,17 @@ namespace OpenTyping
         private readonly FingerLayer fingerLayer;
         private bool initializing = true;
 
-        // 프리셋 색 (첫 번째가 기본색)
+        // 프리셋 색. 기본값은 7번째(주황 #F76707)다 (<260812_16>) — Settings 의 FingerLayerColor
+        // 기본값과 같아야 하며, 처음 설치한 PC 에서 그 색으로 시작한다.
         private static readonly string[] SwatchColors =
         {
-            "#3BC9DB", // 기본 (청록)
+            "#3BC9DB", // 청록
             "#FFFFFF", // 흰색
             "#212529", // 먹색
             "#F03E3E", // 빨강
             "#1C7ED6", // 파랑
             "#37B24D", // 초록
-            "#F76707", // 주황
+            "#F76707", // 주황 ← 기본값 (7번째)
             "#AE3EC9", // 보라
         };
 
@@ -35,11 +36,10 @@ namespace OpenTyping
 
             this.fingerLayer = fingerLayer;
 
-            Properties.Settings settings = Properties.Settings.Default;
-            EnabledToggle.IsOn = settings.FingerLayerEnabled;
-            ThicknessSlider.Value = settings.FingerLayerThickness;
-            OpacitySlider.Value = Math.Round(settings.FingerLayerOpacity * 100);
-            BuildColorSwatches(settings.FingerLayerColor);
+            EnabledToggle.IsOn = UserSettingsStore.FingerLayerEnabled;
+            ThicknessSlider.Value = UserSettingsStore.FingerLayerThickness;
+            OpacitySlider.Value = Math.Round(UserSettingsStore.FingerLayerOpacity * 100);
+            BuildColorSwatches(UserSettingsStore.FingerLayerColor);
             UpdateLabels();
 
             initializing = false;
@@ -62,7 +62,9 @@ namespace OpenTyping
                     BorderThickness = IsSameColor(colorText, currentColor)
                         ? new Thickness(3)
                         : new Thickness(1),
-                    Tag = colorText
+                    Tag = colorText,
+                    // <260812_16> 마우스를 올려도 견본 색이 바뀌지 않게 하는 전용 모양
+                    Style = (Style)FindResource("ColorSwatchButton")
                 };
                 swatch.Click += Swatch_Click;
                 ColorSwatchPanel.Children.Add(swatch);
@@ -77,7 +79,7 @@ namespace OpenTyping
         private void Swatch_Click(object sender, RoutedEventArgs e)
         {
             string colorText = (string)((Button)sender).Tag;
-            Properties.Settings.Default.FingerLayerColor = colorText;
+            UserSettingsStore.FingerLayerColor = colorText;
 
             foreach (Button swatch in ColorSwatchPanel.Children)
             {
@@ -93,7 +95,7 @@ namespace OpenTyping
         {
             if (initializing) return;
 
-            Properties.Settings.Default.FingerLayerEnabled = EnabledToggle.IsOn;
+            UserSettingsStore.FingerLayerEnabled = EnabledToggle.IsOn;
             fingerLayer.Visibility = EnabledToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -101,7 +103,7 @@ namespace OpenTyping
         {
             if (initializing) return;
 
-            Properties.Settings.Default.FingerLayerThickness = ThicknessSlider.Value;
+            UserSettingsStore.FingerLayerThickness = ThicknessSlider.Value;
             UpdateLabels();
             ApplyToLayer();
         }
@@ -110,7 +112,7 @@ namespace OpenTyping
         {
             if (initializing) return;
 
-            Properties.Settings.Default.FingerLayerOpacity = OpacitySlider.Value / 100.0;
+            UserSettingsStore.FingerLayerOpacity = OpacitySlider.Value / 100.0;
             UpdateLabels();
             ApplyToLayer();
         }
@@ -133,7 +135,7 @@ namespace OpenTyping
 
         private void HandSettingsWindow_Closed(object sender, EventArgs e)
         {
-            Properties.Settings.Default.Save();
+            UserSettingsStore.Save();
         }
     }
 }
