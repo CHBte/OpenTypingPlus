@@ -13,6 +13,30 @@
                  ResizeMode="NoResize"
                  Icon="{StaticResource AppIcon}"
                  Closed="HandSettingsWindow_Closed">
+    <mah:MetroWindow.Resources>
+        <!-- <260812_16> '윤곽선 색' 견본 단추. 기본 단추 모양을 그대로 쓰면 마우스를 올렸을 때
+             내부 색까지 바뀌어 견본 색을 알아볼 수 없다. 그래서 칠은 건드리지 않고 테두리만
+             회색으로 바뀌도록 직접 그린다. -->
+        <Style x:Key="ColorSwatchButton" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="SwatchBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SwatchBorder" Property="BorderBrush" Value="Gray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </mah:MetroWindow.Resources>
+
     <StackPanel Orientation="Vertical"
                 Margin="18 10 18 10">
         <StackPanel Orientation="Horizontal"
