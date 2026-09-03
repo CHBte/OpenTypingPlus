@@ -59,6 +59,22 @@ namespace OpenTyping.Properties {
             }
         }
 
+        /// <summary>
+        /// <260812_12> 자리연습의 타속(타수) 계산 방법. "simple" = 간단 방식(정타 수 ÷ 분),
+        /// "original" = 원래 방식(글자수 환산 ÷ 분 × 정확도).
+        /// </summary>
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("simple")]
+        public string TpmMethod {
+            get {
+                return ((string)(this["TpmMethod"]));
+            }
+            set {
+                this["TpmMethod"] = value;
+            }
+        }
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
@@ -85,7 +101,8 @@ namespace OpenTyping.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("#3BC9DB")]
+        // <260812_16> 처음 설치한 PC 의 손 모양 윤곽선 색: 견본 7번째(주황).
+        [global::System.Configuration.DefaultSettingValueAttribute("#F76707")]
         public string FingerLayerColor {
             get {
                 return ((string)(this["FingerLayerColor"]));

@@ -18,8 +18,16 @@
             <BitmapImage x:Key="AppIcon">pack://application:,,,/Resources/icon.png</BitmapImage>
             <BitmapImage x:Key="AppLogo">pack://application:,,,/Resources/logo.png</BitmapImage>
 
-            <FontFamily x:Key="NanumBarunGothic">pack://application:,,,/Resources/Fonts/#나눔바른고딕</FontFamily>
-            <FontFamily x:Key="NanumGothic">pack://application:,,,/Resources/Fonts/#나눔고딕</FontFamily>
+            <!-- <260831 실사용 중 발견>: 절대경로 pack URI 문자열("pack://application:,,,/Resources/
+                 Fonts/#이름")은 WPF 공식 문서가 "프로그램적으로 만들 때는 유효하지 않다"고 명시한
+                 형태다(확인함) — XAML에서도 PublishSingleFile 게시본에서 간헐적으로
+                 ArgumentNullException(partUri)을 내며 KeyBox 등 이 글꼴을 쓰는 컨트롤의 생성자가
+                 그대로 죽는 게 실사용 중 재현됐다. App.xaml 자체의 다른 스타일들이 같은 리소스 딕셔너리
+                 안에서 이 항목을 곧바로 참조하므로(WindowTitleStyle 등) C# 코드로 옮기면 그보다도 먼저
+                 실패한다(직접 재현·확인함) — 대신 문서가 인정하는 "현재 XAML 기준 상대경로" 형태로
+                 바꿔 같은 자리에 그대로 둔다. -->
+            <FontFamily x:Key="NanumBarunGothic">./Resources/Fonts/#나눔바른고딕</FontFamily>
+            <FontFamily x:Key="NanumGothic">./Resources/Fonts/#나눔고딕</FontFamily>
 
             <Style x:Key="WindowTitleStyle" TargetType="mah:MetroWindow">
                 <Setter Property="TitleTemplate">

@@ -18,7 +18,36 @@
                  Icon="{StaticResource AppIcon}">
     <mah:MetroWindow.RightWindowCommands>
         <mah:WindowCommands>
-            <Button x:Name="SettingsButton" 
+            <!-- '정보' 버튼: 오른쪽 아래 귀퉁이가 접힌 종이 문서 아이콘 (<260718_11>).
+                 WindowCommands가 항목 사이에 세로 구분선을 자동으로 넣어 '정보'와 '설정'이 나뉜다. -->
+            <Button x:Name="InfoButton"
+                    Click="InfoButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Path Width="15"
+                          Height="19"
+                          Stretch="None"
+                          VerticalAlignment="Center"
+                          Stroke="White"
+                          StrokeThickness="2.1"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Data="M1,1 L14,1 L14,13 L9,18 L1,18 Z
+                                M14,13 L9,13 L9,18
+                                M4.5,6.5 L10.5,6.5
+                                M4.5,9.5 L10.5,9.5
+                                M4.5,12.5 L7.5,12.5"/>
+                    <TextBlock FontFamily="{StaticResource NanumGothic}"
+                               Text="정보"
+                               FontSize="13pt"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               Margin="4 0 0 0"
+                               VerticalAlignment="Top"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="SettingsButton"
                     Click="SettingsButton_Click">
                 <StackPanel Orientation="Horizontal">
                     <Rectangle Width="19"
