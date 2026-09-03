@@ -4,6 +4,9 @@
 # build.bat output (see build.bat) - reproducible, not source
 /build/
 
+# build-exe.bat output (see build-exe.bat) - reproducible, not source
+/build-exe/
+
 # User-specific files
 *.suo
 *.user
