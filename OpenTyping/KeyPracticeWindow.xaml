@@ -25,14 +25,59 @@
              (<260718_1>, <260718_3>). -->
         <Grid x:Name="RootGrid" Width="810" Height="438">
             <Grid.RowDefinitions>
+                <RowDefinition x:Name="DictationRow" Height="56"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition x:Name="GuideRow" Height="30"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+
+        <!-- 받아쓰기 칸 (<260812_2>, 명칭 <260812_2-1>(1)): 21글자가 들어가는 길쭉한 직사각형
+             (<260812_2-4>(1)로 7글자에서 넓어짐). 제시 영역 위에 따로 한 줄을 차지한다
+             (<260812_2-2>(2-2)) — 그만큼 창 세로도 늘어난다. 입력 중인 글자는 파랑, 틀린 입력은
+             빨강, 통과한 제시어는 초록 (<260812_2-1>(1-3),(1-4)). 넘치면 칸 안에서 잘린다. -->
+        <Border x:Name="DictationBox"
+                Grid.Row="0"
+                Width="504"
+                Height="46"
+                Margin="0 10 0 0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                CornerRadius="5"
+                Background="White"
+                BorderBrush="#adb5bd"
+                BorderThickness="1.5"
+                ClipToBounds="True">
+            <!-- 21글자 자리를 7칸씩 셋으로 나눈다 (<260812_2-4>(1)):
+                 1~7 = 직전에 통과한 제시어(초록), 8~14 = 지금 입력 중(칸 전체의 가운데,
+                 <260812_2-3>(1)), 15~21 = 아직 비워 둔 자리. 한 글자 자리는 24. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="168"/>
+                    <ColumnDefinition Width="168"/>
+                    <ColumnDefinition Width="168"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="DictationPassedText"
+                           Grid.Column="0"
+                           Style="{StaticResource NormalTextBlock}"
+                           FontSize="20pt"
+                           Foreground="#37b24d"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="DictationText"
+                           Grid.Column="1"
+                           Style="{StaticResource NormalTextBlock}"
+                           FontSize="20pt"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
         <Grid x:Name="KeyGrid"
-              Grid.Row="0"
+              Grid.Row="1"
               Margin="0 10 0 0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -42,6 +87,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
+            <!-- 흐린 예전 제시어 — 제시 영역의 제시어 바로 왼쪽 (<260812_2-1>(2-2)) -->
             <TextBlock DataContext="{Binding ElementName=SelfWindow}"
                        Grid.Column="0"
                        Style="{StaticResource NormalTextBlock}"
@@ -77,7 +123,7 @@
                        VerticalAlignment="Center"/>
         </Grid>
 
-        <DockPanel Grid.Row="1"
+        <DockPanel Grid.Row="2"
                    Margin="20 0 20 10"
                    LastChildFill="False">
             <!-- 손가락 레이어 설정을 여는 버튼 ('→ 연습 시작' 버튼 디자인 재사용) -->
@@ -131,12 +177,66 @@
                        Text="{Binding IncorrectCount}"
                        Margin="0 3 0 0"
                        FontSize="14pt"/>
+
             </StackPanel>
         </DockPanel>
 
+        <!-- 타속·정확도 타일 (<260812_21>): 문장연습 창의 타일 디자인·간격(5)을 그대로 쓴다.
+             카운터 영역 가운데에 겹쳐 놓아, 예전 "분당 X타" 문구가 있던 자리를 대신한다.
+             <260812_21-1> 가운데에 와야 하는 것은 줄 전체가 아니라 **타속 타일**(제시어 바로 아래)이다.
+             그래서 오른쪽에 정확도 타일과 같은 폭의 보이지 않는 자리를 두어 좌우 균형을 맞춘다 —
+             정확도 값이 0%↔100%로 바뀌어 폭이 달라져도 저절로 따라간다. -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="0 0 0 10">
+            <Border x:Name="AccuracyTile"
+                    Background="#f03e3e"
+                    Margin="0 0 5 0">
+                <StackPanel Margin="5 2 5 2"
+                            Orientation="Horizontal">
+                    <TextBlock Text="정확도 "
+                               Foreground="White"
+                               FontFamily="{StaticResource NanumGothic}"
+                               FontSize="11pt"
+                               VerticalAlignment="Center"/>
+                    <TextBlock DataContext="{Binding ElementName=SelfWindow}"
+                               Text="{Binding TypingAccuracy, StringFormat={}{0}%, Mode=OneWay}"
+                               Foreground="White"
+                               FontFamily="{StaticResource NanumBarunGothic}"
+                               FontSize="16pt"
+                               VerticalAlignment="Center"
+                               Margin="0 3 0 0"/>
+                </StackPanel>
+            </Border>
+            <Border x:Name="SpeedTile"
+                    Background="#1c7ed6">
+                <StackPanel Margin="5 2 5 2"
+                            Orientation="Horizontal">
+                    <TextBlock Text="타속 "
+                               Foreground="White"
+                               FontFamily="{StaticResource NanumGothic}"
+                               FontSize="11pt"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TpmText"
+                               Text="0"
+                               Foreground="White"
+                               FontFamily="{StaticResource NanumBarunGothic}"
+                               FontSize="16pt"
+                               VerticalAlignment="Center"
+                               Margin="0 3 0 0"/>
+                </StackPanel>
+            </Border>
+            <!-- 왼쪽 정확도 타일과 균형을 맞추는 빈 자리(보이지 않음) -->
+            <Border Width="{Binding ActualWidth, ElementName=AccuracyTile}"
+                    Margin="5 0 0 0"
+                    Visibility="Hidden"/>
+        </StackPanel>
+
         <!-- 손가락 놓기 안내 (1단계 창에서만 표시; 카운트 영역 바로 아래 한 줄 고정 자리) (<260718_3>, <260718_3-1>) -->
         <StackPanel x:Name="GuideTextPanel"
-                    Grid.Row="2"
+                    Grid.Row="3"
                     Orientation="Vertical"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -146,14 +246,31 @@
                        Text="10개의 손가락을 그림과 같이 키보드 위에 올려 놓으세요."
                        FontFamily="{StaticResource NanumGothic}"
                        FontWeight="Bold"
-                       FontSize="14pt"
+                       FontSize="13pt"
                        Foreground="#1c7ed6"
                        HorizontalAlignment="Center"/>
         </StackPanel>
 
+        <!-- 안내 문구 영역 (<260723_1>): 경고·축하·오락 해금 문구가 여기 뜬다. 카운터 영역 아래~키보드
+             위 구간(GuideRow + 남는 공간)에 걸쳐 가운데 정렬. 기본은 숨김. (<260723_4> (0-4),(1)) -->
+        <!-- 1단계 안내문(GuideTextPanel)과 글자 위치가 정확히 겹치도록 같은 행·같은 글꼴 크기를 쓴다
+             (예전에는 RowSpan=2 로 아래 여백까지 걸쳐 가운데 정렬해 4px 어긋났다). -->
+        <TextBlock x:Name="NoticeText"
+                   Grid.Row="3"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontFamily="{StaticResource NanumGothic}"
+                   FontWeight="Bold"
+                   FontSize="13pt"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap"
+                   MaxWidth="760"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Visibility="Collapsed"/>
+
         <!-- 키보드와 그 위에 겹치는 손가락 레이어·안내 문구 (좌표계 공유를 위해 같은 Grid에 둔다).
              창 바닥으로부터 15px 간격을 둔다 (<260718_3>). -->
-        <Grid Grid.Row="4"
+        <Grid Grid.Row="5"
               HorizontalAlignment="Center"
               Margin="0 0 0 15">
             <local:KeyLayoutBox x:Name="KeyLayoutBox"

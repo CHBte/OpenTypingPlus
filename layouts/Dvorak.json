@@ -1,5 +1,6 @@
 {
-  "Name": "Dvorak",
+  "Name": "Dvorak 영문",
+  "Order": 4,
   "Character": "영문",
   "KeyLayoutData": [
     [

@@ -1,14 +1,154 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace OpenTyping
 {
+    /// <summary>연습 프롬프트(제시 항목) 하나. 순1·순2는 키 1개, 순3·순4는 음절/단어 문자열.</summary>
+    public sealed class PracticePrompt
+    {
+        private PracticePrompt(bool isText, string text, KeyPos key, bool isShift, int taCount)
+        {
+            IsText = isText;
+            Text = text;
+            Key = key;
+            IsShift = isShift;
+            TaCount = taCount;
+        }
+
+        public bool IsText { get; }
+        public string Text { get; }       // IsText일 때: 제시 영역에 통째로 보여줄 음절/단어
+        public KeyPos Key { get; }        // !IsText일 때: 제시할 키 위치
+        public bool IsShift { get; }      // !IsText일 때: 윗글쇠 여부
+        public int TaCount { get; }       // 이 프롬프트를 다 맞혔을 때의 '타'(완성 글자/항목 개수)
+
+        public static PracticePrompt ForKey(PracticeStage.StageItem item) =>
+            new PracticePrompt(false, null, item.Pos, item.IsShift, 1);
+
+        public static PracticePrompt ForText(string text) =>
+            new PracticePrompt(true, text, default, false, HangulJamo.SyllableCount(text));
+    }
+
+    public enum RoundKind { Sequential, Weighted, Syllables, Words, Mixed }
+
     /// <summary>
-    /// '자리연습'의 연습 단계 하나. 연습 항목은 (키 위치, 윗글쇠 여부) 쌍으로,
-    /// 적은 빈도/많은 빈도 두 그룹으로 나뉜다.
-    /// 출력 원리는 "가중 복원추출 균등난수 방식": 많은 빈도 항목을 HighWeight표,
-    /// 적은 빈도 항목을 1표 넣은 다중집합에서 매번 독립적으로 균등하게 뽑는다
-    /// (연속 중복 허용, 윗글쇠 여부는 항목에 고정).
+    /// 연습 단계의 한 '순'(라운드). 종류에 따라 제시 방식이 다르다:
+    /// Sequential(순1) 나열 순서대로 Repeat번 반복(선택적 셔플), Weighted(순2) 3:1 가중 복원추출 Count번,
+    /// Syllables(순3) 한 글자 조합 Count번, Words(순4) 2음절 이상 단어 Count번,
+    /// Mixed(13단계 중간) 한 글자·단어·특수기호 섞어 Count번.
+    /// </summary>
+    public sealed class PracticeRound
+    {
+        private PracticeRound(RoundKind kind) { Kind = kind; }
+
+        public RoundKind Kind { get; }
+
+        // Sequential
+        private IReadOnlyList<PracticeStage.StageItem> seqItems;
+        private int repeat;
+        private bool shuffle;
+
+        // Weighted
+        private IReadOnlyList<PracticeStage.StageItem> lowItems;
+        private IReadOnlyList<PracticeStage.StageItem> highItems;
+        private int count;
+
+        // Syllables / Words / Mixed
+        private IReadOnlyList<string> textPool;
+        private IReadOnlyList<PracticeStage.StageItem> symbolPool;
+
+        public static PracticeRound Sequential(IReadOnlyList<PracticeStage.StageItem> items, int repeat, bool shuffle = false) =>
+            new PracticeRound(RoundKind.Sequential) { seqItems = items, repeat = repeat, shuffle = shuffle };
+
+        public static PracticeRound Weighted(IReadOnlyList<PracticeStage.StageItem> low,
+                                             IReadOnlyList<PracticeStage.StageItem> high, int count) =>
+            new PracticeRound(RoundKind.Weighted) { lowItems = low, highItems = high, count = count };
+
+        public static PracticeRound Syllables(IReadOnlyList<string> pool, int count) =>
+            new PracticeRound(RoundKind.Syllables) { textPool = pool, count = count };
+
+        public static PracticeRound Words(IReadOnlyList<string> pool, int count) =>
+            new PracticeRound(RoundKind.Words) { textPool = pool, count = count };
+
+        public static PracticeRound Mixed(IReadOnlyList<string> textPool,
+                                          IReadOnlyList<PracticeStage.StageItem> symbolPool, int count) =>
+            new PracticeRound(RoundKind.Mixed) { textPool = textPool, symbolPool = symbolPool, count = count };
+
+        /// <summary>이 라운드가 만들어 내는 모든 (키 위치) 항목 — 13단계의 "연습한 키 전체" 계산에 쓴다.</summary>
+        public IEnumerable<PracticeStage.StageItem> AllKeyItems()
+        {
+            switch (Kind)
+            {
+                case RoundKind.Sequential: return seqItems;
+                case RoundKind.Weighted: return lowItems.Concat(highItems);
+                case RoundKind.Mixed: return symbolPool ?? Enumerable.Empty<PracticeStage.StageItem>();
+                default: return Enumerable.Empty<PracticeStage.StageItem>();
+            }
+        }
+
+        /// <summary>이 라운드의 제시 프롬프트를 순서대로 생성한다.</summary>
+        public List<PracticePrompt> Generate(Random rng)
+        {
+            var result = new List<PracticePrompt>();
+            switch (Kind)
+            {
+                case RoundKind.Sequential:
+                {
+                    var items = new List<PracticeStage.StageItem>();
+                    for (int r = 0; r < repeat; r++) items.AddRange(seqItems);
+                    if (shuffle) Shuffle(items, rng);
+                    foreach (var it in items) result.Add(PracticePrompt.ForKey(it));
+                    break;
+                }
+                case RoundKind.Weighted:
+                {
+                    var pool = new List<PracticeStage.StageItem>(lowItems);
+                    for (int i = 0; i < PracticeStage.HighWeight; i++) pool.AddRange(highItems);
+                    if (pool.Count == 0) break;
+                    for (int i = 0; i < count; i++)
+                        result.Add(PracticePrompt.ForKey(pool[rng.Next(pool.Count)]));
+                    break;
+                }
+                case RoundKind.Syllables:
+                case RoundKind.Words:
+                {
+                    if (textPool == null || textPool.Count == 0) break;
+                    for (int i = 0; i < count; i++)
+                        result.Add(PracticePrompt.ForText(textPool[rng.Next(textPool.Count)]));
+                    break;
+                }
+                case RoundKind.Mixed:
+                {
+                    int textN = textPool?.Count ?? 0;
+                    int symN = symbolPool?.Count ?? 0;
+                    int total = textN + symN;
+                    if (total == 0) break;
+                    for (int i = 0; i < count; i++)
+                    {
+                        int pick = rng.Next(total);
+                        result.Add(pick < textN
+                            ? PracticePrompt.ForText(textPool[pick])
+                            : PracticePrompt.ForKey(symbolPool[pick - textN]));
+                    }
+                    break;
+                }
+            }
+            return result;
+        }
+
+        private static void Shuffle<T>(IList<T> list, Random rng)
+        {
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (list[i], list[j]) = (list[j], list[i]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// '자리연습'의 연습 단계 하나. 여러 '순'(<see cref="PracticeRound"/>)을 차례로 진행한다 (<260723_4>).
+    /// 출력 원리는 순마다 다르다(순1 나열, 순2 가중 복원추출 3:1, 순3 한 글자 조합, 순4 단어).
     /// </summary>
     public class PracticeStage
     {
@@ -26,222 +166,41 @@ namespace OpenTyping
             public bool IsShift { get; }
         }
 
-        public PracticeStage(string name, IList<StageItem> lowItems, IList<StageItem> highItems)
+        public PracticeStage(string name, IReadOnlyList<PracticeRound> rounds, int gameStageId)
         {
             Name = name;
-            LowItems = lowItems;
-            HighItems = highItems;
+            Rounds = rounds;
+            GameStageId = gameStageId;
         }
 
         public string Name { get; }
-        public IList<StageItem> LowItems { get; }   // 적은 빈도 (1표)
-        public IList<StageItem> HighItems { get; }  // 많은 빈도 (HighWeight표)
+        public IReadOnlyList<PracticeRound> Rounds { get; }
 
-        /// <summary>가중 다중집합(추출용 풀)을 만든다.</summary>
-        public List<StageItem> BuildPool()
+        /// <summary>이 단계에 대응하는 산성비 오락 단계 id. 0이면 오락 없음(9~12단계) (<260723_4> (1)).</summary>
+        public int GameStageId { get; }
+
+        /// <summary>이 단계의 전체 연습 프롬프트를 순서대로 생성한다(순1→순2→…).</summary>
+        public List<PracticePrompt> Generate(Random rng)
         {
-            var pool = new List<StageItem>(LowItems);
-            for (int i = 0; i < HighWeight; i++)
-            {
-                pool.AddRange(HighItems);
-            }
-            return pool;
+            var all = new List<PracticePrompt>();
+            foreach (PracticeRound r in Rounds) all.AddRange(r.Generate(rng));
+            return all;
         }
+
     }
 
     /// <summary>
-    /// '두벌식 표준' 자판 전용 한글·특수 기호 연습 단계 정의 (1~13단계).
-    /// 키 위치는 KeyLayoutData 격자 기준 (행, 열)이다.
+    /// '두벌식 표준' 자판 연습 단계(1~13). 정의는 stages\dubeolsik_standard.json에서 로드한다
+    /// (<260724_1>(3)로 BuildStages() 하드코딩을 옮김). 기존 소비 코드가 IList로 쓰므로 List로 노출한다.
     /// </summary>
     public static class DubeolsikStages
     {
-        // 기본 자리(홈 포지션) 8키: ㅁㄴㅇㄹ / ㅓㅏㅣ;
-        private static readonly PracticeStage.StageItem[] HomeLeft =
+        public static readonly IList<PracticeStage> Stages = LoadStages();
+
+        private static IList<PracticeStage> LoadStages()
         {
-            new PracticeStage.StageItem(2, 0), // ㅁ
-            new PracticeStage.StageItem(2, 1), // ㄴ
-            new PracticeStage.StageItem(2, 2), // ㅇ
-            new PracticeStage.StageItem(2, 3), // ㄹ
-        };
-        private static readonly PracticeStage.StageItem[] HomeRight =
-        {
-            new PracticeStage.StageItem(2, 6), // ㅓ
-            new PracticeStage.StageItem(2, 7), // ㅏ
-            new PracticeStage.StageItem(2, 8), // ㅣ
-            new PracticeStage.StageItem(2, 9), // ;
-        };
-        private static PracticeStage.StageItem[] HomeAll => HomeLeft.Concat(HomeRight).ToArray();
-
-        // 숫자 키 1~0 (윗글쇠 아님)
-        private static readonly PracticeStage.StageItem[] Numbers1To0 =
-        {
-            new PracticeStage.StageItem(0, 1), new PracticeStage.StageItem(0, 2),
-            new PracticeStage.StageItem(0, 3), new PracticeStage.StageItem(0, 4),
-            new PracticeStage.StageItem(0, 5), new PracticeStage.StageItem(0, 6),
-            new PracticeStage.StageItem(0, 7), new PracticeStage.StageItem(0, 8),
-            new PracticeStage.StageItem(0, 9), new PracticeStage.StageItem(0, 10),
-        };
-
-        public static readonly IList<PracticeStage> Stages = BuildStages();
-
-        private static IList<PracticeStage> BuildStages()
-        {
-            var stages = new List<PracticeStage>
-            {
-                // 1단계(기본 자리): 빈도 구분 없음 → 전부 적은 빈도 그룹에 두어 균등하게
-                new PracticeStage("1단계(기본 자리)",
-                    HomeAll,
-                    new PracticeStage.StageItem[0]),
-
-                new PracticeStage("2단계(왼쪽 윗자리)",
-                    HomeLeft,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(1, 0), // ㅂ
-                        new PracticeStage.StageItem(1, 1), // ㅈ
-                        new PracticeStage.StageItem(1, 2), // ㄷ
-                        new PracticeStage.StageItem(1, 3), // ㄱ
-                    }),
-
-                new PracticeStage("3단계(오른쪽 윗자리)",
-                    HomeRight,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(1, 6), // ㅕ
-                        new PracticeStage.StageItem(1, 7), // ㅑ
-                        new PracticeStage.StageItem(1, 8), // ㅐ
-                        new PracticeStage.StageItem(1, 9), // ㅔ
-                    }),
-
-                new PracticeStage("4단계(왼쪽 아랫자리)",
-                    HomeLeft,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(3, 0), // ㅋ
-                        new PracticeStage.StageItem(3, 1), // ㅌ
-                        new PracticeStage.StageItem(3, 2), // ㅊ
-                        new PracticeStage.StageItem(3, 3), // ㅍ
-                    }),
-
-                new PracticeStage("5단계(오른쪽 아랫자리)",
-                    HomeRight,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(3, 6), // ㅡ
-                        new PracticeStage.StageItem(3, 7), // ,
-                        new PracticeStage.StageItem(3, 8), // .
-                        new PracticeStage.StageItem(3, 9), // /
-                    }),
-
-                new PracticeStage("6단계(가운데 왼쪽 자리)",
-                    HomeLeft,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(1, 4), // ㅅ
-                        new PracticeStage.StageItem(2, 4), // ㅎ
-                        new PracticeStage.StageItem(3, 4), // ㅠ
-                    }),
-
-                new PracticeStage("7단계(가운데 오른쪽 자리)",
-                    HomeRight,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(1, 5), // ㅛ
-                        new PracticeStage.StageItem(2, 5), // ㅗ
-                        new PracticeStage.StageItem(3, 5), // ㅜ
-                    }),
-
-                new PracticeStage("8단계(Shift 기본)",
-                    HomeAll,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(1, 0, true), // ㅃ
-                        new PracticeStage.StageItem(1, 1, true), // ㅉ
-                        new PracticeStage.StageItem(1, 2, true), // ㄸ
-                        new PracticeStage.StageItem(1, 3, true), // ㄲ
-                        new PracticeStage.StageItem(1, 4, true), // ㅆ
-                        new PracticeStage.StageItem(1, 8, true), // ㅒ
-                        new PracticeStage.StageItem(1, 9, true), // ㅖ
-                        new PracticeStage.StageItem(2, 9, true), // :
-                        new PracticeStage.StageItem(3, 7, true), // <
-                        new PracticeStage.StageItem(3, 8, true), // >
-                        new PracticeStage.StageItem(3, 9, true), // ?
-                    }),
-
-                new PracticeStage("9단계(숫자 행 1)",
-                    HomeAll,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(0, 1),  // 1
-                        new PracticeStage.StageItem(0, 2),  // 2
-                        new PracticeStage.StageItem(0, 3),  // 3
-                        new PracticeStage.StageItem(0, 4),  // 4
-                        new PracticeStage.StageItem(0, 7),  // 7
-                        new PracticeStage.StageItem(0, 8),  // 8
-                        new PracticeStage.StageItem(0, 9),  // 9
-                        new PracticeStage.StageItem(0, 10), // 0
-                    }),
-
-                new PracticeStage("10단계(숫자 행 2)",
-                    HomeAll.Concat(new[]
-                    {
-                        new PracticeStage.StageItem(0, 1),  // 1
-                        new PracticeStage.StageItem(0, 2),  // 2
-                        new PracticeStage.StageItem(0, 3),  // 3
-                        new PracticeStage.StageItem(0, 4),  // 4
-                        new PracticeStage.StageItem(0, 7),  // 7
-                        new PracticeStage.StageItem(0, 8),  // 8
-                        new PracticeStage.StageItem(0, 9),  // 9
-                        new PracticeStage.StageItem(0, 10), // 0
-                    }).ToArray(),
-                    new[]
-                    {
-                        new PracticeStage.StageItem(0, 0, true), // ~
-                        new PracticeStage.StageItem(0, 5),       // 5
-                        new PracticeStage.StageItem(0, 6),       // 6
-                        new PracticeStage.StageItem(0, 11),      // -
-                        new PracticeStage.StageItem(0, 12),      // =
-                    }),
-
-                new PracticeStage("11단계(특수 기호 1)",
-                    Numbers1To0,
-                    new[]
-                    {
-                        new PracticeStage.StageItem(0, 9, true),   // (
-                        new PracticeStage.StageItem(0, 10, true),  // )
-                        new PracticeStage.StageItem(1, 10),        // [
-                        new PracticeStage.StageItem(1, 10, true),  // {
-                        new PracticeStage.StageItem(1, 11),        // ]
-                        new PracticeStage.StageItem(1, 11, true),  // }
-                        new PracticeStage.StageItem(2, 10),        // '
-                        new PracticeStage.StageItem(2, 10, true),  // "
-                    }),
-
-                new PracticeStage("12단계(특수 기호 2)",
-                    Numbers1To0.Concat(new[]
-                    {
-                        new PracticeStage.StageItem(0, 11), // -
-                        new PracticeStage.StageItem(0, 12), // =
-                    }).ToArray(),
-                    new[]
-                    {
-                        new PracticeStage.StageItem(0, 1, true),  // !
-                        new PracticeStage.StageItem(0, 2, true),  // @
-                        new PracticeStage.StageItem(0, 5, true),  // %
-                        new PracticeStage.StageItem(0, 11, true), // _
-                        new PracticeStage.StageItem(0, 12, true), // +
-                    }),
-            };
-
-            // 13단계(연습한 키 전체): 1~12단계 모든 항목의 합집합에서 균등 추출 (가중 없음)
-            var union = stages.SelectMany(s => s.LowItems.Concat(s.HighItems))
-                              .Distinct()
-                              .ToList();
-            stages.Add(new PracticeStage("13단계(연습한 키 전체)",
-                union,
-                new PracticeStage.StageItem[0]));
-
-            return stages;
+            IStageSet set = StageSets.ForLayout(KeyPracticeMenu.StageLayoutName);
+            return set != null ? set.Stages.ToList() : new List<PracticeStage>();
         }
     }
 }

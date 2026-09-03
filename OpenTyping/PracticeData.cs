@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Controls;
 using System.Windows.Media;
-using OpenTyping.Properties;
 
 namespace OpenTyping
 {
@@ -94,7 +93,9 @@ namespace OpenTyping
 
             if (!practiceDataFiles.Any())
             {
-                string message = "경로 " + (string) Settings.Default[MainWindow.PracticeDataDirStr] +
+                // 저장된 설정값이 아니라 실제로 검사한 경로(dataDirectory)를 알려야 한다 — 설정
+                // 창에서 방금 고른 새 경로가 문제일 때, 아직 저장 전이라 다른(예전) 경로가 뜨면 안 된다.
+                string message = "경로 " + dataDirectory +
                                  "에서 연습 데이터 파일을 찾을 수 없습니다. 해당 경로에 연습 데이터를 생성하고 다시 시도하세요.";
                 throw new PracticeDataLoadFail(message);
             }

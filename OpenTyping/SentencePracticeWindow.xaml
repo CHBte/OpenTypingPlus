@@ -1,4 +1,4 @@
-﻿<mah:MetroWindow Name="SelfWindow"
+<mah:MetroWindow Name="SelfWindow"
                  x:Class="OpenTyping.SentencePracticeWindow"
                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

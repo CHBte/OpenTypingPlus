@@ -1,0 +1,121 @@
+{
+  "_comment": "자리연습 단계 정의 (두벌식 표준). <260724_1>(3)로 DubeolsikStages.BuildStages()의 하드코딩을 옮긴 것. 스펙 <260723_4> (1-1)~(1-13). 키는 자모/기호 문자열(각 문자 1키), 순3/순4의 allowed·required는 명시(선택적). 13단계는 sequential_all_practiced/mixed_all_practiced 특수 kind로 앞 단계들을 참조한다.",
+  "layout": "두벌식 표준 한글",
+  "stages": [
+    {
+      "name": "1단계(기본 자리)",
+      "game": 1,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅁㄴㅇㄹㅓㅏㅣ;", "repeat": 2 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣ" },
+        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣ" }
+      ]
+    },
+    {
+      "name": "2단계(왼쪽 윗자리)",
+      "game": 2,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅂㅈㄷㄱ", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅂㅈㄷㄱ", "count": 12 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅂㅈㄷㄱㅓㅏㅣ", "required": "ㅂㅈㄷㄱ" },
+        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅂㅈㄷㄱㅓㅏㅣ", "required": "ㅂㅈㄷㄱ" }
+      ]
+    },
+    {
+      "name": "3단계(오른쪽 윗자리)",
+      "game": 3,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅕㅑㅐㅔ", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅕㅑㅐㅔ", "count": 12 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅕㅑㅐㅔㅁㄴㅇㄹ", "required": "ㅕㅑㅐㅔ" },
+        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅕㅑㅐㅔㅁㄴㅇㄹ", "required": "ㅕㅑㅐㅔ" }
+      ]
+    },
+    {
+      "name": "4단계(왼쪽 아랫자리)",
+      "game": 4,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅋㅌㅊㅍ", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅋㅌㅊㅍ", "count": 12 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅋㅌㅊㅍㅓㅏㅣ", "required": "ㅋㅌㅊㅍ" },
+        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅋㅌㅊㅍㅓㅏㅣ", "required": "ㅋㅌㅊㅍ" }
+      ]
+    },
+    {
+      "name": "5단계(오른쪽 아랫자리)",
+      "game": 5,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅡ,./", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅡ,./", "count": 12 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅡㅁㄴㅇㄹ", "required": "ㅡ" },
+        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅡㅁㄴㅇㄹ", "required": "ㅡ" }
+      ]
+    },
+    {
+      "name": "6단계(가운데 왼쪽 자리)",
+      "game": 6,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅅㅎㅠ", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅅㅎㅠ", "count": 10 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅅㅎㅠㅓㅏㅣ", "required": "ㅅㅎㅠ" },
+        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅅㅎㅠㅓㅏㅣ", "required": "ㅅㅎㅠ" }
+      ]
+    },
+    {
+      "name": "7단계(가운데 오른쪽 자리)",
+      "game": 7,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅛㅗㅜ", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅛㅗㅜ", "count": 10 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅛㅗㅜㅁㄴㅇㄹ", "required": "ㅛㅗㅜ" },
+        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅛㅗㅜㅁㄴㅇㄹ", "required": "ㅛㅗㅜ" }
+      ]
+    },
+    {
+      "name": "8단계(Shift 기본)",
+      "game": 8,
+      "rounds": [
+        { "kind": "sequential", "keys": "ㅃㅉㄸㄲㅆㅒㅖ:<>?", "repeat": 2 },
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;", "high": "ㅃㅉㄸㄲㅆㅒㅖ:<>?", "count": 10 },
+        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣㅃㅉㄸㄲㅆㅒㅖ", "required": "ㅃㅉㄸㄲㅆㅒㅖ" },
+        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣㅃㅉㄸㄲㅆㅒㅖ", "required": "ㅃㅉㄸㄲㅆㅒㅖ" }
+      ]
+    },
+    {
+      "name": "9단계(숫자 행 1)",
+      "game": 0,
+      "rounds": [
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;", "high": "12347890", "count": 10 }
+      ]
+    },
+    {
+      "name": "10단계(숫자 행 2)",
+      "game": 0,
+      "rounds": [
+        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;12347890", "high": "~56-=", "count": 10 }
+      ]
+    },
+    {
+      "name": "11단계(특수 기호 1)",
+      "game": 0,
+      "rounds": [
+        { "kind": "weighted", "low": "1234567890", "high": "()[{]}'\"", "count": 140 }
+      ]
+    },
+    {
+      "name": "12단계(특수 기호 2)",
+      "game": 0,
+      "rounds": [
+        { "kind": "weighted", "low": "1234567890-=", "high": "!@%_+", "count": 108 }
+      ]
+    },
+    {
+      "name": "13단계(연습한 키 전체)",
+      "game": 13,
+      "rounds": [
+        { "kind": "sequential_all_practiced", "repeat": 2, "shuffle": true },
+        { "kind": "mixed_all_practiced", "count": 100 }
+      ]
+    }
+  ]
+}

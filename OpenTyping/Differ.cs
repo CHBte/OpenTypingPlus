@@ -154,11 +154,11 @@ namespace OpenTyping
 
         public static double CalculateAccuracy(IList<DiffData> diffs)
         {
-            double accuracy 
-                = diffs.Sum(data => data.State == DiffData.DiffState.Equal ? data.Text.Length : 0) / // 입력 중 맞는 입력의 총 길이
-                  (double)diffs.Sum(data => data.Text.Length); // 총 입력 길이
+            double total = diffs.Sum(data => data.Text.Length); // 총 입력 길이
+            if (total == 0) return 0; // 목표 문장이 빈 문자열이면 diffs 도 비어 0/0=NaN 이 될 수 있다
 
-            return accuracy;
+            double correct = diffs.Sum(data => data.State == DiffData.DiffState.Equal ? data.Text.Length : 0); // 맞는 입력의 총 길이
+            return correct / total;
         }
     }
 }
