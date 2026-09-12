@@ -16,9 +16,11 @@
     <AssemblyTitle>Open Typing Plus</AssemblyTitle>
     <Product>Open Typing Plus</Product>
     <Copyright>Copyright © 2018</Copyright>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-    <!-- '프로그램 정보' 창에 표시하는 표시용 버전. AssemblyVersion과 별개(그건 1.0.0.0 고정). -->
+    <!-- <2600912_5>: 메이저 자리는 0 고정, 사용자가 직접 지시하기 전까지 1로 올리지 않는다.
+         Minor.Build.Revision은 Claude가 자동으로 올린다. -->
+    <AssemblyVersion>0.5.0.0</AssemblyVersion>
+    <FileVersion>0.5.0.0</FileVersion>
+    <!-- '프로그램 정보' 창에 표시하는 표시용 버전. AssemblyVersion과 별개(3자리 SemVer 스타일). -->
     <DisplayVersion>0.5.0</DisplayVersion>
   </PropertyGroup>
 
