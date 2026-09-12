@@ -30,6 +30,7 @@ namespace OpenTyping
         public CheatStageWindow(IList<PracticeStage> stages)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             HintText.Text = "고른 단계까지는 " + StageRecords.PassThreshold +
                             "타를 넘긴 것으로 쳐서, 그 다음 단계 타일과 그때까지의 오락이 열립니다. " +

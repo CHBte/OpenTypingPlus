@@ -7,8 +7,9 @@ using MahApps.Metro.Controls;
 namespace OpenTyping
 {
     /// <summary>
-    /// '프로그램 정보' 창 (<260718_11>). 버전·빌드 시각은 어셈블리 메타데이터에서 읽어 표시하고,
-    /// '라이선스' 버튼으로 MIT 라이선스 전문 창(LicenseWindow)을 모달로 띄운다(닫으면 이 창으로 복귀).
+    /// '프로그램 정보' 창 (<260718_11>). 버전은 <see cref="VersionInfo"/>(AssemblyVersion 그대로,
+    /// <2600912_5-1>), 빌드 시각은 어셈블리 메타데이터에서 읽어 표시하고, '라이선스' 버튼으로 MIT
+    /// 라이선스 전문 창(LicenseWindow)을 모달로 띄운다(닫으면 이 창으로 복귀).
     /// </summary>
     public partial class AboutWindow : MetroWindow
     {
@@ -16,8 +17,7 @@ namespace OpenTyping
         {
             InitializeComponent();
 
-            string displayVersion = ReadMetadata("DisplayVersion") ?? "0.5.0";
-            VersionText.Text = "Ver " + displayVersion + " win64 (C# .NET 10)";
+            VersionText.Text = "Ver " + VersionInfo.Version4 + " win64 (C# .NET 10)";
 
             string buildTimestamp = ReadMetadata("BuildTimestamp");
             BuildText.Text = string.IsNullOrEmpty(buildTimestamp)

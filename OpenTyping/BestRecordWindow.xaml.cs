@@ -14,6 +14,7 @@ namespace OpenTyping
         public BestRecordWindow()
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             List<(int StageId, int Score, string When)> records = AcidRainWindow.LoadBestRecords();
             IArcadeGame game = ArcadeGames.Default;

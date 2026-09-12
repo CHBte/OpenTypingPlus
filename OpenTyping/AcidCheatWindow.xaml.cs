@@ -42,6 +42,7 @@ namespace OpenTyping
         public AcidCheatWindow(AcidRainWindow game)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
             this.game = game;
 
             foreach ((int type, string name) in Effects)

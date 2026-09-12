@@ -20,7 +20,9 @@
          Minor.Build.Revision은 Claude가 자동으로 올린다. -->
     <AssemblyVersion>0.5.0.0</AssemblyVersion>
     <FileVersion>0.5.0.0</FileVersion>
-    <!-- '프로그램 정보' 창에 표시하는 표시용 버전. AssemblyVersion과 별개(3자리 SemVer 스타일). -->
+    <!-- <2600912_5-1>: '프로그램 정보' 창은 이제 AssemblyVersion(VersionInfo.cs)을 그대로 표시하므로
+         이 값을 안 쓴다. build-exe.bat이 Inno Setup 설치 프로그램의 AppVersion(3자리)으로 쓰려고
+         findstr로 이 줄을 직접 읽으므로 남겨 둔다 — 지우면 설치 파일 빌드가 실패한다. -->
     <DisplayVersion>0.5.0</DisplayVersion>
   </PropertyGroup>
 
@@ -35,10 +37,6 @@
       <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
         <_Parameter1>BuildTimestamp</_Parameter1>
         <_Parameter2>$(BuildTimestamp)</_Parameter2>
-      </AssemblyAttribute>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
-        <_Parameter1>DisplayVersion</_Parameter1>
-        <_Parameter2>$(DisplayVersion)</_Parameter2>
       </AssemblyAttribute>
     </ItemGroup>
   </Target>

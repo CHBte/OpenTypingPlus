@@ -264,6 +264,7 @@ namespace OpenTyping
             }
 
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             this.Loaded += MainWindow_Loaded;
             this.Closed += MainWindow_Closed;

@@ -65,6 +65,7 @@ namespace OpenTyping
         public ArticlePracticeWindow(PracticeData practiceData)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             inputTextBoxes = new List<TextBox> { InputTextBox0, InputTextBox1, InputTextBox2 };
             targetTextBlocks = new List<TextBlock> { TargetTextBlock0, TargetTextBlock1, TargetTextBlock2 };
