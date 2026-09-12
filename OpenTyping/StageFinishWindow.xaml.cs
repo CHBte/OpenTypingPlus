@@ -68,6 +68,7 @@ namespace OpenTyping
         public StageFinishWindow(int stageNumber, int lastStage, int tpm, int gameStageId)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             bool isLast = stageNumber >= lastStage;
             bool hasGame = HasGame(gameStageId);

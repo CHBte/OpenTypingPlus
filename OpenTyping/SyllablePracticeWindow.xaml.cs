@@ -57,6 +57,7 @@ namespace OpenTyping
                 throw new ArgumentException("연습할 음절이 하나도 없습니다.", nameof(syllablesList));
 
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             void FocusCurrentTextBox(object sender, System.Windows.RoutedEventArgs e) { CurrentTextBox.Focus(); }
             this.Loaded += FocusCurrentTextBox;

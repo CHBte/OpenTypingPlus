@@ -64,6 +64,7 @@ namespace OpenTyping
         public SentencePracticeWindow(PracticeData practiceData, bool shuffle)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             this.practiceData = practiceData;
 

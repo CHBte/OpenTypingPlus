@@ -33,6 +33,7 @@ namespace OpenTyping
         public HandSettingsWindow(FingerLayer fingerLayer)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             this.fingerLayer = fingerLayer;
 

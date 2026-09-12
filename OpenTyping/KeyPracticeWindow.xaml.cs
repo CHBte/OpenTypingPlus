@@ -148,6 +148,7 @@ namespace OpenTyping
         public KeyPracticeWindow(IList<KeyPos> keyList, bool noShiftMode)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             this.keyList = keyList;
             this.noShiftMode = noShiftMode;
@@ -159,6 +160,7 @@ namespace OpenTyping
         public KeyPracticeWindow(PracticeStage stage)
         {
             InitializeComponent();
+            Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
             this.stage = stage;
             isStageMode = true;
