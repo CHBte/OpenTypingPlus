@@ -6,7 +6,7 @@
 ; layouts\ data\ game\ stages\ hands\ 폴더가 이미 만들어져 있어야 한다.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.5.0"
+  #define MyAppVersion "0.5.0.0"
 #endif
 
 #define MyAppName "Open Typing Plus"

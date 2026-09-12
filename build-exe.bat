@@ -69,14 +69,16 @@ if exist "%DOTNET_INSTALLER_CACHE%" (
     echo [OK] Downloaded and cached.
 )
 
-rem --- Step 3: read DisplayVersion from OpenTyping.csproj so the installer's
-rem     AppVersion always matches the app, without manual syncing ---
+rem --- Step 3: read AssemblyVersion from OpenTyping.csproj so the installer's
+rem     AppVersion always matches the app, without manual syncing (<2600912_5-2>:
+rem     four-digit .NET-style version, same value shown in the app's own title
+rem     bar / info window - see VersionInfo.cs) ---
 set "APP_VERSION="
-for /f "usebackq tokens=3 delims=<>" %%V in (`findstr /C:"<DisplayVersion>" "%CSPROJ%"`) do (
+for /f "usebackq tokens=3 delims=<>" %%V in (`findstr /C:"<AssemblyVersion>" "%CSPROJ%"`) do (
     if not defined APP_VERSION set "APP_VERSION=%%V"
 )
 if not defined APP_VERSION (
-    echo [FAILED] Could not read DisplayVersion from "%CSPROJ%".
+    echo [FAILED] Could not read AssemblyVersion from "%CSPROJ%".
     exit /b 1
 )
 echo [OK] App version: %APP_VERSION%
