@@ -95,7 +95,8 @@ namespace OpenTyping
 
         internal int FinishSpeed(string text, IEnumerable<Differ.DiffData> diffs, double accuracy)
         {
-            if (IsOriginalMethod) return Convert.ToInt32(Finish(text) * accuracy);
+            // CountLetter와 같은 이유로 Convert.ToInt32(은행원 반올림)가 아니라 AwayFromZero로 맞춘다.
+            if (IsOriginalMethod) return (int)Math.Round(Finish(text) * accuracy, MidpointRounding.AwayFromZero);
 
             double? elapsed = TakeElapsedMinutes();
             if (elapsed == null) return 0;
