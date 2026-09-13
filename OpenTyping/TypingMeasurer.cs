@@ -14,6 +14,16 @@ namespace OpenTyping
             => Hangul.IsSyllable(ch);
 
         /// <summary>
+        /// 이 파일이 통일해 쓰는 반올림 규칙(AwayFromZero, 은행원 반올림 금지)을 딱 한 곳에 모은다.
+        /// 반드시 Convert.ToInt32로 감싼다 — bare (int) 캐스트는 unchecked라 값이 Int32 범위를
+        /// 벗어나거나 NaN이면 예외 없이 조용히 쓰레기 값(예: int.MinValue)을 반환하기 때문이다.
+        /// Convert.ToInt32(double)는 checked라 그런 입력에서 여전히 OverflowException으로
+        /// 크게 실패한다 — 이미 정수로 반올림된 값을 넘기므로 Convert.ToInt32 자신의 반올림
+        /// 방식(은행원 반올림)은 개입하지 않는다.
+        /// </summary>
+        public static int RoundToInt(double value) => Convert.ToInt32(Math.Round(value, MidpointRounding.AwayFromZero));
+
+        /// <summary>
         /// '원래 방식'의 글자수 환산: 한글 음절 하나를 2.5타로, 그 밖의 글자를 1타로 센다.
         /// 자리연습도 이 방식을 고를 수 있으므로(<260812_12>) 한 곳에 두고 함께 쓴다.
         /// </summary>
@@ -27,10 +37,9 @@ namespace OpenTyping
                 else count++;
             }
 
-            // Convert.ToInt32 는 은행원 반올림(가장 가까운 짝수)이라, 한글 음절 수가 홀수일 때
-            // 정확히 .5(2.5, 7.5, 12.5, ...)가 나오면 이 파일의 다른 반올림(AwayFromZero)과
-            // 다르게 짝수 쪽으로 쏠린다. 같은 규칙으로 맞춘다.
-            return (int)Math.Round(count, MidpointRounding.AwayFromZero);
+            // 한글 음절 수가 홀수일 때 정확히 .5(2.5, 7.5, 12.5, ...)가 나올 수 있어
+            // RoundToInt(AwayFromZero)로 반올림한다(은행원 반올림 금지).
+            return RoundToInt(count);
         }
 
         /// <summary>
@@ -82,7 +91,7 @@ namespace OpenTyping
         public static int Accuracy(int correct, int wrong)
         {
             int tried = correct + wrong;
-            return tried == 0 ? 0 : (int)Math.Round(correct * 100.0 / tried, MidpointRounding.AwayFromZero);
+            return tried == 0 ? 0 : RoundToInt(correct * 100.0 / tried);
         }
 
         /// <summary>경과 시간(분)을 읽고 시계를 리셋한다. 0 이하(측정 시작 전 입력 등 비정상 상황)면 null.</summary>
@@ -95,8 +104,8 @@ namespace OpenTyping
 
         internal int FinishSpeed(string text, IEnumerable<Differ.DiffData> diffs, double accuracy)
         {
-            // CountLetter와 같은 이유로 Convert.ToInt32(은행원 반올림)가 아니라 AwayFromZero로 맞춘다.
-            if (IsOriginalMethod) return (int)Math.Round(Finish(text) * accuracy, MidpointRounding.AwayFromZero);
+            // CountLetter와 같은 이유로 RoundToInt(AwayFromZero)로 맞춘다(은행원 반올림 금지).
+            if (IsOriginalMethod) return RoundToInt(Finish(text) * accuracy);
 
             double? elapsed = TakeElapsedMinutes();
             if (elapsed == null) return 0;
@@ -105,7 +114,7 @@ namespace OpenTyping
             foreach (Differ.DiffData d in diffs)
                 if (d.State == Differ.DiffData.DiffState.Equal) strokes += CountStrokes(d.Text);
 
-            return Convert.ToInt32(Math.Round(strokes / elapsed.Value, MidpointRounding.AwayFromZero));
+            return RoundToInt(strokes / elapsed.Value);
         }
 
         /// <summary>
@@ -118,7 +127,7 @@ namespace OpenTyping
             if (elapsed == null) return 0;
 
             double count = IsOriginalMethod ? CountLetter(text) : CountStrokes(text);
-            return Convert.ToInt32(Math.Round(count / elapsed.Value, MidpointRounding.AwayFromZero));
+            return RoundToInt(count / elapsed.Value);
         }
 
         public void Start() => stopwatch.Restart();
