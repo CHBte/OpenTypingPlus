@@ -241,7 +241,9 @@ namespace OpenTyping
                         {
                             TypingSpeed = speed;
                             speedList.Add(speed);
-                            AverageTypingSpeed = (int)Math.Round(speedList.Average());
+                            // 은행원 반올림(기본 Math.Round)이 아니라 이 파일의 다른 타속 계산과 같은
+                            // AwayFromZero로 맞춘다(TypingMeasurer 참고).
+                            AverageTypingSpeed = (int)Math.Round(speedList.Average(), MidpointRounding.AwayFromZero);
                         }
                         wasIncorrect = false;
 

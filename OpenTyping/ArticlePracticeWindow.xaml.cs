@@ -105,8 +105,9 @@ namespace OpenTyping
                 MainWindow.CurrentKeyLayout.Stats.AddStats(new KeyLayoutStats()
                 {
                     SentencePracticeCount = typingSpeedList.Count,
-                    AverageTypingSpeed = Convert.ToInt32(typingSpeedList.Average()),
-                    AverageAccuracy = Convert.ToInt32(accuracyList.Average())
+                    // Convert.ToInt32(은행원 반올림) 대신 이 파일의 다른 반올림과 같은 AwayFromZero로 맞춘다.
+                    AverageTypingSpeed = (int)Math.Round(typingSpeedList.Average(), MidpointRounding.AwayFromZero),
+                    AverageAccuracy = (int)Math.Round(accuracyList.Average(), MidpointRounding.AwayFromZero)
                 });
             }
         }
@@ -146,12 +147,12 @@ namespace OpenTyping
             if (typingMeasurer.IsRunning) // 측정이 시작된 입력만 통계에 기록
             {
                 double accuracy = Differ.CalculateAccuracy(diffs);
-                accuracyList.Add(Convert.ToInt32(accuracy * 100));
+                accuracyList.Add((int)Math.Round(accuracy * 100, MidpointRounding.AwayFromZero));
                 // <260812_14>(2) 지금 걸린 계산 방식을 따른다(치트 창에서 '원래 방식'을 고르면 옛 공식).
                 typingSpeedList.Add(typingMeasurer.FinishSpeed(currentTextBox.Text, diffs, accuracy));
 
-                TypingAccuracy = Convert.ToInt32(accuracyList.Average());
-                TypingSpeed = Convert.ToInt32(typingSpeedList.Average());
+                TypingAccuracy = (int)Math.Round(accuracyList.Average(), MidpointRounding.AwayFromZero);
+                TypingSpeed = (int)Math.Round(typingSpeedList.Average(), MidpointRounding.AwayFromZero);
             }
 
             if (currentLine == 2) // 다음 페이지로 이동
