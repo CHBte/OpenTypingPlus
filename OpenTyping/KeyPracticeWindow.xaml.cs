@@ -652,18 +652,16 @@ namespace OpenTyping
             double minutes = practiceClock.Elapsed.TotalMinutes;
             if (minutes <= 0) return 0;
 
-            // TypingMeasurer의 다른 타속 계산과 반올림 규칙을 맞춘다(AwayFromZero) — 기본 Math.Round는
-            // 은행원 반올림(가장 가까운 짝수)이라 x.5 값에서 TypingMeasurer 쪽과 결과가 갈릴 수 있다.
             if (TypingMeasurer.IsOriginalMethod)
             {
                 if (measuredLetters <= 0) return 0;
                 int typed = measuredCorrect + measuredWrong;
                 double accuracy = typed > 0 ? measuredCorrect / (double)typed : 1.0;
-                return (int)Math.Round(measuredLetters / minutes * accuracy, MidpointRounding.AwayFromZero);
+                return TypingMeasurer.RoundToInt(measuredLetters / minutes * accuracy);
             }
 
             if (keystrokeCount <= 0) return 0;
-            return (int)Math.Round(keystrokeCount / minutes, MidpointRounding.AwayFromZero);
+            return TypingMeasurer.RoundToInt(keystrokeCount / minutes);
         }
 
         // '원래 방식'용 누적값 — 측정 구간(<260812_7>로 다시 잴 수 있다) 안에서만 센다.

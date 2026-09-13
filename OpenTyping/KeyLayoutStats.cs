@@ -88,8 +88,8 @@ namespace OpenTyping
                 // 정수 나눗셈(자름)이 아니라 이 프로젝트의 다른 평균 계산과 같은 AwayFromZero
                 // 반올림으로 맞춘다 — 안 그러면 예: 합 21 ÷ 2 가 반올림 시 11이어야 할 값이
                 // 자름으로 10이 되어, 방금 통일한 반올림 규칙과 다시 어긋난다.
-                AverageTypingSpeed = (int)Math.Round((double)newSpeedSum / SentencePracticeCount, MidpointRounding.AwayFromZero);
-                AverageAccuracy = (int)Math.Round((double)newAccuracySum / SentencePracticeCount, MidpointRounding.AwayFromZero);
+                AverageTypingSpeed = TypingMeasurer.RoundToInt((double)newSpeedSum / SentencePracticeCount);
+                AverageAccuracy = TypingMeasurer.RoundToInt((double)newAccuracySum / SentencePracticeCount);
             }
         }
 
