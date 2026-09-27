@@ -11,9 +11,9 @@ namespace OpenTyping
     /// 문구·버튼 구성은 어느 것도 손으로 적어 두지 않고 그때그때 계산한다 — 사용자가 앞으로 단계
     /// 구성을 바꾸거나(단계 수·순서), 새 오락을 이식하거나, 목표 타수의 기준·계산 방식을 바꾸어도
     /// 규칙이 그대로 따라가야 하기 때문이다. 판단의 근거는 세 곳뿐이다:
-    ///  - 마지막 단계인가 → <see cref="DubeolsikStages.Stages"/>의 개수
+    ///  - 마지막 단계인가 → 지금 자판 단계 묶음(<see cref="StageSets.Current"/>)의 개수
     ///  - 이 단계에 오락이 있는가 → <see cref="ArcadeGames"/> 레지스트리에 그 단계 id가 있는가
-    ///  - 목표 타수를 넘겼는가 → <see cref="StageRecords.PassThreshold"/>
+    ///  - 목표 타수를 넘겼는가 → <see cref="StageRecords.TargetTa"/>
     ///
     /// 이 창은 무엇을 할지 고르기만 하고 실행하지 않는다. 고른 결과가 <see cref="Action"/>에 담겨
     /// 닫히고, 연습 창이 그 값을 호출자(자리연습 화면)에게 넘겨 거기서 다음 창을 연다 — 창을 안으로
@@ -30,7 +30,7 @@ namespace OpenTyping
         {
             if (gameStageId == 0) return false;
             IArcadeGame game = ArcadeGames.Default;
-            return game != null && game.StageIds.Contains(gameStageId);
+            return game != null && game.StageIdsFor(StageSets.Current).Contains(gameStageId);
         }
 
         /// <summary>첫 줄: 이번 타수. 목표에 못 미쳤으면 그 사실과 목표 타수를 함께 알린다.</summary>
@@ -41,7 +41,8 @@ namespace OpenTyping
         /// <summary>
         /// 둘째 줄: 무엇이 활성화되었는지(또는 아직 아닌지). 없는 대상은 문장에서 빠진다.
         /// </summary>
-        internal static string BuildUnlockLine(int stageNumber, bool isLast, bool hasGame, bool reached)
+        internal static string BuildUnlockLine(int stageNumber, bool isLast, bool hasGame, bool reached,
+                                               string scriptName = "한글")
         {
             string gamePhrase = hasGame ? stageNumber + "단계 오락" : null;
 
@@ -49,7 +50,7 @@ namespace OpenTyping
             {
                 if (isLast)
                     return (gamePhrase == null ? "" : gamePhrase + "이 활성화되었습니다. ")
-                           + "한글 타자 완성을 축하합니다!";
+                           + scriptName + " 타자 완성을 축하합니다!";
 
                 string next = (stageNumber + 1) + "단계 자리연습";
                 return (gamePhrase == null ? "" : gamePhrase + "과 ") + next + "이 활성화되었습니다.";
@@ -65,7 +66,8 @@ namespace OpenTyping
         /// <param name="stageNumber">방금 마친 단계 번호(1부터).</param>
         /// <param name="lastStage">마지막 단계 번호.</param>
         /// <param name="gameStageId">이 단계에 딸린 오락의 단계 id(없으면 0).</param>
-        public StageFinishWindow(int stageNumber, int lastStage, int tpm, int gameStageId)
+        /// <param name="scriptName">"한글"/"영문" — 마지막 단계 축하 문구에 쓴다.</param>
+        public StageFinishWindow(int stageNumber, int lastStage, int tpm, int gameStageId, string scriptName = "한글")
         {
             InitializeComponent();
             Title = VersionInfo.WindowTitle; // <2600912_5-1>
@@ -77,11 +79,23 @@ namespace OpenTyping
             // 열려 있는 다음 단계·오락을 '아직 활성화되지 않음'으로 잘못 알린다.
             bool reached = StageRecords.IsPassed(stageNumber);
 
-            TaText.Text = BuildTaLine(tpm, StageRecords.PassThreshold);
+            TaText.Text = BuildTaLine(tpm, StageRecords.TargetTa(stageNumber));
 
-            string unlock = BuildUnlockLine(stageNumber, isLast, hasGame, reached);
+            string unlock = BuildUnlockLine(stageNumber, isLast, hasGame, reached, scriptName);
             UnlockText.Text = unlock;
             if (unlock.Length == 0) UnlockText.Visibility = Visibility.Collapsed;
+
+            // <2600919_2> 치트가 켜져 있으면 실제 기록과 무관하게 "치트가 정한 단계까지만"
+            // 통과로 친다(StageRecords.IsPassed 참고) — 그래서 이 단계가 그 범위를 넘어 방금
+            // '활성화되지 않음'으로 판정된(!reached) 경우에만 경고한다. 범위 안이라 이미
+            // reached=true 로 "활성화되었습니다" 문구가 뜬 경우까지 이 경고를 띄우면 같은 창에
+            // 서로 모순되는 두 문장이 동시에 보이게 된다.
+            if (StageRecords.CheatOn && !reached)
+            {
+                CheatWarningText.Text = "치트 상태에서는 해당 단계의 오락과 다음 단계 자리연습이 활성화되지 않습니다.";
+                CheatWarningText.Foreground = DictationState.WrongBrush;
+                CheatWarningText.Visibility = Visibility.Visible;
+            }
 
             // 버튼: 다시 연습 / (다음 단계) / (오락) / 나가기.
             // 목표에 못 미쳤으면 아직 열리지 않은 곳으로 가는 버튼은 비활성으로 둔다.

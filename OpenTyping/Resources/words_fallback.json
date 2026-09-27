@@ -1,0 +1,441 @@
+{
+ "_comment": "제시어 목록 예비본(<260927_2>). wordslist\\words.json 을 못 읽을 때만 쓴다. 고유 수준마다 10개씩만 추렸다(wordslist_tool.py fallback 으로 만든다).",
+ "syllable_blacklist": "년놈뒈똥뽕섹술썅씹엿젖졷좃좆좇죽총칼",
+ "hangul": {
+  "stages": [
+   {
+    "stage": 1,
+    "name": "1단계(기본 자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "미만",
+       "아이",
+       "안아",
+       "어릴",
+       "나날이",
+       "마나님",
+       "어머님",
+       "어머머",
+       "말미암아",
+       "아이러니"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": []
+     }
+    ]
+   },
+   {
+    "stage": 2,
+    "name": "2단계(왼쪽 윗자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "걷어",
+       "단지",
+       "달릴",
+       "마디",
+       "입단",
+       "적다",
+       "정각",
+       "지인",
+       "미디어",
+       "지니다"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": []
+     }
+    ]
+   },
+   {
+    "stage": 3,
+    "name": "3단계(오른쪽 윗자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "내민",
+       "매너",
+       "매어",
+       "아냐",
+       "얼려",
+       "여아",
+       "여인",
+       "열연",
+       "영아",
+       "날려라"
+      ]
+     },
+     {
+      "level": 2,
+      "words": [
+       "결말",
+       "결정",
+       "명작",
+       "배경",
+       "백일",
+       "얘기",
+       "여백",
+       "열정",
+       "이겨",
+       "계란말이"
+      ]
+     },
+     {
+      "level": 3,
+      "words": []
+     }
+    ]
+   },
+   {
+    "stage": 4,
+    "name": "4단계(왼쪽 아랫자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "널판",
+       "넘친",
+       "앞말",
+       "인치",
+       "일치",
+       "차차",
+       "칠판",
+       "터키",
+       "퍼런",
+       "천리마"
+      ]
+     },
+     {
+      "level": 2,
+      "words": [
+       "마패",
+       "여태",
+       "연필",
+       "채팅",
+       "천연",
+       "체면",
+       "칠레",
+       "암페어",
+       "천일염",
+       "판매량"
+      ]
+     },
+     {
+      "level": 3,
+      "words": [
+       "기체",
+       "대칭",
+       "참가",
+       "체력",
+       "필기",
+       "밑바탕",
+       "빨래터",
+       "앞마당",
+       "참가자",
+       "책갈피"
+      ]
+     }
+    ]
+   },
+   {
+    "stage": 5,
+    "name": "5단계(오른쪽 아랫자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "나를",
+       "나름",
+       "나을",
+       "늘름",
+       "능란",
+       "미음",
+       "어른",
+       "이를",
+       "이은",
+       "아른아른"
+      ]
+     },
+     {
+      "level": 2,
+      "words": [
+       "등가",
+       "알뜰",
+       "응당",
+       "가을날",
+       "그리기",
+       "그립다",
+       "나들이",
+       "작은집",
+       "잘그랑",
+       "즐겁다"
+      ]
+     },
+     {
+      "level": 3,
+      "words": [
+       "그대",
+       "앞뜰",
+       "일층",
+       "체크",
+       "치즈",
+       "펌프",
+       "리프트",
+       "창의력",
+       "페인트",
+       "파인애플"
+      ]
+     }
+    ]
+   },
+   {
+    "stage": 6,
+    "name": "6단계(가운데 자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "고교",
+       "굴국",
+       "규소",
+       "수국",
+       "숙소",
+       "풀럭",
+       "홀로",
+       "거슬러",
+       "스르륵",
+       "퍼석퍼석"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": [
+       "교실",
+       "버스",
+       "사슴",
+       "사촌",
+       "숙제",
+       "요일",
+       "행성",
+       "비행기",
+       "소나무",
+       "송아지"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "english": {
+  "stages": [
+   {
+    "stage": 1,
+    "name": "1단계(기본 자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "ad",
+       "add",
+       "all",
+       "ask",
+       "lad",
+       "ska",
+       "lass",
+       "salad",
+       "salsa",
+       "alfalfa"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": []
+     }
+    ]
+   },
+   {
+    "stage": 2,
+    "name": "2단계(왼쪽 윗자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "are",
+       "dear",
+       "reed",
+       "ware",
+       "aware",
+       "eraser",
+       "reseed",
+       "reward",
+       "seeder",
+       "freeware"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": [
+       "elk",
+       "jar",
+       "dell",
+       "flew",
+       "jell",
+       "self",
+       "walk",
+       "easel",
+       "resale",
+       "saddler"
+      ]
+     }
+    ]
+   },
+   {
+    "stage": 3,
+    "name": "3단계(오른쪽 윗자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "koi",
+       "lip",
+       "oil",
+       "pip",
+       "poi",
+       "pop",
+       "polo",
+       "pull",
+       "popup",
+       "lookup"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": [
+       "disk",
+       "park",
+       "pole",
+       "skip",
+       "aisle",
+       "joker",
+       "koala",
+       "loose",
+       "pedal",
+       "speed"
+      ]
+     }
+    ]
+   },
+   {
+    "stage": 4,
+    "name": "4단계(아랫자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "cm",
+       "ma",
+       "mm",
+       "dam",
+       "DVD",
+       "mac",
+       "sac",
+       "jazz",
+       "mama",
+       "mass"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": [
+       "wax",
+       "mark",
+       "mice",
+       "plum",
+       "quiz",
+       "moral",
+       "scale",
+       "muffle",
+       "saucer",
+       "careful"
+      ]
+     }
+    ]
+   },
+   {
+    "stage": 5,
+    "name": "5단계(가운데 자리)",
+    "levels": [
+     {
+      "level": 1,
+      "words": [
+       "gym",
+       "hub",
+       "hug",
+       "myth",
+       "rung",
+       "tuft",
+       "buggy",
+       "truth",
+       "hubbub",
+       "rhythm"
+      ]
+     },
+     {
+      "level": 2,
+      "words": []
+     },
+     {
+      "level": 3,
+      "words": [
+       "be",
+       "lion",
+       "shoe",
+       "honey",
+       "mouth",
+       "onion",
+       "gentle",
+       "planet",
+       "helpful",
+       "library"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

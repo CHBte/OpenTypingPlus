@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ControlzEx.Theming;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using SkiaSharp;
@@ -74,28 +75,11 @@ namespace OpenTyping
         {
             base.OnStartup(e);
 
-            // <260828_2>: 인자 없이(더블클릭) 실행할 때만 중복 실행을 막는다. 아래의 헤드리스 진단/테스트
-            // 스위치(-edgetest 등)는 이미 떠 있는 인스턴스와 무관하게 항상 동작해야 하므로 건드리지 않는다.
-            if (e.Args == null || e.Args.Length == 0)
-            {
-                singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
-                if (!createdNew)
-                {
-                    // <260828_2-1>: 기존 창을 활성화(+ 최소화였다면 복원)한 뒤, 그 창을 owner로 지정해
-                    // 알림창을 띄운다 — owner 지정 덕분에 알림창은 항상 그 창보다 위에 있다(OS가 보장).
-                    IntPtr hWnd = FindExistingInstanceWindow();
-                    if (hWnd != IntPtr.Zero)
-                    {
-                        if (IsIconic(hWnd))
-                        {
-                            ShowWindow(hWnd, SW_RESTORE); // 최소화된 경우만 복원(최대화 상태를 되돌리지 않기 위해 무조건 호출하지 않음)
-                        }
-                        SetForegroundWindow(hWnd);
-                    }
-                    MessageBoxW(hWnd, "열린타자+가 이미 실행 중입니다.", "알림", MB_OK | MB_ICONINFORMATION);
-                    Environment.Exit(0);
-                }
-            }
+            // <2600919_4> 치트 상태일 때 모든 창의 테두리·제목표시줄 색(평소 파랑 계열 Cobalt)을
+            // 하늘색(Cyan)으로 바꾼다. 헤드리스 진단 스위치(-cheattest 등)도 이 동작을 검증하므로,
+            // 아래의 어떤 진단 분기보다도 먼저(Environment.Exit로 빠져나가기 전에) 구독해야 한다.
+            StageRecords.CheatChanged += UpdateCheatTheme;
+            UpdateCheatTheme();
 
             // 헤드리스 자체 검증: "-stagetest <출력경로>"로 실행하면 창을 띄우지 않고 단계 생성 결과를
             // 파일로 쓰고 즉시 종료한다(개발용, 배포에는 영향 없음). (<260723_4> 검증)
@@ -108,24 +92,10 @@ namespace OpenTyping
                 Environment.Exit(0);
             }
 
-            // 헤드리스 진단: "-fingerdump <row> <col> <출력png경로>"로 실행하면 FingerLayer.SetPose 와
-            // 같은 손가락 배정으로 해당 키 포즈를 실제로 렌더링해 png+좌표 텍스트로 남기고 종료한다
-            // (<260811_25>, 프레임 없는 키의 합성 변형(Deform) 결과를 시각 확인하기 위한 개발용 도구
-            // — 배포에는 영향 없음).
-            if (e.Args != null && e.Args.Length >= 3 && e.Args[0] == "-fingerdump")
-            {
-                string outPng = e.Args.Length > 3 ? e.Args[3]
-                    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                                   "OpenTypingPlus", "fingerdump.png");
-                try { RunFingerDump(int.Parse(e.Args[1]), int.Parse(e.Args[2]), outPng); }
-                catch (Exception ex) { TryWrite(outPng + ".txt", "EXCEPTION: " + ex); }
-                Environment.Exit(0);
-            }
-
             // 헤드리스 진단: "-homedump <출력png경로>"로 실행하면 실제 FingerLayer 컨트롤을 그대로
-            // 생성자→ShowHomePose() 순서로 띄워(진짜 프로덕션 경로, RunFingerDump 처럼 좌표만 다시
-            // 그리는 게 아님) 렌더링해 png 로 남기고 종료한다 (<260811_26>(2-1), hands\home-left/
-            // right.svg 이식이 실제로 화면에 반영되는지 확인하는 개발용 도구 — 배포에는 영향 없음).
+            // 생성자→ShowHomePose() 순서로 띄워(진짜 프로덕션 경로) 렌더링해 png 로 남기고 종료한다
+            // (<260811_26>(2-1), hands\home-left/right.svg 이식이 실제로 화면에 반영되는지 확인하는
+            // 개발용 도구 — 배포에는 영향 없음).
             // 헤드리스 진단: "-posesources <출력txt>" — 모든 물리 키(기본/윗글쇠)에 대해 SetPose 를 태워
             // **실제로 읽은 hands\ 파일 이름**을 한 줄씩 남긴다 (<260811_31-2>). 설치·배선이 어긋났는지를
             // 그림 비교 없이 값싸게 확인하는 용도 — update-hands.ps1 의 마지막 단계가 이 값을 대조한다.
@@ -157,6 +127,23 @@ namespace OpenTyping
                 return;   // 인트로를 기다려야 하므로 여기서 끝내지 않는다(테스트가 스스로 종료)
             }
 
+            // 헤드리스 진단: "-englishtest <출력txt>" — 한글·영문 자리연습 화면 타일(그림) + 영문 단계 창의
+            // Caps Lock 처리 (<260927_3>(2), <260927_5>, <260927_6>). 그림은 출력txt 옆에 남긴다.
+            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-englishtest")
+            {
+                try { RunEnglishTest(e.Args[1]); }
+                catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); Environment.Exit(0); }
+                return;   // 인트로를 기다려야 하므로 여기서 끝내지 않는다(테스트가 스스로 종료)
+            }
+
+            // 헤드리스 진단: "-layouttest <출력txt>" — 자판 파일에서 만든 '글자 → 키 입력' 규칙(KeyboardMap) 검사.
+            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-layouttest")
+            {
+                try { RunLayoutTest(e.Args[1]); }
+                catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
+                Environment.Exit(0);
+            }
+
             // 헤드리스 진단: "-syllabletest <출력txt>" — 음절연습 2음절 오타 처리 (<260812_13>)
             if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-syllabletest")
             {
@@ -174,7 +161,7 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-cheattest <출력txt>" — 치트 토글이 켜고 끄기 모두 되는지 확인한다.
-            // 실제 기록 파일(%APPDATA%\OpenTypingPlus\stage_records.json)을 쓰므로, 원래 내용을
+            // 실제 기록 파일(%APPDATA%\OTP\OpenTypingPlus\stage_records_<자판 키>.json)을 쓰므로, 원래 내용을
             // 반드시 그대로 되돌려 놓는다.
             if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-cheattest")
             {
@@ -209,6 +196,28 @@ namespace OpenTyping
                                    "OpenTypingPlus", "homedump.png");
                 try { RunHomeDump(outPng); }
                 catch (Exception ex) { TryWrite(outPng + ".txt", "EXCEPTION: " + ex); }
+                Environment.Exit(0);
+            }
+
+            // <260828_2>: 중복 실행을 막는다. 위의 헤드리스 진단/테스트 스위치는 전부 여기까지 오기 전에
+            // 끝나므로(이미 떠 있는 인스턴스와 무관하게 동작해야 함), 여기에 이르는 실행은 인자가 무엇이든
+            // (파일을 끌어다 놓은 경로, 잘못 친 스위치 등) 평소 실행과 똑같이 막는다 — 안 그러면 두
+            // 인스턴스가 떠서 설정·기록을 서로 덮어쓸 수 있다.
+            singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
+            if (!createdNew)
+            {
+                // <260828_2-1>: 기존 창을 활성화(+ 최소화였다면 복원)한 뒤, 그 창을 owner로 지정해
+                // 알림창을 띄운다 — owner 지정 덕분에 알림창은 항상 그 창보다 위에 있다(OS가 보장).
+                IntPtr hWnd = FindExistingInstanceWindow();
+                if (hWnd != IntPtr.Zero)
+                {
+                    if (IsIconic(hWnd))
+                    {
+                        ShowWindow(hWnd, SW_RESTORE); // 최소화된 경우만 복원(최대화 상태를 되돌리지 않기 위해 무조건 호출하지 않음)
+                    }
+                    SetForegroundWindow(hWnd);
+                }
+                MessageBoxW(hWnd, "열린타자+가 이미 실행 중입니다.", "알림", MB_OK | MB_ICONINFORMATION);
                 Environment.Exit(0);
             }
 
@@ -289,6 +298,14 @@ namespace OpenTyping
                 .HasTextSettings(new TextSettings { DefaultTypeface = LoadChartTypeface() }));
         }
 
+        /// <summary><2600919_4> 지금의 치트 상태에 맞춰 앱 전체 테마(모든 창의 테두리·제목표시줄
+        /// 색)를 바꾼다. 평소(치트 꺼짐)는 App.xaml이 처음 정한 Light.Cobalt, 치트 중엔 하늘색
+        /// 계열인 Light.Cyan.</summary>
+        private void UpdateCheatTheme()
+        {
+            ThemeManager.Current.ChangeTheme(this, StageRecords.CheatOn ? "Light.Cyan" : "Light.Cobalt");
+        }
+
         private static void TryWrite(string path, string text)
         {
             try
@@ -299,27 +316,83 @@ namespace OpenTyping
             catch { /* 무시 */ }
         }
 
-        // 13개 단계를 실제로 생성해 프롬프트 수·타·구성을 요약하고, 자모 분해 몇 개를 확인한다.
+        // 모든 자판의 단계를 실제로 생성해 프롬프트 수·타·구성을 요약하고, 자모 분해 몇 개를 확인한다.
         private static void RunStageSelfTest(string outPath)
         {
             var sb = new StringBuilder();
             var rng = new Random(12345);
 
-            sb.AppendLine("=== 자리연습 단계 생성 검증 (<260723_4>) ===");
-            sb.AppendLine("stage | name | game | prompts | ta | key/text | roundkinds");
-            foreach (PracticeStage st in DubeolsikStages.Stages)
+            sb.AppendLine("=== 자리연습 단계 생성 검증 (<260927_3>) ===");
+            sb.AppendLine("stage | name | game | target | prompts | ta | key/text | roundkinds");
+            foreach (IStageSet set in StageSets.All)
             {
-                List<PracticePrompt> prog = st.Generate(rng);
-                int ta = prog.Sum(p => p.TaCount);
-                int keyN = prog.Count(p => !p.IsText);
-                int textN = prog.Count(p => p.IsText);
-                string kinds = string.Join(",", st.Rounds.Select(r => r.Kind.ToString()));
-                sb.AppendLine($"{st.Name} | game={st.GameStageId} | prompts={prog.Count} | ta={ta} | key={keyN} text={textN} | {kinds}");
+                sb.AppendLine($"── {set.LayoutName} (키={set.Key}, 단계 {set.Stages.Count}개, 제시어 출처={WordCatalog.OriginOf(set.WordSection)}) ──");
+                foreach (PracticeStage st in set.Stages)
+                {
+                    List<PracticePrompt> prog = st.Generate(rng);
+                    int ta = prog.Sum(p => p.TaCount);
+                    int keyN = prog.Count(p => !p.IsText);
+                    int textN = prog.Count(p => p.IsText);
+                    string kinds = string.Join(",", st.Rounds.Select(r => r.Kind.ToString()));
+                    sb.AppendLine($"{st.Name} | game={st.GameStageId} | target={st.TargetTa} | prompts={prog.Count} | ta={ta} | key={keyN} text={textN} | {kinds}");
 
-                // 텍스트 프롬프트 샘플 2개
-                var samples = prog.Where(p => p.IsText).Select(p => p.Text).Distinct().Take(4).ToList();
-                if (samples.Count > 0) sb.AppendLine("      text샘플: " + string.Join(" / ", samples));
+                    var samples = prog.Where(p => p.IsText).Select(p => p.Text).Distinct().Take(4).ToList();
+                    if (samples.Count > 0) sb.AppendLine("      text샘플: " + string.Join(" / ", samples));
+                }
             }
+
+            // <260927_3>(0.6)~(0.6.2) '직전값 제외' 순을 여러 번 만들어 같은 제시어가 바로 이어지는지,
+            // 개수가 늘 같은지 본다(후보가 모자라 불가능한 경우는 규칙상 허용되므로 따로 센다).
+            sb.AppendLine();
+            sb.AppendLine("=== 직전값 제외·개수 반복 검증 (각 순 300회) ===");
+            int repeatFail = 0;
+            foreach (IStageSet set in StageSets.All)
+                foreach (PracticeStage st in set.Stages)
+                    for (int ri = 0; ri < st.Rounds.Count; ri++)
+                    {
+                        PracticeRound round = st.Rounds[ri];
+                        int repeats = 0;
+                        var counts = new HashSet<int>();
+                        for (int t = 0; t < 300; t++)
+                        {
+                            List<PracticePrompt> seq = round.Generate(rng);
+                            counts.Add(seq.Count);
+                            for (int i = 1; i < seq.Count; i++)
+                            {
+                                PracticePrompt a = seq[i - 1], b = seq[i];
+                                bool same = a.IsText ? b.IsText && a.Text == b.Text
+                                                     : !b.IsText && a.Key == b.Key && a.IsShift == b.IsShift;
+                                if (same) repeats++;
+                            }
+                        }
+                        bool bad = round.NoRepeat && repeats > 0;
+                        if (bad || counts.Count != 1) repeatFail++;
+                        sb.AppendLine($"{(bad || counts.Count != 1 ? "NG  " : "OK  ")}{set.Key} {st.Name} 순{ri + 1} {round.Kind} " +
+                                      $"직전값제외={round.NoRepeat} 연속같음={repeats} 개수={string.Join("/", counts)}");
+                    }
+            sb.AppendLine("NO-REPEAT: " + (repeatFail == 0 ? "PASS" : $"FAIL ({repeatFail}건)"));
+
+            // <260927_4>(0.2)(1.4) 오락 단어 공급: 10개마다 드문 목록 1개(드문 목록이 있을 때), 5개 단위 안에서는
+            // 같은 단어 없음(후보가 5개 이상일 때). 2000개를 뽑아 확인한다.
+            sb.AppendLine();
+            sb.AppendLine("=== 오락 단어 공급 검증 (단계마다 2000개) ===");
+            int feedFail = 0;
+            foreach (IStageSet set in StageSets.All)
+                foreach (GameStage gs in GameStages.For(set))
+                {
+                    var feed = new GameWordFeed(gs, rng);
+                    var words = Enumerable.Range(0, 2000).Select(_ => feed.Next()).ToList();
+                    var rareSet = new HashSet<string>(gs.Rare);
+                    bool mixOk = gs.Rare.Count == 0
+                        ? words.All(w => gs.Main.Contains(w))
+                        : Enumerable.Range(0, 200).All(b => words.Skip(b * 10).Take(10).Count(rareSet.Contains) == 1);
+                    bool uniqueOk = gs.Main.Count + gs.Rare.Count < 5
+                        || Enumerable.Range(0, 400).All(u => words.Skip(u * 5).Take(5).Distinct().Count() == 5);
+                    if (!mixOk || !uniqueOk) feedFail++;
+                    sb.AppendLine($"{(mixOk && uniqueOk ? "OK  " : "NG  ")}{set.Key} {gs.Name}: 주 {gs.Main.Count} / 드문 {gs.Rare.Count} " +
+                                  $"9:1={mixOk} 5개단위중복없음={uniqueOk}");
+                }
+            sb.AppendLine("GAME-FEED: " + (feedFail == 0 ? "PASS" : $"FAIL ({feedFail}건)"));
 
             sb.AppendLine();
             sb.AppendLine("=== 자모 분해·타 검증 ===");
@@ -334,80 +407,28 @@ namespace OpenTyping
             sb.AppendLine("=== 통합 창/데이터 검증 ===");
             try
             {
-                var game = new AcidRainWindow(1); // XAML·Window.Resources 파싱 확인(로드 전 생성만)
+                var game = new AcidRainWindow(StageSets.DubeolsikStandard, 1); // XAML·Window.Resources 파싱 확인(로드 전 생성만)
                 sb.AppendLine("AcidRainWindow 생성 OK");
                 game.Close();
             }
             catch (Exception ex) { sb.AppendLine("AcidRainWindow 생성 실패: " + ex.Message); }
 
-            // <260831> words.json은 이제 후보 경로가 둘(AppData 우선, exe 옆 폴백)이라 각각 보고하고,
-            // 실제 LoadStageList()가 몇 단계를 읽어 오는지도 함께 남긴다(0이면 16개 폴백을 타게 됨).
-            foreach (string wordsPath in AcidRainWindow.WordsJsonCandidatePaths())
-                sb.AppendLine($"게임 단어 파일 존재: {File.Exists(wordsPath)}  ({wordsPath})");
-            sb.AppendLine("게임 단어 단계 수(LoadStageList): " + AcidRainWindow.LoadStageList().Count);
+            // <260831> words.json은 후보 경로가 둘(AppData 우선, exe 옆 폴백)이라 각각 보고하고,
+            // 자판마다 오락 단계가 몇 개 만들어지는지도 함께 남긴다(<260927_4>).
+            foreach (string wordsPath in WordCatalog.CandidatePaths())
+                sb.AppendLine($"제시어 목록 파일 존재: {File.Exists(wordsPath)}  ({wordsPath})");
+            foreach (IStageSet set in StageSets.All)
+                sb.AppendLine($"{set.LayoutName} 오락 단계: " + string.Join(", ",
+                    GameStages.For(set).Select(g => $"{g.Id}(주{g.Main.Count}/드문{g.Rare.Count})")));
 
             sb.AppendLine();
             sb.AppendLine("OK");
             TryWrite(outPath, sb.ToString());
         }
 
-        // <260811_25> ContourHand.GetPosePts 가 실제로 만드는 윤곽을 FingerLayer 와 동일한 방식으로
-        // 그려 png 로 남긴다(윤곽선만, 키보드 배경 없음) + 좌표를 텍스트로 덤프해 인접 점 사이 거리
-        // 급증(뒤틀림 의심 구간)을 수치로도 확인한다.
-        private static void RunFingerDump(int row, int col, string outPngPath)
-        {
-            bool gotFinger = ContourHand.TryGetFinger(row, col, out bool isRight, out int finger);
-            ContourHand acting = isRight ? ContourHand.BuildLibrary(true) : ContourHand.BuildLibrary(false);
-            ContourHand other = isRight ? ContourHand.BuildLibrary(false) : ContourHand.BuildLibrary(true);
-
-            (ContourHand.Pt[] mainA, ContourHand.Pt[] thumbA) = acting.GetPosePts(row, col);
-            (ContourHand.Pt[] mainO, ContourHand.Pt[] thumbO) = other.GetPosePts(-1, -1);
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"key=({row},{col}) gotFinger={gotFinger} isRight={isRight} finger={finger}");
-            void DumpPts(string label, ContourHand.Pt[] pts)
-            {
-                sb.AppendLine($"{label} n={pts.Length}");
-                double maxStep = 0; int maxAt = -1;
-                for (int i = 0; i < pts.Length; i++)
-                {
-                    ContourHand.Pt p = pts[i], q = pts[(i + 1) % pts.Length];
-                    double step = Math.Sqrt(Math.Pow(q.X - p.X, 2) + Math.Pow(q.Y - p.Y, 2));
-                    if (step > maxStep) { maxStep = step; maxAt = i; }
-                    sb.AppendLine($"  {i}: {p.X:F1},{p.Y:F1}  (다음점까지 {step:F1})");
-                }
-                sb.AppendLine($"  최대 인접 거리: {maxStep:F1} (인덱스 {maxAt})");
-            }
-            DumpPts("acting.main", mainA);
-            DumpPts("acting.thumb", thumbA);
-            File.WriteAllText(outPngPath + ".txt", sb.ToString(), new UTF8Encoding(false));
-
-            var dv = new DrawingVisual();
-            using (DrawingContext dc = dv.RenderOpen())
-            {
-                var pen = new Pen(Brushes.DeepSkyBlue, 3);
-                void Draw(ContourHand.Pt[] pts)
-                {
-                    if (pts == null || pts.Length == 0) return;
-                    var fig = new PathFigure { StartPoint = new Point(pts[0].X, pts[0].Y), IsClosed = true };
-                    for (int i = 1; i < pts.Length; i++)
-                        fig.Segments.Add(new LineSegment(new Point(pts[i].X, pts[i].Y), true));
-                    dc.DrawGeometry(null, pen, new PathGeometry(new[] { fig }));
-                }
-                Draw(mainA); Draw(thumbA); Draw(mainO); Draw(thumbO);
-            }
-            var rtb = new RenderTargetBitmap(800, 300, 96, 96, PixelFormats.Pbgra32);
-            rtb.Render(dv);
-            var enc = new PngBitmapEncoder();
-            enc.Frames.Add(BitmapFrame.Create(rtb));
-            Directory.CreateDirectory(Path.GetDirectoryName(outPngPath));
-            using (FileStream fs = File.Create(outPngPath)) enc.Save(fs);
-        }
-
         // <260811_26>(2-1) FingerLayer 컨트롤을 실제로 생성해(생성자가 ShowHomePose()·ApplySettings()
-        // 를 그대로 호출) 777x260 로 레이아웃한 뒤 png 로 굽는다. RunFingerDump 처럼 좌표를 손으로
-        // 다시 그리는 게 아니라 FingerLayer.xaml 의 Path 요소를 그대로 렌더링하므로, hands\*.svg
-        // 이식이 실제 화면과 100% 같은 경로로 반영되는지 확인할 수 있다.
+        // 를 그대로 호출) 777x260 로 레이아웃한 뒤 png 로 굽는다. FingerLayer.xaml 의 Path 요소를
+        // 그대로 렌더링하므로, hands\*.svg 이식이 실제 화면과 100% 같은 경로로 반영되는지 확인할 수 있다.
         /// <summary>
         /// <260811_31-2> 모든 키(기본/윗글쇠)에 SetPose 를 적용하고, 손가락 레이어가 실제로 읽은
         /// hands\ 파일 이름을 표로 남긴다. 형식: "행-열 base|shift left=… right=…"
@@ -506,7 +527,7 @@ namespace OpenTyping
 
             sb.AppendLine($"현재 자판=\"{OpenTyping.MainWindow.CurrentKeyLayout?.Name}\" " +
                           $"단계 자판=\"{KeyPracticeMenu.StageLayoutName}\" " +
-                          $"단계 수={DubeolsikStages.Stages.Count}");
+                          $"단계 수={StageSets.DubeolsikStandard.Stages.Count}");
 
             var keys = new List<KeyPos> { new KeyPos(2, 3), new KeyPos(2, 6) };
             var win = new KeyPracticeWindow(keys, false);
@@ -561,8 +582,8 @@ namespace OpenTyping
                     foreach ((string label, KeyPracticeWindow w) in new[]
                     {
                         ("클래식(그 외 자판)", win),
-                        ("1단계", new KeyPracticeWindow(DubeolsikStages.Stages[0])),
-                        ("2단계", new KeyPracticeWindow(DubeolsikStages.Stages[1])),
+                        ("1단계", new KeyPracticeWindow(StageSets.DubeolsikStandard, StageSets.DubeolsikStandard.Stages[0])),
+                        ("2단계", new KeyPracticeWindow(StageSets.DubeolsikStandard, StageSets.DubeolsikStandard.Stages[1])),
                     })
                     {
                         if (!ReferenceEquals(w, win))
@@ -728,11 +749,12 @@ namespace OpenTyping
             }
             sb.AppendLine("COMBINED-TAIL: " + (tailFail == 0 ? "PASS" : $"FAIL ({tailFail}건)"));
 
-            // 실제 13개 단계에서 어디부터 다시 재게 되는지(구성이 바뀌면 이 표도 따라 바뀐다)
+            // 실제 단계들에서 어디부터 다시 재게 되는지(구성이 바뀌면 이 표도 따라 바뀐다)
             var rng = new System.Random(1234);
-            for (int s = 1; s <= DubeolsikStages.Stages.Count; s++)
+            IReadOnlyList<PracticeStage> koStages = StageSets.DubeolsikStandard.Stages;
+            for (int s = 1; s <= koStages.Count; s++)
             {
-                List<PracticePrompt> prog = DubeolsikStages.Stages[s - 1].Generate(rng);
+                List<PracticePrompt> prog = koStages[s - 1].Generate(rng);
                 int start = KeyPracticeWindow.FindCombinedTailStart(prog);
                 sb.AppendLine($"    {s,2}단계: 전체 {prog.Count}개, 다시 재기 시작={(start < 0 ? "없음" : start + "번째")}" +
                               (start >= 0 ? $" (뒤 {prog.Count - start}개가 결합된 글자)" : ""));
@@ -742,16 +764,23 @@ namespace OpenTyping
             // 단계 수·오락 유무·목표 타수를 코드가 스스로 읽어 정하는지 보는 것이므로, 값을 손으로
             // 적어 두지 않고 실제 레지스트리·설정에서 가져온다.
             sb.AppendLine();
-            int last = DubeolsikStages.Stages.Count;
-            int target = StageRecords.PassThreshold;
-            sb.AppendLine($"마지막 단계={last} 목표 타수={target} " +
-                          $"오락 있는 단계={string.Join(",", ArcadeGames.Default?.StageIds ?? new int[0])}");
+            int last = koStages.Count;
+            sb.AppendLine($"마지막 단계={last} 목표 타수(단계별)={string.Join(",", koStages.Select(st => st.TargetTa))} " +
+                          $"오락 있는 단계={string.Join(",", ArcadeGames.Default?.StageIdsFor(StageSets.DubeolsikStandard) ?? new int[0])}");
 
-            foreach ((int n, string label) in new[] { (3, "(1) 중간·오락 있음"), (9, "(3) 중간·오락 없음"),
-                                                      (last, "(2)(3-2) 마지막") })
-                foreach (int tpm in new[] { target + 50, target - 1 })
+            // 검사할 단계도 단계 정의에서 고른다(단계 구성이 바뀌어도 검사가 깨지지 않게):
+            // 오락이 있는 첫 중간 단계, 오락이 없는 첫 중간 단계, 마지막 단계.
+            int withGame = Enumerable.Range(1, Math.Max(0, last - 1)).FirstOrDefault(n => koStages[n - 1].GameStageId > 0);
+            int noGame = Enumerable.Range(1, Math.Max(0, last - 1)).FirstOrDefault(n => koStages[n - 1].GameStageId == 0);
+            var finishCases = new List<(int, string)>();
+            if (withGame > 0) finishCases.Add((withGame, "(1) 중간·오락 있음"));
+            if (noGame > 0) finishCases.Add((noGame, "(3) 중간·오락 없음"));
+            finishCases.Add((last, "(2)(3-2) 마지막"));
+            foreach ((int n, string label) in finishCases)
+                foreach (int tpm in new[] { koStages[n - 1].TargetTa + 50, koStages[n - 1].TargetTa - 1 })
                 {
-                    int gameId = DubeolsikStages.Stages[n - 1].GameStageId;
+                    int target = koStages[n - 1].TargetTa;
+                    int gameId = koStages[n - 1].GameStageId;
                     var fw = new StageFinishWindow(n, last, tpm, gameId)
                     {
                         WindowStartupLocation = WindowStartupLocation.Manual,
@@ -766,7 +795,7 @@ namespace OpenTyping
                     sb.AppendLine($"    2줄: {(fw.UnlockText.Visibility == Visibility.Visible ? fw.UnlockText.Text : "(없음)")}");
                     sb.AppendLine($"    버튼: {fw.DescribeButtons()}");
                     sb.AppendLine($"    제목단추: 최소화={fw.ShowMinButton} 최대화={fw.ShowMaxRestoreButton} 끄기={fw.ShowCloseButton}");
-                    if (n == 3 && tpm > target)
+                    if (n == withGame && tpm > target)
                     {
                         try
                         {
@@ -783,12 +812,15 @@ namespace OpenTyping
 
             // <260812_19> 산성비 특수(파란) 단어가 '처치한 단어 수'로 나오는지 — 단계별 간격 표본
             sb.AppendLine();
-            var arcade = new AcidRainWindow(1);
-            var want = new Dictionary<int, (int Min, int Max)>
-            {
-                [1] = (24, 36), [2] = (19, 34), [3] = (17, 31), [4] = (15, 27), [5] = (13, 24),
-                [6] = (11, 21), [7] = (9, 19), [8] = (7, 16), [13] = (5, 13),
-            };
+            // <260927_4> 단계 구성이 자판마다 달라져, 간격은 '그 자판 오락 단계 중 몇 번째인가'로 고른다
+            // (마지막 '연습한 키 전체' 단계는 가장 잦은 값). 기대값도 단계 정의에서 계산한다.
+            IReadOnlyList<GameStage> koGames = GameStages.For(StageSets.DubeolsikStandard);
+            var arcade = new AcidRainWindow(StageSets.DubeolsikStandard, koGames.Count > 0 ? koGames[0].Id : 1);
+            var ranges = AcidRainWindow.SpecialCatchRanges;
+            var want = new Dictionary<int, (int Min, int Max)>();
+            for (int gi = 0; gi < koGames.Count; gi++)
+                want[koGames[gi].Id] = gi == koGames.Count - 1 ? ranges[ranges.Length - 1]
+                                                                : ranges[Math.Min(gi, ranges.Length - 1)];
             int gapFail = 0;
             foreach (KeyValuePair<int, (int Min, int Max)> kv in want)
             {
@@ -874,13 +906,25 @@ namespace OpenTyping
                               $"{(earthOk ? "PASS" : "FAIL")}");
                 if (!earthOk) fail++;
 
-                // 이벤트 중간(progress=0.5)의 알갱이 크기가 예전(7.5px)의 5배(37.5px)인지.
+                // <260812_28.1.1.2> 이벤트 중간(progress=0.5, 2.4초 중 1.2초)의 불꽃 그림 크기·프레임 번호가
+                // 정한 공식대로인지. 크기는 커지는 속도를 높이려고 progress 의 제곱근을 쓰므로
+                // 16 + sqrt(0.5)*(90-16) ≈ 68.3px. 프레임은 진행도 그대로라 기존과 같이 30.
                 arcade.EarthFireworkFrameForTest(1.2);
-                double midSparkSize = arcade.EarthMaxSparkSizeForTest();
-                bool sparkSizeOk = Math.Abs(midSparkSize - 37.5) < 0.5;
-                sb.AppendLine($"큰 불꽃 중간 크기: {midSparkSize:F1}px (목표 37.5px = 예전 7.5px×5) " +
-                              $"{(sparkSizeOk ? "PASS" : "FAIL")}");
-                if (!sparkSizeOk) fail++;
+                double midImageSize = arcade.EarthFireImageSizeForTest;
+                int midFrame = arcade.EarthFireFrameIndexForTest;
+                bool imageOk = Math.Abs(midImageSize - 68.3) < 0.5 && midFrame == 30 && midFrame % 2 == 0;
+                sb.AppendLine($"큰 불꽃 중간 그림: 크기 {midImageSize:F1}px (목표 68.3px) 프레임 {midFrame}(목표 30) " +
+                              $"{(imageOk ? "PASS" : "FAIL")}");
+                if (!imageOk) fail++;
+
+                // 한 이벤트 동안 쓰는 프레임이 모두 짝수 번째(한 장씩 건너뜀)이고 31가지인지.
+                var usedFrames = new HashSet<int>();
+                arcade.EarthFireworkFrameForTest(0);
+                for (int f = 0; f < 80; f++) { arcade.EarthFireworkStepForTest(1.0 / 30); usedFrames.Add(arcade.EarthFireFrameIndexForTest); }
+                bool framesOk = usedFrames.All(x => x % 2 == 0 && x <= 60) && usedFrames.Contains(0) && usedFrames.Contains(60);
+                sb.AppendLine($"큰 불꽃 프레임: 쓴 프레임 {usedFrames.Count}가지(모두 짝수={usedFrames.All(x => x % 2 == 0)}, 0·60 포함) " +
+                              $"{(framesOk ? "PASS" : "FAIL")}");
+                if (!framesOk) fail++;
 
                 // 큰 불꽃이 퍼지는 모습을 세 시점으로 남긴다(궤적·원운동을 눈으로 보기 위함).
                 try
@@ -1026,7 +1070,7 @@ namespace OpenTyping
 
             // <260812_10> 치트 단계 고르기 창: 목록이 단계 정의를 그대로 따라가는지
             sb.AppendLine();
-            var cw = new CheatStageWindow(DubeolsikStages.Stages)
+            var cw = new CheatStageWindow(StageSets.Current.Stages)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -20000,
@@ -1076,10 +1120,10 @@ namespace OpenTyping
                           $"{(effectsMatch ? "일치" : "어긋남")}");
             if (!effectsMatch) fail++;
 
-            bool cwOk = cwItems.Count == DubeolsikStages.Stages.Count + 2
+            bool cwOk = cwItems.Count == StageSets.Current.Stages.Count + 2
                         && (string)cwItems[0].Content == "원래대로"
                         && (string)cwItems[1].Content == "1단계도 통과 못함";
-            sb.AppendLine($"치트 창: 항목 {cwItems.Count}개 (단계 {DubeolsikStages.Stages.Count} + 2), " +
+            sb.AppendLine($"치트 창: 항목 {cwItems.Count}개 (단계 {StageSets.Current.Stages.Count} + 2), " +
                           $"첫=\"{cwItems[0].Content}\" 둘=\"{cwItems[1].Content}\" 끝=\"{cwItems[cwItems.Count - 1].Content}\"");
             sb.AppendLine("CHEAT-WINDOW: " + (cwOk ? "PASS" : "FAIL"));
             if (!cwOk) fail++;
@@ -1109,9 +1153,9 @@ namespace OpenTyping
         /// </summary>
         private static void RunCheatTest(string outPath)
         {
-            string recPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "OTP", "OpenTypingPlus", "stage_records.json");
+            // <260927_3>(0.5.1) 기록 파일은 자판마다 따로다. 이 검사는 지금 자판(자판을 읽기 전이면 한글)의 것을 쓴다.
+            string recPath = Path.Combine(StageRecords.RecordsDirectory,
+                                          "stage_records_" + StageSets.Current.Key + ".json");
             string backup = File.Exists(recPath) ? File.ReadAllText(recPath) : null;
 
             var sb = new StringBuilder();
@@ -1131,10 +1175,16 @@ namespace OpenTyping
                 sb.AppendLine($"3단계까지 : 통과3={p3} 통과4={p4} 타일4={t4} 타일5={t5} 오락3={g3} 오락4={g4}");
                 if (noRecords) ok &= p3 && !p4 && t4 && !t5 && g3 && !g4;
 
+                // <2600919_4> 치트 켜짐 = 하늘색(Light.Cyan) 테마.
+                string cheatThemeName = ThemeManager.Current.DetectTheme(Current)?.Name;
+                bool cheatThemeOk = cheatThemeName == "Light.Cyan";
+                sb.AppendLine($"치트 켜짐 테마 : {cheatThemeName} (기대 Light.Cyan) {(cheatThemeOk ? "PASS" : "FAIL")}");
+                ok &= cheatThemeOk;
+
                 // <260812_10-> 이미 통과한 단계보다 낮게 지정하면 그만큼 도로 잠겨야 한다.
                 // 실제 기록으로 2단계를 통과시켜 놓고 '1단계까지'로 낮춘다.
                 StageRecords.SetCheatUpTo(null);
-                StageRecords.Record(2, StageRecords.PassThreshold);
+                StageRecords.Record(2, StageRecords.TargetTa(2));
                 bool byRecord = StageRecords.IsPassed(2) && StageRecords.IsPracticeStageActive(3);
                 StageRecords.SetCheatUpTo(1);
                 bool lowered = !StageRecords.IsPassed(2) && !StageRecords.IsPracticeStageActive(3)
@@ -1160,6 +1210,12 @@ namespace OpenTyping
                               $"타일1={StageRecords.IsPracticeStageActive(1)} 타일3={StageRecords.IsPracticeStageActive(3)}");
                 ok &= StageRecords.IsPracticeStageActive(1) && !StageRecords.CheatOn;
 
+                // <2600919_4> 치트 꺼짐 = 원래 테마(Light.Cobalt)로 복귀.
+                string normalThemeName = ThemeManager.Current.DetectTheme(Current)?.Name;
+                bool normalThemeOk = normalThemeName == "Light.Cobalt";
+                sb.AppendLine($"원래대로 테마 : {normalThemeName} (기대 Light.Cobalt) {(normalThemeOk ? "PASS" : "FAIL")}");
+                ok &= normalThemeOk;
+
                 sb.AppendLine("CHEAT: " + (ok ? "PASS" : "FAIL"));
             }
             finally
@@ -1167,7 +1223,7 @@ namespace OpenTyping
                 // 어떤 경우에도 사용자의 원래 기록 파일을 되돌린다.
                 try
                 {
-                    if (backup != null) File.WriteAllText(recPath, backup);
+                    if (backup != null) AtomicFile.WriteText(recPath, backup);
                     else if (File.Exists(recPath)) File.Delete(recPath);
                 }
                 catch { /* 무시 */ }
@@ -1185,9 +1241,9 @@ namespace OpenTyping
         {
             Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            string recPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "OTP", "OpenTypingPlus", "stage_records.json");
+            // <260927_3>(0.5.1) 기록 파일은 자판마다 따로다. 이 검사는 지금 자판(자판을 읽기 전이면 한글)의 것을 쓴다.
+            string recPath = Path.Combine(StageRecords.RecordsDirectory,
+                                          "stage_records_" + StageSets.Current.Key + ".json");
             string backup = File.Exists(recPath) ? File.ReadAllText(recPath) : null;
 
             var sb = new StringBuilder();
@@ -1261,7 +1317,7 @@ namespace OpenTyping
                 // 8. 치트 창: 단계 콤보를 안 건드리고 '확인'만 눌러도 원래 값(옛 '전부 열기')이
                 //    지금 단계 수로 조용히 줄어들지 않고 그대로 보존되는지.
                 StageRecords.SetCheatUpTo(int.MaxValue);
-                var csw = new CheatStageWindow(DubeolsikStages.Stages)
+                var csw = new CheatStageWindow(StageSets.Current.Stages)
                 {
                     WindowStartupLocation = WindowStartupLocation.Manual,
                     Left = -20000, Top = -20000, ShowActivated = false
@@ -1277,8 +1333,8 @@ namespace OpenTyping
                 // 9. 완료 창: 이번 판 타수는 목표 미달이어도, 실제로(치트로) 이미 통과된 단계면
                 //    '아직 활성화되지 않음'이 아니라 '활성화되었습니다'로 보이는지.
                 StageRecords.SetCheatUpTo(5); // 1~5단계를 통과 처리
-                int gameId3 = DubeolsikStages.Stages[2].GameStageId;
-                var fw2 = new StageFinishWindow(3, DubeolsikStages.Stages.Count, StageRecords.PassThreshold - 1, gameId3)
+                int gameId3 = StageSets.Current.Stages[2].GameStageId;
+                var fw2 = new StageFinishWindow(3, StageSets.Current.Stages.Count, StageRecords.TargetTa(3) - 1, gameId3)
                 {
                     WindowStartupLocation = WindowStartupLocation.Manual,
                     Left = -20000, Top = -20000, ShowActivated = false
@@ -1294,7 +1350,7 @@ namespace OpenTyping
 
                 // 10. 산성비: 평소(치트 아님) 무작위 뽑기에는 '지구 환경을 지켜라'가 안 나오는지,
                 //     치트 효과 선택을 바꾸면 이미 채워 둔 주머니 대신 곧바로 새 선택이 반영되는지.
-                var arcade2 = new AcidRainWindow(1);
+                var arcade2 = new AcidRainWindow(StageSets.DubeolsikStandard, 1);
                 bool earthExcluded = arcade2.NormalEventNeverEarthForTest();
                 sb.AppendLine($"평소 무작위 뽑기에 지구 효과 제외={earthExcluded} {(earthExcluded ? "PASS" : "FAIL")}");
                 if (!earthExcluded) fail++;
@@ -1345,12 +1401,26 @@ namespace OpenTyping
                     sb.AppendLine($"자판 통계 AppData 저장·병합: 저장={saveOk} 통계복원={statsRoundTrip} " +
                                   $"연습키복원={defaultKeysRoundTrip} 다른자판보존={otherPreserved} {(storeOk ? "PASS" : "FAIL")}");
                     if (!storeOk) fail++;
+
+                    // 11-1. 파일에 "자판 이름": null 로 적힌 항목이 있어도 시작 도중 예외로 앱이 안 뜨는 일이
+                    //       없는지(그 자판은 저장된 것이 없는 것으로 친다).
+                    File.WriteAllText(layoutDataPath, "{\"" + targetName + "\": null}");
+                    bool nullEntryOk;
+                    try
+                    {
+                        var withNull = new KeyLayout(targetName, "한글", null, new List<KeyPos>());
+                        KeyLayoutUserDataStore.ApplyTo(withNull);
+                        nullEntryOk = withNull.Stats != null;
+                    }
+                    catch (Exception) { nullEntryOk = false; }
+                    sb.AppendLine($"자판 통계 파일의 null 항목에도 시작 가능={nullEntryOk} {(nullEntryOk ? "PASS" : "FAIL")}");
+                    if (!nullEntryOk) fail++;
                 }
                 finally
                 {
                     try
                     {
-                        if (layoutDataBackup != null) File.WriteAllText(layoutDataPath, layoutDataBackup);
+                        if (layoutDataBackup != null) AtomicFile.WriteText(layoutDataPath, layoutDataBackup);
                         else if (File.Exists(layoutDataPath)) File.Delete(layoutDataPath);
                     }
                     catch { /* 무시 */ }
@@ -1367,6 +1437,28 @@ namespace OpenTyping
                 sb.AppendLine($"빈 연습 데이터 폴더 오류 메시지에 실제 경로 포함={practicePathInMsg} {(practicePathInMsg ? "PASS" : "FAIL")}");
                 if (!practicePathInMsg) fail++;
 
+                // 13. 단어 목록이 자모를 풀어 쓴 형식(NFD)으로 저장돼 있어도 완성형으로 맞춰 읽는지.
+                string nfd = "나라".Normalize(System.Text.NormalizationForm.FormD);
+                WordCatalog.UseJsonForTest("{\"hangul\":{\"stages\":[{\"stage\":1,\"levels\":[{\"level\":1,\"words\":[\"" + nfd + "\"]}]}]}}");
+                IReadOnlyList<string> nfcWords = WordCatalog.RawLevelWords(WordCatalog.Hangul, 1, 1);
+                WordCatalog.UseJsonForTest(null);
+                bool nfcOk = nfcWords.Count == 1 && nfcWords[0] == "나라";
+                sb.AppendLine($"NFD 단어 → 완성형으로 읽기={nfcOk} {(nfcOk ? "PASS" : "FAIL")}");
+                if (!nfcOk) fail++;
+
+                // 14. 원자적 쓰기가 교체에 실패해도 .tmp 파일을 남기지 않는지(대상 경로가 폴더라 교체 불가).
+                string atomicDir = Path.Combine(Path.GetTempPath(), "otp_edgetest_atomic_" + Guid.NewGuid().ToString("N"));
+                string blocked = Path.Combine(atomicDir, "target.json");
+                Directory.CreateDirectory(blocked);   // 같은 이름의 폴더가 있어 파일로 옮길 수 없다
+                bool atomicThrew = false;
+                try { AtomicFile.WriteText(blocked, "{}"); }
+                catch (Exception) { atomicThrew = true; }
+                bool noLeftover = Directory.GetFiles(atomicDir, "*.tmp").Length == 0;
+                try { Directory.Delete(atomicDir, true); } catch { /* 무시 */ }
+                bool atomicOk = atomicThrew && noLeftover;
+                sb.AppendLine($"원자적 쓰기 실패 시 .tmp 남지 않음: 예외={atomicThrew} 남은tmp없음={noLeftover} {(atomicOk ? "PASS" : "FAIL")}");
+                if (!atomicOk) fail++;
+
                 sb.AppendLine();
                 sb.AppendLine("EDGETEST: " + (fail == 0 ? "PASS" : $"FAIL ({fail}건)"));
             }
@@ -1378,7 +1470,7 @@ namespace OpenTyping
             {
                 try
                 {
-                    if (backup != null) File.WriteAllText(recPath, backup);
+                    if (backup != null) AtomicFile.WriteText(recPath, backup);
                     else if (File.Exists(recPath)) File.Delete(recPath);
                 }
                 catch { /* 무시 */ }
@@ -1460,7 +1552,7 @@ namespace OpenTyping
             Current.MainWindow = main;
             main.Show();
 
-            var win = new KeyPracticeWindow(DubeolsikStages.Stages[0])
+            var win = new KeyPracticeWindow(StageSets.DubeolsikStandard, StageSets.DubeolsikStandard.Stages[0])
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -20000,
@@ -1571,6 +1663,289 @@ namespace OpenTyping
                 Directory.CreateDirectory(Path.GetDirectoryName(outPath));
                 File.WriteAllText(outPath, sb.ToString(), Encoding.UTF8);
                 Environment.Exit(0);
+            };
+            timer.Start();
+        }
+
+        /// <summary>
+        /// 자판 파일에서 만든 '글자 → 키 입력' 규칙 검사. 두벌식·QWERTY는 예전 코드 표(HangulJamo)와 모든
+        /// 음절·글자에서 같아야 하고, 세벌식 390·Dvorak은 대표 사례가 자판 파일의 실제 키 자리와 맞아야 한다.
+        /// 끝으로 세벌식에 임시 단계 정의("from": "all")를 붙여 단계 생성까지 되는지 본다.
+        /// </summary>
+        private static void RunLayoutTest(string outPath)
+        {
+            var sb = new StringBuilder();
+            int fail = 0;
+            string S(List<HangulJamo.Stroke> ss) =>
+                string.Join(" ", ss.Select(k => $"({k.Pos.Row},{k.Pos.Column}{(k.IsShift ? "S" : "")})"));
+            bool Same(List<HangulJamo.Stroke> a, List<HangulJamo.Stroke> b) =>
+                a.Count == b.Count && a.Zip(b, (x, y) => x.Pos.Row == y.Pos.Row && x.Pos.Column == y.Pos.Column
+                                                          && x.IsShift == y.IsShift).All(v => v);
+
+            // 1) 두벌식 표준 한글: 모든 음절 + 낱자·숫자·기호가 예전 표와 같은가
+            KeyboardMap ko = KeyboardMaps.For("두벌식 표준 한글");
+            int koDiff = 0;
+            var koChars = Enumerable.Range(0xAC00, 11172).Select(c => (char)c)
+                .Concat("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅛㅜㅠㅡㅣ1234567890!@#$%^&*()-_=+;:,<.>/?'\"[]{}`~");
+            foreach (char ch in koChars)
+                if (!Same(ko.DecomposeChar(ch), HangulJamo.DecomposeChar(ch))) { if (koDiff++ < 5) sb.AppendLine($"  다름: {ch}"); }
+            // 입력 진행 표시: 한글 제시어 목록의 모든 단어를 0타부터 끝까지 올려 가며 예전 방식과 견준다.
+            int typedDiff = 0, typedChecked = 0;
+            foreach (string w in WordCatalog.AllWords(WordCatalog.Hangul).Concat(new[] { "닭갈비", "왜냐하면", "읽었다" }))
+            {
+                int total = HangulJamo.Decompose(w).Count;
+                for (int k = 0; k <= total; k++)
+                {
+                    typedChecked++;
+                    if (ko.TypedPrefix(w, k) != HangulJamo.TypedPrefix(w, k) && typedDiff++ < 5)
+                        sb.AppendLine($"  입력 진행 다름: {w} {k}타 → {ko.TypedPrefix(w, k)} (예전 {HangulJamo.TypedPrefix(w, k)})");
+                }
+            }
+            sb.AppendLine($"두벌식: 예전 표와 다른 글자 {koDiff}개, 입력 진행 {typedChecked:N0}건 중 다른 것 {typedDiff}건");
+            if (koDiff > 0 || typedDiff > 0) fail++;
+
+            // 2) QWERTY 영문: 영문 글자·숫자·기호가 예전 표와 같은가
+            KeyboardMap en = KeyboardMaps.For("QWERTY 영문");
+            int enDiff = 0;
+            foreach (char ch in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()-_=+;:,<.>/?'\"")
+                if (!Same(en.DecomposeChar(ch), HangulJamo.DecomposeChar(ch))) enDiff++;
+            bool enCase = en.HasCaseLetters && en.IsCaseLetterKey(new KeyPos(2, 0)) && !en.IsCaseLetterKey(new KeyPos(2, 9))
+                          && !en.CanTypeHangul && en.AlphabetOf(en.DecomposeChar('D')[0]) == "d";
+            sb.AppendLine($"QWERTY: 예전 표와 다른 글자 {enDiff}개, 대소문자 키 판정={enCase}");
+            if (enDiff > 0 || !enCase) fail++;
+
+            // 2-1) 자판 파일을 못 찾을 때의 내장 예비 규칙이 자판 파일로 만든 규칙과 같은가
+            KeyboardMap koFb = KeyboardMap.BuiltInFallback("두벌식 표준 한글");
+            KeyboardMap enFb = KeyboardMap.BuiltInFallback("QWERTY 영문");
+            int fbDiff = koChars.Count(ch => !Same(koFb.DecomposeChar(ch), ko.DecomposeChar(ch)))
+                         + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ;:,<.>/?".Count(ch => !Same(enFb.DecomposeChar(ch), en.DecomposeChar(ch)));
+            bool fbFlags = !koFb.HasCaseLetters && koFb.CanTypeHangul && enFb.HasCaseLetters && !enFb.CanTypeHangul;
+            sb.AppendLine($"내장 예비 규칙: 자판 파일 규칙과 다른 글자 {fbDiff}개, 한글/대소문자 판정={fbFlags}");
+            if (fbDiff > 0 || !fbFlags) fail++;
+
+            // 3) 세벌식 390: 자판 파일의 실제 자리와 대조
+            KeyboardMap s390 = KeyboardMaps.For("세벌식 390 한글");
+            var cases390 = new (string Text, string Want)[]
+            {
+                ("각", "(2,7) (2,3) (3,1)"),              // 초성 ㄱ, ㅏ, 받침 ㄱ
+                ("까", "(2,7) (2,7) (2,3)"),              // 쌍초성은 같은 키 두 번
+                ("와", "(2,6) (3,9) (2,3)"),              // 겹모음: ㅗ(이중 모음) + ㅏ
+                ("닭", "(1,6) (2,3) (2,2S)"),             // 겹받침 키 ㄺ(받침)
+                ("넋", "(2,5) (1,4) (3,1) (1,0)"),        // 없는 겹받침 ㄳ = ㄱ(받침) + ㅅ(받침)
+                ("의", "(2,6) (0,8)"),                    // ㅢ 키(0행 8번째 칸)
+                ("있", "(2,6) (2,2) (0,2)"),              // ㅆ(받침) 키
+            };
+            foreach ((string text, string want) in cases390)
+            {
+                string got = S(s390.Decompose(text));
+                bool ok = got == want;
+                if (!ok) fail++;
+                sb.AppendLine($"{(ok ? "OK  " : "NG  ")}세벌식 \"{text}\": {got} (기대 {want})");
+            }
+            string typed390 = string.Join("/", Enumerable.Range(0, 4).Select(k => s390.TypedPrefix("까", k)))
+                              + " | " + string.Join("/", Enumerable.Range(0, 4).Select(k => s390.TypedPrefix("와", k)));
+            bool typed390Ok = typed390 == "/ㄱ/ㄲ/까 | /ㅇ/오/와";
+            if (!typed390Ok) fail++;
+            sb.AppendLine($"{(typed390Ok ? "OK  " : "NG  ")}세벌식 입력 진행: {typed390}");
+            string a390 = string.Join(",", s390.AlphabetsOf("각").OrderBy(x => x, StringComparer.Ordinal));
+            bool alphaOk = a390 == "ㄱ,ㄱ (받침),ㅏ";
+            if (!alphaOk) fail++;
+            sb.AppendLine($"{(alphaOk ? "OK  " : "NG  ")}세벌식 \"각\"의 알파벳: {a390}");
+
+            // 4) Dvorak 영문
+            KeyboardMap dv = KeyboardMaps.For("Dvorak 영문");
+            string dvGot = S(dv.Decompose("Hello"));
+            bool dvOk = dvGot == "(2,6S) (2,2) (1,9) (1,9) (2,1)" && dv.HasCaseLetters && !dv.CanTypeHangul;
+            if (!dvOk) fail++;
+            sb.AppendLine($"{(dvOk ? "OK  " : "NG  ")}Dvorak \"Hello\": {dvGot}");
+
+            // 5) 세벌식에 임시 단계 정의를 붙여 본다(기존 한글 단어 목록을 "from": "all" 로 재사용)
+            string json = @"{ ""stages"": [ {
+                ""name"": ""시험 단계"", ""game"": 1, ""target_ta"": 200, ""targets"": [""ㅇ"", ""ㅏ"", ""ㄴ (받침)""],
+                ""words"": { ""from"": ""all"", ""required"": [""ㅏ""],
+                  ""levels"": [ { ""parts"": [[""기본"", [""ㅇ"", ""ㄴ"", ""ㅁ"", ""ㅏ"", ""ㅣ"", ""ㅓ"", ""ㄴ (받침)"", ""ㅇ (받침)"", ""ㅁ (받침)""]]] },
+                                { ""parts"": [[""추가"", [""ㄱ"", ""ㄷ"", ""ㄹ"", ""ㄹ (받침)""]]] } ] },
+                ""rounds"": [ { ""kind"": ""sequential"", ""keys"": [""ㅇ"", ""ㅏ"", ""ㄴ (받침)""] },
+                              { ""kind"": ""syllables"", ""count"": 5, ""no_repeat"": true },
+                              { ""kind"": ""words"", ""level"": 2, ""count"": 5, ""no_repeat"": true } ] } ] }";
+            List<PracticeStage> trial = StageDefinitionLoader.Parse(json, WordCatalog.Hangul, s390);
+            PracticeStage t0 = trial.FirstOrDefault();
+            List<PracticePrompt> prog = t0?.Generate(new Random(7)) ?? new List<PracticePrompt>();
+            bool typable = prog.All(p => !p.IsText || s390.Decompose(p.Text).Count > 0);
+            bool trialOk = t0 != null && t0.Words.Singles.Count > 0 && t0.Words.UpTo(2).Count > 0 && prog.Count == 13 && typable;
+            if (!trialOk) fail++;
+            sb.AppendLine($"{(trialOk ? "OK  " : "NG  ")}세벌식 임시 단계: 한 음절 {t0?.Words.Singles.Count}개, 1수준 단어 {t0?.Words.Unique(1).Count}개 " +
+                          $"(예: {string.Join(" ", t0?.Words.Unique(1).Take(8) ?? new string[0])}), 2고유 {t0?.Words.Unique(2).Count}개, " +
+                          $"제시어 {prog.Count}개: {string.Join(" ", prog.Select(p => p.IsText ? p.Text : "[" + p.Key.Row + "," + p.Key.Column + "]"))}");
+
+            sb.AppendLine("LAYOUT: " + (fail == 0 ? "PASS" : $"FAIL ({fail}건)"));
+            TryWrite(outPath, sb.ToString());
+        }
+
+        private static void SavePng(FrameworkElement el, string path)
+        {
+            try
+            {
+                el.UpdateLayout();
+                var rtb = new RenderTargetBitmap((int)Math.Ceiling(el.ActualWidth), (int)Math.Ceiling(el.ActualHeight),
+                                                 96, 96, PixelFormats.Pbgra32);
+                rtb.Render(el);
+                var enc = new PngBitmapEncoder();
+                enc.Frames.Add(BitmapFrame.Create(rtb));
+                using (FileStream fs = File.Create(path)) enc.Save(fs);
+            }
+            catch { /* 그림은 참고용 */ }
+        }
+
+        /// <summary>
+        /// <260927_5>·<260927_6> 한글·영문 자리연습 화면의 타일 배치를 그림으로 남기고,
+        /// <260927_3>(2) 영문 단계 창에서 Caps Lock이 켜지면 글자 키가 오답이 되고 경고 문구·[Caps Lock]
+        /// 깜빡임이 나타났다가, 끄면 곧바로 사라지는지 실제 키 입력으로 확인한다.
+        /// </summary>
+        private static void RunEnglishTest(string outPath)
+        {
+            var sb = new StringBuilder();
+            string dir = Path.GetDirectoryName(outPath);
+            Directory.CreateDirectory(dir);
+            var main = new MainWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000 };
+            Current.MainWindow = main;
+            main.Show();
+            // 메인 창이 설정의 자판을 다 읽은 뒤에 시작한다 — 안 그러면 뒤늦게 읽힌 설정 자판이 아래에서
+            // 검사용으로 바꿔 둔 자판을 덮어쓴다.
+            main.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(() =>
+                {
+                    try { RunEnglishTestBody(main, sb, dir, outPath); }
+                    catch (Exception ex) { TryWrite(outPath, sb + "\nEXCEPTION: " + ex); Environment.Exit(0); }
+                }));
+        }
+
+        private static void RunEnglishTestBody(MainWindow main, StringBuilder sb, string dir, string outPath)
+        {
+            KeyLayout original = OpenTyping.MainWindow.CurrentKeyLayout;
+
+            // 단계 묶음의 자판 이름과 같은 이름의 자판 파일(layouts\*.json)을 찾는다.
+            KeyLayout LayoutFor(IStageSet s)
+            {
+                foreach (string f in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "layouts"), "*.json"))
+                {
+                    try
+                    {
+                        KeyLayout k = KeyLayout.Parse(File.ReadAllText(f));
+                        if (k.Name == s.LayoutName) return k;
+                    }
+                    catch { /* 다른 파일 */ }
+                }
+                return null;
+            }
+
+            // ── 자리연습 화면 타일 ──
+            foreach (IStageSet set in StageSets.All)
+            {
+                KeyLayout kl = LayoutFor(set);
+                if (kl == null) { sb.AppendLine($"{set.LayoutName}: 자판 파일 없음"); continue; }
+                OpenTyping.MainWindow.SetCurrentKeyLayoutForTest(kl);
+                var menu = new KeyPracticeMenu();
+                var host = new Window
+                {
+                    Content = menu, Width = 900, Height = 520, ShowActivated = false,
+                    WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000,
+                };
+                host.Show();
+                host.UpdateLayout();
+                var rows = menu.StageTilePanel.Children.OfType<System.Windows.Controls.StackPanel>().ToList();
+                sb.AppendLine($"{set.LayoutName}: 타일 행 {rows.Count}개, 행별 타일 수 = " +
+                              string.Join("/", rows.Select(r => r.Children.Count)) +
+                              $", 오락 드롭다운 항목 = " + string.Join(" | ",
+                                  menu.GameStageCombo.Items.OfType<System.Windows.Controls.ComboBoxItem>()
+                                      .Skip(1).Select(i => i.Content)));
+                SavePng(menu, Path.Combine(dir, "tiles_" + set.Key + ".png"));
+                host.Close();
+            }
+
+            // ── 영문 단계 창 ──
+            OpenTyping.MainWindow.SetCurrentKeyLayoutForTest(LayoutFor(StageSets.QwertyEnglish));
+            KeyPracticeWindow.CapsLockOverrideForTest = false;
+            var win = new KeyPracticeWindow(StageSets.QwertyEnglish, StageSets.QwertyEnglish.Stages[0])
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000,
+            };
+            win.Show();
+
+            void Press(System.Windows.Input.Key key)
+            {
+                var args = new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+                    PresentationSource.FromVisual(win), 0, key) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
+                win.RaiseEvent(args);
+            }
+            System.Windows.Input.Key KeyFor(KeyPos pos)
+            {
+                foreach (System.Windows.Input.Key k in Enum.GetValues(typeof(System.Windows.Input.Key)))
+                {
+                    KeyPos p = null;
+                    try { p = KeyPos.FromKeyCode(k); } catch { }
+                    if (p != null && p.Row == pos.Row && p.Column == pos.Column) return k;
+                }
+                return System.Windows.Input.Key.None;
+            }
+            string Notice() => win.NoticeText.Visibility == Visibility.Visible ? "\"" + win.NoticeText.Text + "\"" : "(없음)";
+
+            bool ok = true;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            int phase = 0;
+            timer.Tick += (s, e) =>
+            {
+                try
+                {
+                    if (phase == 0)
+                    {
+                        sb.AppendLine($"영문 1단계 안내: \"{win.IndexGuideText.Text}\" 제시어=\"{win.CurrentKey?.KeyData}\"");
+                        ok &= win.IndexGuideText.Text == (StageSets.QwertyEnglish.IndexGuide ?? win.IndexGuideText.Text);
+                        // Caps Lock 켬 → 제시된 글자를 맞게 눌러도 오답
+                        KeyPracticeWindow.CapsLockOverrideForTest = true;
+                        timer.Interval = TimeSpan.FromSeconds(0.6);   // 감시 타이머(150ms)가 알아차릴 시간
+                        phase = 1;
+                        return;
+                    }
+                    if (phase == 1)
+                    {
+                        string warn = Notice();
+                        bool blink = win.CapsLockBlinkingForTest;
+                        int wrongBefore = win.IncorrectCount;
+                        Press(KeyFor(win.ExpectedPos));
+                        bool countedWrong = win.IncorrectCount == wrongBefore + 1;
+                        sb.AppendLine($"Caps Lock 켬: 문구={warn} 깜빡임={blink} 맞는 자리 눌러도 오답={countedWrong} 문구(누른 뒤)={Notice()}");
+                        ok &= warn == "\"" + KeyPracticeWindow.CapsLockWarning + "\"" && blink && countedWrong
+                              && Notice() == "\"" + KeyPracticeWindow.CapsLockWarning + "\"";
+                        SavePng(win, Path.Combine(dir, "english_capslock.png"));
+                        KeyPracticeWindow.CapsLockOverrideForTest = false;
+                        phase = 2;
+                        return;
+                    }
+                    if (phase == 2)
+                    {
+                        string after = Notice();
+                        bool blink = win.CapsLockBlinkingForTest;
+                        int correctBefore = win.CorrectCount;
+                        Press(KeyFor(win.ExpectedPos));
+                        bool countedRight = win.CorrectCount == correctBefore + 1;
+                        sb.AppendLine($"Caps Lock 끔: 문구={after} 깜빡임={blink} 맞는 자리=정답={countedRight}");
+                        ok &= after == "(없음)" && !blink && countedRight;
+                        SavePng(win, Path.Combine(dir, "english_stage1.png"));
+                        timer.Stop();
+                        sb.AppendLine("ENGLISH-CAPS: " + (ok ? "PASS" : "FAIL"));
+                        KeyPracticeWindow.CapsLockOverrideForTest = null;
+                        OpenTyping.MainWindow.SetCurrentKeyLayoutForTest(original);
+                        File.WriteAllText(outPath, sb.ToString(), Encoding.UTF8);
+                        Environment.Exit(0);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine("ERR " + ex);
+                    File.WriteAllText(outPath, sb.ToString(), Encoding.UTF8);
+                    Environment.Exit(0);
+                }
             };
             timer.Start();
         }

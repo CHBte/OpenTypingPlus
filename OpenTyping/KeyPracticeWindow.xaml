@@ -126,10 +126,13 @@
         <DockPanel Grid.Row="2"
                    Margin="20 0 20 10"
                    LastChildFill="False">
-            <!-- 손가락 레이어 설정을 여는 버튼 ('→ 연습 시작' 버튼 디자인 재사용) -->
+            <!-- 손가락 레이어 설정을 여는 버튼 ('→ 연습 시작' 버튼 디자인 재사용).
+                 포커스를 받지 않게 한다: 클릭 뒤 포커스가 남으면 연습 중 [Space]·[Enter]가 이 버튼을
+                 다시 눌러 설정 창이 열린다. 마우스 클릭은 그대로 된다. -->
             <Button x:Name="HandButton"
                     DockPanel.Dock="Right"
                     VerticalAlignment="Center"
+                    Focusable="False"
                     Click="HandButton_Click">
                 <StackPanel Orientation="Horizontal">
                     <Rectangle Width="16"
@@ -298,7 +301,8 @@
                         BorderThickness="1.5"
                         Padding="6 4 6 4"
                         Visibility="Collapsed">
-                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                    <TextBlock x:Name="IndexGuideText"
+                               Style="{StaticResource NormalTextBlock}"
                                Text="검지를 [ㄹ]과 [ㅓ] 위에 댑니다."
                                FontFamily="{StaticResource NanumGothic}"
                                FontWeight="Bold"

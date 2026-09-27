@@ -19,40 +19,47 @@
         <StackPanel Grid.Row="0"
                     Orientation="Vertical"
                     Margin="6 5 0 5">
-            <StackPanel Orientation="Vertical"
-                        Margin="8 0 0 12">
-                <StackPanel Orientation="Horizontal"
-                            Margin="0 0 0 2">
-                    <Rectangle Width="59" 
-                               Height="40"
-                               Margin="0 0 9 0"
-                               Fill="#212529">
-                        <Rectangle.OpacityMask>
-                            <VisualBrush Visual="{iconPacks:FontAwesome Kind=KeyboardRegular}"/>
-                        </Rectangle.OpacityMask>
-                    </Rectangle>
-                    <TextBlock Style="{StaticResource NormalTextBlock}" 
-                               Text="자리연습"
-                               FontSize="32pt"
-                               Margin="0 2 0 0"/>
+            <Grid Margin="8 0 0 12">
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0 0 0 2">
+                        <Rectangle Width="59"
+                                   Height="40"
+                                   Margin="0 0 9 0"
+                                   Fill="#212529">
+                            <Rectangle.OpacityMask>
+                                <VisualBrush Visual="{iconPacks:FontAwesome Kind=KeyboardRegular}"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                        <TextBlock Style="{StaticResource NormalTextBlock}"
+                                   Text="자리연습"
+                                   FontSize="32pt"
+                                   Margin="0 2 0 0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource NormalTextBlock}"
+                                   Text=": 자판 위 글자들 각각의 자리를 연습합니다."
+                                   FontSize="14pt"
+                                   VerticalAlignment="Center"/>
+                        <!-- 산성비 게임(오락) 단계 드롭다운. 자리연습을 목표 타수 이상으로 마친 단계만
+                             열린다(그 외는 회색). 단계가 있는 자판(두벌식 표준 한글·QWERTY 영문)에서만
+                             보인다. (<260723_2>, <260927_6>(0)) -->
+                        <ComboBox x:Name="GameStageCombo"
+                                  Margin="18 0 0 0"
+                                  MinWidth="168"
+                                  FontSize="11pt"
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="GameStageCombo_SelectionChanged"/>
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <TextBlock Style="{StaticResource NormalTextBlock}"
-                               Text=": 자판 위 글자들 각각의 자리를 연습합니다."
-                               FontSize="14pt"
-                               VerticalAlignment="Center"/>
-                    <!-- 산성비 게임(오락) 단계 드롭다운. 자리연습을 목표 타수 이상으로 마친 단계만
-                         열린다(그 외는 회색·비활성). '두벌식 표준'에서만 보인다. (<260723_2>) -->
-                    <ComboBox x:Name="GameStageCombo"
-                              Margin="18 0 0 0"
-                              MinWidth="168"
-                              FontSize="11pt"
-                              VerticalAlignment="Center"
-                              SelectionChanged="GameStageCombo_SelectionChanged"/>
-                </StackPanel>
-            </StackPanel>
-            <!-- '두벌식 표준' 자판: 13개 연습 단계 타일 (코드 비하인드에서 생성) -->
+                <!-- `자판 표시`(<260927_9>·<260927_10>): 큰 제목 글씨의 오른쪽, 오른쪽·위쪽 정렬. -->
+                <local:KeyLayoutIndicator x:Name="KeyLayoutIndicator"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Top"
+                                          Margin="0 4 10 0"/>
+            </Grid>
+            <!-- 단계가 있는 자판: 연습 단계 타일 2행×5열 (코드 비하인드에서 생성, <260927_5>·<260927_6>) -->
             <StackPanel x:Name="StageTilePanel"
                         Orientation="Vertical"
                         HorizontalAlignment="Center"

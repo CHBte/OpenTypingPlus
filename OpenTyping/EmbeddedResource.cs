@@ -6,9 +6,8 @@ using System.Reflection;
 namespace OpenTyping
 {
     /// <summary>
-    /// 어셈블리 내장 리소스를 파일명 접미사로 찾아 텍스트로 읽는다. StageDefinitionLoader와
-    /// PracticeWordList가 각자 같은 방식(리소스 이름 찾기 → 스트림 열기 → 끝까지 읽기)을 따로
-    /// 들고 있던 것을 한 곳으로 모았다.
+    /// 어셈블리 내장 리소스를 파일명 접미사로 찾아 텍스트로 읽는다(리소스 이름 찾기 → 스트림 열기 →
+    /// 끝까지 읽기). StageDefinitionLoader(내장 단계 정의)와 WordCatalog(내장 예비 단어 목록)가 쓴다.
     /// </summary>
     internal static class EmbeddedResource
     {

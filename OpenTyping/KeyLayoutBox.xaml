@@ -59,7 +59,8 @@
                         Style="{StaticResource KeyRowStyle}"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal">
-            <local:KeyBox Style="{StaticResource ModKeyBoxStyle}"
+            <local:KeyBox x:Name="CapsLockKeyBox"
+                          Style="{StaticResource ModKeyBoxStyle}"
                           Key="{StaticResource CapsLockKey}"
                           Width="100"/>
             <StackPanel x:Name="SecondRow"

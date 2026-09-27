@@ -1,0 +1,130 @@
+{
+  "_comment": "자리연습·오락 단계 설정의 단일 출처(<260927_1>·<260927_3>·<260927_4>). 이 파일만 고치면 단계 수·타일·목표 타수·수준별 알파벳·오락 단어 구성이 바뀐다(코드 수정 불필요). [맨 위] key=기록 파일 이름용(stage_records_<key>.json), word_section=제시어 목록(wordslist\\words.json)의 묶음 이름, script_name=문구용 문자 이름, order=자판 목록 순서, tiles=자리연습 화면 타일(per_row 행당 개수, colors 왼쪽부터 색), index_guide=1단계 창 검지 안내 문구, game_rules=오락 단어 규칙(rare_every 개마다 드문 목록 1개, unique_unit 개 단위 중복 금지). [단계] name, game(오락 단계 id, 0=없음), target_ta(목표 타수), targets(학습 목표 키: '연습한 키 전체' 단계가 모은다), words(제시어: required=학습 목표 알파벳, levels=수준별로 '더해지는' 알파벳 묶음 [용어, 알파벳] — 빈 목록이면 앞 수준과 일치, reuse=이 단계들의 단어를 그대로 씀), game_words(오락: main_level 수준까지를 주 목록, rare_level 고유 수준을 드문 목록), rounds. [순 kind] sequential(keys 차례로), grouped(groups=그룹별 키 주머니·중복 적으면 여러 번, pattern=그룹 번호 나열, times=되풀이, no_repeat=직전값 제외), practiced_keys(앞 단계 targets 전체×times), syllables(한 음절 count개), words(level 수준 단어 count개), mixed_syllables_symbols(한 음절과 앞 단계 숫자·기호를 1:1로 count개). 한 음절은 1수준 알파벳으로 프로그램이 직접 계산한다. 알파벳·키 목록(targets·keys·groups·required·parts의 알파벳)은 문자열(한 글자 = 키 하나)이나 키 이름 배열(예: [\"ㄱ\", \"ㄱ (받침)\"] — 세벌식처럼 이름이 두 글자 이상인 키)로 적는다. 키 이름은 layouts 의 자판 파일에 적힌 글자 그대로이고, 글자를 어느 키로 치는지(세벌식의 받침·쌍초성·겹모음 등)는 프로그램이 자판 파일에서 자동으로 정한다. words.from=\"all\" 이면 제시어 목록 word_section 묶음의 모든 단어 중 이 단계 알파벳에 맞는 것을 골라 맞는 가장 낮은 수준에 넣는다(다른 자판이 기존 단어 목록을 그대로 쓸 때).",
+  "layout": "QWERTY 영문",
+  "key": "en",
+  "word_section": "english",
+  "script_name": "영문",
+  "order": 2,
+  "tiles": {"per_row": 5, "colors": ["#F03E3E", "#1C7ED6", "#37B24D", "#F76707", "#F59F00"]},
+  "index_guide": "검지를 [f]와 [j] 위에 댑니다.",
+  "game_rules": {"rare_every": 10, "unique_unit": 5},
+  "stages": [
+    {
+      "name": "1단계(기본 자리)",
+      "game": 1,
+      "target_ta": 130,
+      "targets": "asdfjkl;",
+      "words": {
+        "required": "asdfjkl",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "asdfjkl"]]},
+          {"parts": []},
+          {"parts": []}
+        ]
+      },
+      "game_words": {"main_level": 3},
+      "rounds": [
+        {"kind": "sequential", "keys": "asdfjkl;adjl;lkjfdsasfk;"},
+        {"kind": "grouped", "groups": ["asdfjkl;"], "pattern": "00000000", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 20, "no_repeat": true}
+      ]
+    },
+    {
+      "name": "2단계(왼쪽 윗자리)",
+      "game": 2,
+      "target_ta": 130,
+      "targets": "qwer",
+      "words": {
+        "required": "qwer",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "qwer"], ["관련 기본 자리 알파벳", "asdf"]]},
+          {"parts": []},
+          {"parts": [["1단계의 알파벳", "asdfjkl"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
+      "rounds": [
+        {"kind": "sequential", "keys": "qweraqswdefrwrqerewqaqdeswfr"},
+        {"kind": "grouped", "groups": ["qqwweerr", "asdf"], "pattern": "001001001001", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 20, "no_repeat": true}
+      ]
+    },
+    {
+      "name": "3단계(오른쪽 윗자리)",
+      "game": 3,
+      "target_ta": 130,
+      "targets": "uiop",
+      "words": {
+        "required": "uiop",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "uiop"], ["관련 기본 자리 알파벳", "jkl"]]},
+          {"parts": []},
+          {"parts": [["1~2단계의 알파벳", "asdfjklqwer"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
+      "rounds": [
+        {"kind": "sequential", "keys": "uiopjukilo;pipuopoiujuloki;poupi"},
+        {"kind": "grouped", "groups": ["uuiioopp", "jkl;"], "pattern": "001001001001", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 20, "no_repeat": true}
+      ]
+    },
+    {
+      "name": "4단계(아랫자리)",
+      "game": 4,
+      "target_ta": 130,
+      "targets": "zxcvm",
+      "words": {
+        "required": "zxcvm",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "zxcvm"], ["관련 기본 자리 알파벳", "asdfj"]]},
+          {"parts": []},
+          {"parts": [["1~3단계의 알파벳", "asdfjklqweruiop"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
+      "rounds": [
+        {"kind": "sequential", "keys": "zxcvmazsxdcfvjmxvzcmmvcxzazdcjmsxfv"},
+        {"kind": "grouped", "groups": ["zzxxccvvmm", "asdfj"], "pattern": "001001001001001", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 20, "no_repeat": true}
+      ]
+    },
+    {
+      "name": "5단계(가운데 자리)",
+      "game": 5,
+      "target_ta": 130,
+      "targets": "tgbyhn",
+      "words": {
+        "required": "tgbyhn",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "tgbyhn"], ["관련 기본 자리 알파벳", "fj"], ["관련 추가 알파벳", "rvum"]]},
+          {"parts": []},
+          {"parts": [["1~4단계의 알파벳", "asdfjklqweruiopzxcvm"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
+      "rounds": [
+        {"kind": "sequential", "keys": "tgbyhntyghbnftfgfbjyjhjnftjyfgjhfbjntybnghbhtygn"},
+        {"kind": "grouped", "groups": ["ttggbbyyhhnn", "fjrvum"], "pattern": "001001001001001001", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 20, "no_repeat": true}
+      ]
+    },
+    {
+      "name": "6단계(연습한 키 전체)",
+      "game": 6,
+      "target_ta": 130,
+      "targets": "",
+      "words": {
+        "reuse": [1, 2, 3, 4, 5],
+        "levels": [
+          {"parts": [["모든 영어 알파벳", "abcdefghijklmnopqrstuvwxyz"]]}
+        ]
+      },
+      "game_words": {"main_level": 3},
+      "rounds": [
+        {"kind": "practiced_keys", "times": 2, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 50, "no_repeat": true}
+      ]
+    }
+  ]
+}

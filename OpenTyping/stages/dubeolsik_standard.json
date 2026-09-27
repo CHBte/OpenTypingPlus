@@ -1,120 +1,186 @@
 {
-  "_comment": "자리연습 단계 정의 (두벌식 표준). <260724_1>(3)로 DubeolsikStages.BuildStages()의 하드코딩을 옮긴 것. 스펙 <260723_4> (1-1)~(1-13). 키는 자모/기호 문자열(각 문자 1키), 순3/순4의 allowed·required는 명시(선택적). 13단계는 sequential_all_practiced/mixed_all_practiced 특수 kind로 앞 단계들을 참조한다.",
+  "_comment": "자리연습·오락 단계 설정의 단일 출처(<260927_1>·<260927_3>·<260927_4>). 이 파일만 고치면 단계 수·타일·목표 타수·수준별 알파벳·오락 단어 구성이 바뀐다(코드 수정 불필요). [맨 위] key=기록 파일 이름용(stage_records_<key>.json), word_section=제시어 목록(wordslist\\words.json)의 묶음 이름, script_name=문구용 문자 이름, order=자판 목록 순서, tiles=자리연습 화면 타일(per_row 행당 개수, colors 왼쪽부터 색), index_guide=1단계 창 검지 안내 문구, game_rules=오락 단어 규칙(rare_every 개마다 드문 목록 1개, unique_unit 개 단위 중복 금지). [단계] name, game(오락 단계 id, 0=없음), target_ta(목표 타수), targets(학습 목표 키: '연습한 키 전체' 단계가 모은다), words(제시어: required=학습 목표 알파벳, levels=수준별로 '더해지는' 알파벳 묶음 [용어, 알파벳] — 빈 목록이면 앞 수준과 일치, reuse=이 단계들의 단어를 그대로 씀), game_words(오락: main_level 수준까지를 주 목록, rare_level 고유 수준을 드문 목록), rounds. [순 kind] sequential(keys 차례로), grouped(groups=그룹별 키 주머니·중복 적으면 여러 번, pattern=그룹 번호 나열, times=되풀이, no_repeat=직전값 제외), practiced_keys(앞 단계 targets 전체×times), syllables(한 음절 count개), words(level 수준 단어 count개), mixed_syllables_symbols(한 음절과 앞 단계 숫자·기호를 1:1로 count개). 한 음절은 1수준 알파벳으로 프로그램이 직접 계산한다. 알파벳·키 목록(targets·keys·groups·required·parts의 알파벳)은 문자열(한 글자 = 키 하나)이나 키 이름 배열(예: [\"ㄱ\", \"ㄱ (받침)\"] — 세벌식처럼 이름이 두 글자 이상인 키)로 적는다. 키 이름은 layouts 의 자판 파일에 적힌 글자 그대로이고, 글자를 어느 키로 치는지(세벌식의 받침·쌍초성·겹모음 등)는 프로그램이 자판 파일에서 자동으로 정한다. words.from=\"all\" 이면 제시어 목록 word_section 묶음의 모든 단어 중 이 단계 알파벳에 맞는 것을 골라 맞는 가장 낮은 수준에 넣는다(다른 자판이 기존 단어 목록을 그대로 쓸 때).",
   "layout": "두벌식 표준 한글",
+  "key": "ko",
+  "word_section": "hangul",
+  "script_name": "한글",
+  "order": 1,
+  "tiles": {"per_row": 5, "colors": ["#F03E3E", "#1C7ED6", "#37B24D", "#F76707", "#F59F00"]},
+  "index_guide": "검지를 [ㄹ]과 [ㅓ] 위에 댑니다.",
+  "game_rules": {"rare_every": 10, "unique_unit": 5},
   "stages": [
     {
       "name": "1단계(기본 자리)",
       "game": 1,
+      "target_ta": 200,
+      "targets": "ㅁㄴㅇㄹㅓㅏㅣ;:",
+      "words": {
+        "required": "ㅁㄴㅇㄹㅓㅏㅣ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅁㄴㅇㄹㅓㅏㅣ"]]},
+          {"parts": []},
+          {"parts": []}
+        ]
+      },
+      "game_words": {"main_level": 3},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅁㄴㅇㄹㅓㅏㅣ;", "repeat": 2 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣ" },
-        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣ" }
+        {"kind": "sequential", "keys": "ㅁㄴㅇㄹㅓㅏㅣ;:ㅁㅇㅓㅣ;ㅣㅏㅓㄹㅇㄴㅁㄴㄹㅏ;:"},
+        {"kind": "grouped", "groups": ["ㅁㄴㅇㄹㅓㅏㅣ;:"], "pattern": "000000000", "times": 2, "no_repeat": true},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
       "name": "2단계(왼쪽 윗자리)",
       "game": 2,
+      "target_ta": 200,
+      "targets": "ㅂㅃㅈㅉㄷㄸㄱㄲ",
+      "words": {
+        "required": "ㅂㅃㅈㅉㄷㄸㄱㄲ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅂㅃㅈㅉㄷㄸㄱㄲ"], ["관련 기본 자리 알파벳", "ㅁㄴㅇㄹ"], ["음절 조합을 위한 기본 자리 모음(vowel) 알파벳", "ㅓㅏㅣ"]]},
+          {"parts": []},
+          {"parts": []}
+        ]
+      },
+      "game_words": {"main_level": 3},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅂㅈㄷㄱ", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅂㅈㄷㄱ", "count": 12 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅂㅈㄷㄱㅓㅏㅣ", "required": "ㅂㅈㄷㄱ" },
-        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅂㅈㄷㄱㅓㅏㅣ", "required": "ㅂㅈㄷㄱ" }
+        {"kind": "sequential", "keys": "ㅂㅈㄷㄱㅁㅂㄴㅈㅇㄷㄹㄱㅈㄱㅂㄷㄱㄷㅈㅂㅁㅂㅇㄷㄴㅈㄹㄱㄷㄸㅂㅃㄱㄲㅈㅉㅃㄸㅉㄲ"},
+        {"kind": "grouped", "groups": ["ㅂㅃㅈㅉㄷㄸㄱㄲ", "ㅁㄴㅇㄹ"], "pattern": "001001001001", "times": 2, "no_repeat": false},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
       "name": "3단계(오른쪽 윗자리)",
       "game": 3,
+      "target_ta": 200,
+      "targets": "ㅕㅑㅐㅒㅔㅖ",
+      "words": {
+        "required": "ㅕㅑㅐㅒㅔㅖ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅕㅑㅐㅒㅔㅖ"], ["관련 기본 자리 알파벳", "ㅓㅏㅣ"], ["음절 조합을 위한 기본 자리 자음(consonant) 알파벳", "ㅁㄴㅇㄹ"]]},
+          {"parts": [["음절 조합을 위한 자음(consonant) 추가 알파벳", "ㅂㅃㅈㅉㄷㄸㄱㄲ"]]},
+          {"parts": []}
+        ]
+      },
+      "game_words": {"main_level": 2},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅕㅑㅐㅔ", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅕㅑㅐㅔ", "count": 12 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅕㅑㅐㅔㅁㄴㅇㄹ", "required": "ㅕㅑㅐㅔ" },
-        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅕㅑㅐㅔㅁㄴㅇㄹ", "required": "ㅕㅑㅐㅔ" }
+        {"kind": "sequential", "keys": "ㅕㅑㅐㅒㅔㅖㅓㅕㅏㅑㅣㅐㅣㅒ;ㅔ;ㅖㅑㅔㅑㅖㅕㅐㅕㅒㅔㅐㅑㅕㅖㅒㅑㅕㅓㅕㅣㅐㅓㅕㅣㅒㅏㅑ;ㅔㅏㅑ;ㅖㅐㅒㅕㅔㅖㅑㅒㅖㅒㅖ"},
+        {"kind": "grouped", "groups": ["ㅕㅕㅑㅑㅐㅐㅒㅒㅔㅔㅖㅖ", "ㅓㅏㅣ;"], "pattern": "0001000100010001", "times": 2, "no_repeat": true},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
       "name": "4단계(왼쪽 아랫자리)",
       "game": 4,
+      "target_ta": 200,
+      "targets": "ㅋㅌㅊㅍ",
+      "words": {
+        "required": "ㅋㅌㅊㅍ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅋㅌㅊㅍ"], ["관련 기본 자리 알파벳", "ㅁㄴㅇㄹ"], ["음절 조합을 위한 기본 자리 모음(vowel) 알파벳", "ㅓㅏㅣ"]]},
+          {"parts": [["음절 조합을 위한 모음(vowel) 추가 알파벳", "ㅕㅑㅐㅒㅔㅖ"]]},
+          {"parts": [["1~3단계에 포함된 알파벳", "ㅁㄴㅇㄹㅓㅏㅣㅂㅃㅈㅉㄷㄸㄱㄲㅕㅑㅐㅒㅔㅖ"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅋㅌㅊㅍ", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅋㅌㅊㅍ", "count": 12 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅋㅌㅊㅍㅓㅏㅣ", "required": "ㅋㅌㅊㅍ" },
-        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅋㅌㅊㅍㅓㅏㅣ", "required": "ㅋㅌㅊㅍ" }
+        {"kind": "sequential", "keys": "ㅋㅌㅊㅍㅁㅋㄴㅌㅇㅊㄹㅍㅌㅍㅋㅊㅍㅊㅌㅋㅁㅋㅇㅊㄴㅌㄹㅍ"},
+        {"kind": "grouped", "groups": ["ㅋㅋㅌㅌㅊㅊㅍㅍ", "ㅁㄴㅇㄹ"], "pattern": "001001001001", "times": 2, "no_repeat": true},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
       "name": "5단계(오른쪽 아랫자리)",
       "game": 5,
+      "target_ta": 200,
+      "targets": "ㅡ,<.>/?",
+      "words": {
+        "required": "ㅡ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅡ"], ["관련 기본 자리 알파벳", "ㅓㅏㅣ"], ["음절 조합을 위한 기본 자리 자음(consonant) 알파벳", "ㅁㄴㅇㄹ"]]},
+          {"parts": [["음절 조합을 위한 자음(consonant) 추가 알파벳", "ㅂㅃㅈㅉㄷㄸㄱㄲ"]]},
+          {"parts": [["1~4단계에 포함된 알파벳", "ㅁㄴㅇㄹㅓㅏㅣㅂㅃㅈㅉㄷㄸㄱㄲㅕㅑㅐㅒㅔㅖㅋㅌㅊㅍ"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅡ,./", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅡ,./", "count": 12 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅡㅁㄴㅇㄹ", "required": "ㅡ" },
-        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅡㅁㄴㅇㄹ", "required": "ㅡ" }
+        {"kind": "sequential", "keys": "ㅡ,./<>?,./<>?,<.>/?ㅓㅡㅏ,ㅏ<ㅣ.ㅣ>;/;?,/<?ㅡ.ㅡ>/.,ㅡ?><ㅡㅓㅡㅣ.ㅓㅡㅣ>ㅏ,;/ㅏ<;?.>ㅡ/?,<"},
+        {"kind": "grouped", "groups": ["ㅡㅡ,./<>?", "ㅓㅏㅣ;"], "pattern": "001001001001", "times": 2, "no_repeat": true},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
-      "name": "6단계(가운데 왼쪽 자리)",
+      "name": "6단계(가운데 자리)",
       "game": 6,
+      "target_ta": 200,
+      "targets": "ㅅㅆㅎㅠㅛㅗㅜ",
+      "words": {
+        "required": "ㅅㅆㅎㅠㅛㅗㅜ",
+        "levels": [
+          {"parts": [["학습 목표 알파벳", "ㅅㅆㅎㅠㅛㅗㅜ"], ["관련 기본 자리 알파벳", "ㄹㅓ"], ["관련 추가 알파벳", "ㄱㅍㅕㅡ"]]},
+          {"parts": []},
+          {"parts": [["1~5단계에 포함된 알파벳", "ㅁㄴㅇㄹㅓㅏㅣㅂㅃㅈㅉㄷㄸㄱㄲㅕㅑㅐㅒㅔㅖㅋㅌㅊㅍㅡ"]]}
+        ]
+      },
+      "game_words": {"main_level": 2, "rare_level": 3},
       "rounds": [
-        { "kind": "sequential", "keys": "ㅅㅎㅠ", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹ", "high": "ㅅㅎㅠ", "count": 10 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅅㅎㅠㅓㅏㅣ", "required": "ㅅㅎㅠ" },
-        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅅㅎㅠㅓㅏㅣ", "required": "ㅅㅎㅠ" }
+        {"kind": "sequential", "keys": "ㅅㅎㅠㅛㅗㅜㅅㅛㅎㅗㅠㅜㄹㅅㄹㅎㄹㅠㅓㅛㅓㅗㅓㅜㄹㅅㅓㅛㄹㅎㅓㅗㄹㅠㅓㅜㅅㅛㅠㅜㅎㅗㅠㅗㅅㅆㅛㅎㅜㄹㅅㄹㅆ"},
+        {"kind": "grouped", "groups": ["ㅅㅅㅆㅆㅎㅎㅠㅠㅛㅛㅗㅗㅜㅜ", "ㄹㅓㄱㅍㅕㅡ"], "pattern": "00100100100100100100", "times": 2, "no_repeat": true},
+        {"kind": "syllables", "count": 10, "no_repeat": true},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": true}
       ]
     },
     {
-      "name": "7단계(가운데 오른쪽 자리)",
-      "game": 7,
-      "rounds": [
-        { "kind": "sequential", "keys": "ㅛㅗㅜ", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅓㅏㅣ;", "high": "ㅛㅗㅜ", "count": 10 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅓㅏㅣㅛㅗㅜㅁㄴㅇㄹ", "required": "ㅛㅗㅜ" },
-        { "kind": "words", "count": 10, "allowed": "ㅓㅏㅣㅛㅗㅜㅁㄴㅇㄹ", "required": "ㅛㅗㅜ" }
-      ]
-    },
-    {
-      "name": "8단계(Shift 기본)",
-      "game": 8,
-      "rounds": [
-        { "kind": "sequential", "keys": "ㅃㅉㄸㄲㅆㅒㅖ:<>?", "repeat": 2 },
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;", "high": "ㅃㅉㄸㄲㅆㅒㅖ:<>?", "count": 10 },
-        { "kind": "syllables", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣㅃㅉㄸㄲㅆㅒㅖ", "required": "ㅃㅉㄸㄲㅆㅒㅖ" },
-        { "kind": "words", "count": 10, "allowed": "ㅁㄴㅇㄹㅓㅏㅣㅃㅉㄸㄲㅆㅒㅖ", "required": "ㅃㅉㄸㄲㅆㅒㅖ" }
-      ]
-    },
-    {
-      "name": "9단계(숫자 행 1)",
+      "name": "7단계(숫자)",
       "game": 0,
+      "target_ta": 100,
+      "targets": "1234567890",
       "rounds": [
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;", "high": "12347890", "count": 10 }
+        {"kind": "sequential", "keys": "1234567890ㅁ1ㄴ2ㅇ3ㄹ4ㄹ5ㅓ6ㅓ7ㅏ8ㅣ9;024680135790987654321ㅁ1ㅇ3ㄹ5ㅓ7ㅣ9ㄴ2ㄹ4ㅓ6ㅏ8;0"},
+        {"kind": "grouped", "groups": ["11223344556677889900", "ㅁㄴㅇㄹㅓㅏㅣ;"], "pattern": "0010010010010010010010001000", "times": 1, "no_repeat": true}
       ]
     },
     {
-      "name": "10단계(숫자 행 2)",
+      "name": "8단계(숫자 [Shift])",
       "game": 0,
+      "target_ta": 100,
+      "targets": "!@%&*()",
       "rounds": [
-        { "kind": "weighted", "low": "ㅁㄴㅇㄹㅓㅏㅣ;12347890", "high": "~56-=", "count": 10 }
+        {"kind": "sequential", "keys": "!@%&*()ㅁ1!ㄴ2@ㄹ5%ㅓ7&ㅏ8*ㅣ9(;0)1!2@5%7&8*9(0)ㅁ!ㄴ@ㄹ%ㅓ&ㅏ*ㅣ(;)@&(!%*))(*&%@!ㅁ!ㄹ%ㅏ*;)ㄴ@ㅓ&ㅣ(1!5%8*0)2@7&9("},
+        {"kind": "grouped", "groups": ["!!@@%%&&**(())", "ㅁㄴㄹㅓㅏㅣ;", "1257890"], "pattern": "0012001200120012001200120012", "times": 1, "no_repeat": true}
       ]
     },
     {
-      "name": "11단계(특수 기호 1)",
+      "name": "9단계(기타)",
       "game": 0,
+      "target_ta": 100,
+      "targets": "~-_+='\"",
       "rounds": [
-        { "kind": "weighted", "low": "1234567890", "high": "()[{]}'\"", "count": 140 }
+        {"kind": "sequential", "keys": "~-_=+'\"ㅁ1~;0-_=+;'\"ㅁ~;-;_;=;+;';\"=+"},
+        {"kind": "grouped", "groups": ["~-_+='\"", "ㅁ;10"], "pattern": "00100100101", "times": 3, "no_repeat": false}
       ]
     },
     {
-      "name": "12단계(특수 기호 2)",
-      "game": 0,
+      "name": "10단계(연습한 키 전체)",
+      "game": 10,
+      "target_ta": 200,
+      "targets": "",
+      "words": {
+        "reuse": [1, 2, 3, 4, 5, 6],
+        "levels": [
+          {"parts": [["모든 한글 알파벳", "ㅁㄴㅇㄹㅓㅏㅣㅂㅃㅈㅉㄷㄸㄱㄲㅕㅑㅐㅒㅔㅖㅋㅌㅊㅍㅡㅅㅆㅎㅠㅛㅗㅜ"]]}
+        ]
+      },
+      "game_words": {"main_level": 3},
       "rounds": [
-        { "kind": "weighted", "low": "1234567890-=", "high": "!@%_+", "count": 108 }
-      ]
-    },
-    {
-      "name": "13단계(연습한 키 전체)",
-      "game": 13,
-      "rounds": [
-        { "kind": "sequential_all_practiced", "repeat": 2, "shuffle": true },
-        { "kind": "mixed_all_practiced", "count": 100 }
+        {"kind": "practiced_keys", "times": 2, "no_repeat": true},
+        {"kind": "mixed_syllables_symbols", "count": 10},
+        {"kind": "words", "level": 1, "count": 10, "no_repeat": false}
       ]
     }
   ]

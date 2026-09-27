@@ -11,8 +11,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using MahApps.Metro.Controls;
 // OpenTyping 네임스페이스에 키보드 레이아웃용 'Key' 클래스가 따로 있어, WPF 입력키 열거형은 별칭으로 구분한다.
 using WinKey = System.Windows.Input.Key;
 
@@ -20,23 +22,12 @@ namespace OpenTyping
 {
     /// <summary>
     /// 산성비 타자 오락을 OpenTypingPlus에 통합한 창 (<260723_2>). 원래 독립 프로그램(AcidRain)에서
-    /// 옮겨 왔다. 단어 목록은 game\words.json, 오락 단계 해금은 StageRecords(자리연습 목표 타수 통과)로 일원화한다.
+    /// 옮겨 왔다. 단어 목록은 제시어 목록(WordCatalog, wordslist\words.json), 오락 단계 해금은 StageRecords(자리연습 목표 타수 통과)로 일원화한다.
     /// 자리연습 화면의 '오락' 드롭다운에서 특정 단계로 바로 진입할 수 있다.
+    /// <2600919_5>: 다른 창들과 같은 mah:MetroWindow로 바꿔 파란 테두리·제목표시줄 디자인을 통일했다.
     /// </summary>
-    public partial class AcidRainWindow : Window
+    public partial class AcidRainWindow : MetroWindow
     {
-        // ── 단어 데이터 ──
-        public class WordStage
-        {
-            [JsonPropertyName("id")] public int Id { get; set; }
-            [JsonPropertyName("name")] public string Name { get; set; }
-            [JsonPropertyName("words")] public List<string> Words { get; set; }
-        }
-        private class WordData
-        {
-            [JsonPropertyName("stages")] public List<WordStage> Stages { get; set; }
-        }
-
         // ── 진행도(단계 잠금 해제 + 단계별 최고 기록) ──
         private class BestRecord
         {
@@ -106,13 +97,13 @@ namespace OpenTyping
         // 예전에는 '경과 시간'으로 셌는데(1단계 360초·마지막 120초), 한 판이 그만큼 이어지는 일이
         // 거의 없어 파란 단어를 볼 수 없었다. 그래서 **처치한 단어 수**로 센다 — 판이 짧아도
         // 일정 개수를 잡으면 반드시 나온다.
-        // 단계별 출현 간격(처치 개수 최소~최대). <260812_13>(1)에서 단계마다 직접 지정했다.
-        private static readonly Dictionary<int, (int Min, int Max)> SpecialCatchRange =
-            new Dictionary<int, (int, int)>
-            {
-                [1] = (24, 36), [2] = (19, 34), [3] = (17, 31), [4] = (15, 27), [5] = (13, 24),
-                [6] = (11, 21), [7] = (9, 19),  [8] = (7, 16),  [13] = (5, 13),
-            };
+        // 출현 간격(처치 개수 최소~최대)은 <260812_13>(1)에서 정한 값을 그대로 쓰되, <260927_4>로
+        // 단계 구성이 자판마다 달라졌으므로 단계 id 가 아니라 '그 자판 오락 단계 중 몇 번째인가'로
+        // 고른다. 마지막 단계('연습한 키 전체')는 늘 가장 잦은 마지막 값을 쓴다.
+        internal static readonly (int Min, int Max)[] SpecialCatchRanges =
+        {
+            (24, 36), (19, 34), (17, 31), (15, 27), (13, 24), (11, 21), (9, 19), (7, 16), (5, 13),
+        };
 
         /// <summary>
         /// 파란 글씨 산성비의 효과 가짓수(0 ~ EffectCount-1). <260812_22>로 9 → 15가 되었다.
@@ -128,10 +119,6 @@ namespace OpenTyping
         private const double MaskDuration = 3;           // s (■ 가림)
         private const double ShakeDuration = 10;         // s (화면 흔들림)
 
-        // 단계 순서(숫자행·기호 단계는 별도 단어 목록이 없어 제외). 배경 장식·하늘색 진행에 쓴다.
-        // (오락 해금은 이 게임이 아니라 자리연습 목표 타수 통과로 StageRecords에서 관리한다 — <260724_2>(1).)
-        private static readonly int[] StageOrder = { 1, 2, 3, 4, 5, 6, 7, 8, 13 };
-
         private readonly DispatcherTimer frameTimer = new DispatcherTimer();
         private readonly DispatcherTimer groundFlashTimer = new DispatcherTimer();
         private readonly Stopwatch clock = new Stopwatch();
@@ -145,8 +132,12 @@ namespace OpenTyping
         // 이쪽은 애니메이션이라 같은 속성을 나눠 쓰면 충돌한다).
         private readonly TranslateTransform groundBump = new TranslateTransform();
 
-        private List<WordStage> stages = new List<WordStage>();
-        private List<string> pool = new List<string>();
+        // <260927_4> 이 창이 다루는 자판(한글/영문)과 그 자판의 오락 단계. 단계 순서가 곧 배경 장식·
+        // 파란 단어 빈도의 진행 순서다. (오락 해금은 자리연습 목표 타수 통과로 StageRecords에서 관리한다.)
+        private readonly IStageSet stageSet;
+        private readonly bool isEnglish;
+        private List<GameStage> stages = new List<GameStage>();
+        private GameWordFeed feed;
         private Dictionary<int, BestRecord> bestRecords = new Dictionary<int, BestRecord>();
         private int currentStageId;
         private readonly int targetStageId; // 드롭다운으로 특정 단계 진입 시 그 단계 id(0이면 시작 화면)
@@ -193,18 +184,67 @@ namespace OpenTyping
         private const int EarthScoreGapMax = 350;      // 점수 간격(최대)
         private const int EarthFromLevel = 9;          // 이 레벨부터 나온다
 
+        // <260812_28.1> 불꽃 그림 자체를 스프라이트시트 애니메이션으로 교체. 그림은
+        // Resources\earth_fire_spritesheet.png(8열 격자, 100px 칸)에 있는 61장이다.
+        // <260812_28.1.1.1> 61장을 한 장씩 건너뛰어(0, 2, 4, …, 60번째 31장) 드문드문 바꾼다 —
+        // 이웃한 그림끼리는 차이가 작아 차례로 다 쓰면 불꽃 자체의 움직임이 잘 느껴지지 않았다.
+        // 또 줄기마다 매 틱 그림을 남기므로, 그림 크기·개수를 작게 잡아 겹쳐 그리는 양을 줄였다
+        // (예전엔 끝 무렵 300px 그림이 약 250장 겹쳐 렌더링이 버벅였다).
+        private const int EarthFrameCols = 8;
+        private const int EarthFrameSize = 100;        // px, 스프라이트시트 한 칸의 가로·세로
+        private const int EarthFrameCount = 61;         // 실제 그림이 있는 칸 수
+        private const int EarthFrameStep = 2;           // 몇 장마다 하나씩 쓰는가(2 = 한 장씩 건너뜀)
+        private const double EarthImageMinSize = 16;   // px, 시작(progress=0) 그림 지름
+        private const double EarthImageMaxSize = 90;   // px, 끝(progress=1) 그림 지름
+
+        private static IReadOnlyList<CroppedBitmap> earthFireFrames;
+        private int earthFireFrameIndex;
+        private double earthFireLastSize;   // 검사용: 이번 틱에 남긴 불꽃 그림의 크기(px)
+
+        private static IReadOnlyList<CroppedBitmap> EarthFireFrames()
+        {
+            if (earthFireFrames != null) return earthFireFrames;
+            var sheet = new BitmapImage();
+            sheet.BeginInit();
+            sheet.UriSource = new Uri("pack://application:,,,/Resources/earth_fire_spritesheet.png");
+            sheet.CacheOption = BitmapCacheOption.OnLoad;
+            sheet.EndInit();
+            sheet.Freeze();
+
+            var list = new List<CroppedBitmap>(EarthFrameCount);
+            for (int i = 0; i < EarthFrameCount; i++)
+            {
+                int col = i % EarthFrameCols, row = i / EarthFrameCols;
+                var crop = new CroppedBitmap(sheet, new Int32Rect(col * EarthFrameSize, row * EarthFrameSize,
+                                                                  EarthFrameSize, EarthFrameSize));
+                crop.Freeze();
+                list.Add(crop);
+            }
+            earthFireFrames = list;
+            return earthFireFrames;
+        }
+
+        /// <summary>검사용: 지금 재생 중인 불꽃 그림의 가로 크기(px). 없으면 0.</summary>
+        internal double EarthFireImageSizeForTest => earthFireLastSize;
+
+        /// <summary>검사용: 지금 재생 중인 불꽃 그림의 프레임 번호(0부터).</summary>
+        internal int EarthFireFrameIndexForTest => earthFireFrameIndex;
+
         private double earthTimer;                     // 남은 불꽃 시간(0 이하면 꺼짐)
         private double earthCenterX, earthCenterY;
         private readonly double[] earthAngles = new double[EarthStreams];
         private double earthRadius;
         private int earthNextScore = int.MaxValue;      // 이 점수를 넘으면 다시 터진다
 
-        /// <summary>시작 화면(단계 선택 오버레이)부터 여는 기본 생성자.</summary>
-        public AcidRainWindow() : this(0) { }
+        /// <summary>시작 화면(단계 선택 오버레이)부터 여는 기본 생성자. 지금 '설정'의 자판을 쓴다.</summary>
+        public AcidRainWindow() : this(StageSets.Current, 0) { }
 
-        /// <summary>자리연습 화면 '오락' 드롭다운에서 특정 단계(게임 단계 id)로 바로 진입한다.</summary>
-        public AcidRainWindow(int targetStageId)
+        /// <summary>자리연습 화면 '오락' 드롭다운에서 특정 자판·단계(게임 단계 id)로 바로 진입한다.</summary>
+        public AcidRainWindow(IStageSet stageSet, int targetStageId)
         {
+            this.stageSet = stageSet ?? StageSets.Current;
+            // 한글을 칠 수 있는 자판이면 한글 입력기를 켜고, 아니면(영문 자판) 끈다.
+            isEnglish = !this.stageSet.Keyboard.CanTypeHangul;
             this.targetStageId = targetStageId;
             InitializeComponent();
             // 특수 이벤트 '화면 흔들림'(shakeShift) + 땅에 닿을 때의 한 번 흔들림(groundBump)
@@ -244,7 +284,7 @@ namespace OpenTyping
             // 드롭다운에서 특정 단계로 진입했으면 그 단계를 골라 바로 시작한다.
             if (targetStageId != 0)
             {
-                WordStage target = (StageCombo.ItemsSource as IEnumerable<WordStage>)?
+                GameStage target = (StageCombo.ItemsSource as IEnumerable<GameStage>)?
                     .FirstOrDefault(s => s.Id == targetStageId);
                 if (target != null)
                 {
@@ -257,20 +297,24 @@ namespace OpenTyping
         // ── 진행도(잠금 해제 + 최고 기록) 저장/불러오기 ──
 
         // 최고 기록은 OpenTypingPlus 쪽(LocalAppData)에 저장한다(산성비 자체 progress.json 대체, <260723_2>).
-        private static string ProgressPath => System.IO.Path.Combine(
+        // <260927_3>(0.5)(0.5.1) 자판마다 따로(game_records_ko.json / game_records_en.json). 옛 단계 체계의
+        // game_records.json 은 읽지 않으므로 새 체계를 처음 실행할 때 오락 기록이 한 번 초기화된다.
+        internal static string ProgressPathFor(IStageSet set) => System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OTP", "OpenTypingPlus", "game_records.json");
+            "OTP", "OpenTypingPlus", "game_records_" + (set ?? StageSets.Current).Key + ".json");
+
+        private string ProgressPath => ProgressPathFor(stageSet);
 
         /// <summary>저장된 최고 기록을 읽어(점수 0 이하·손상 항목은 거르고) 돌려준다.
         /// LoadProgress()와 정적 LoadBestRecords()가 같은 파일을 같은 규칙으로 읽던 것을 모았다.</summary>
-        private static Dictionary<int, BestRecord> ReadStoredBestRecords()
+        private static Dictionary<int, BestRecord> ReadStoredBestRecords(string path)
         {
             var result = new Dictionary<int, BestRecord>();
             try
             {
-                if (File.Exists(ProgressPath))
+                if (File.Exists(path))
                 {
-                    ProgressData data = JsonSerializer.Deserialize<ProgressData>(File.ReadAllText(ProgressPath));
+                    ProgressData data = JsonSerializer.Deserialize<ProgressData>(File.ReadAllText(path));
                     if (data?.BestRecords != null)
                         foreach (KeyValuePair<int, BestRecord> kv in data.BestRecords)
                             if (kv.Value != null && kv.Value.Score > 0) result[kv.Key] = kv.Value;
@@ -285,7 +329,7 @@ namespace OpenTyping
 
         private void LoadProgress()
         {
-            bestRecords = ReadStoredBestRecords();
+            bestRecords = ReadStoredBestRecords(ProgressPath);
         }
 
         private void SaveProgress()
@@ -326,6 +370,10 @@ namespace OpenTyping
         }
 
         // 이번 판 점수가 이 단계의 최고 기록이면 갱신(단계마다 기록은 하나만 유지). 갱신했으면 true.
+        // <2600919_3-1>: 치트 중엔 StageRecords와 같은 원칙으로 메모리(bestRecords)에만 반영하고
+        // 디스크(game_records_<자판 키>.json)에는 저장하지 않는다 — 이 오락 단계 자체가 치트로 해금된
+        // 것일 수 있어서, 치트를 끄면(자연히 이 창도 닫혀 있을 것이다) 저장 안 된 이 변경은 그냥
+        // 사라지고 다음에 창을 열 때 디스크의 진짜 기록을 다시 읽는다.
         private bool TryRecordScore()
         {
             if (score <= 0) return false;
@@ -336,7 +384,7 @@ namespace OpenTyping
                 Score = score,
                 When = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             };
-            SaveProgress();
+            if (!StageRecords.CheatOn) SaveProgress();
             return true;
         }
 
@@ -351,9 +399,9 @@ namespace OpenTyping
         /// 저장된 단계별 최고 기록을 (단계 id, 점수, 시각) 목록으로 읽는다 (<260812_20>(2)).
         /// 게임 창을 열지 않고도 볼 수 있도록 static 으로 둔다.
         /// </summary>
-        internal static List<(int StageId, int Score, string When)> LoadBestRecords()
+        internal static List<(int StageId, int Score, string When)> LoadBestRecords(IStageSet set)
         {
-            List<(int StageId, int Score, string When)> list = ReadStoredBestRecords()
+            List<(int StageId, int Score, string When)> list = ReadStoredBestRecords(ProgressPathFor(set))
                 .Select(kv => (kv.Key, kv.Value.Score, kv.Value.When))
                 .ToList();
             list.Sort((a, b) => a.StageId.CompareTo(b.StageId));
@@ -386,9 +434,7 @@ namespace OpenTyping
         private void RefreshStageCombo()
         {
             // 해금 여부는 자리연습 단계별 최고 타 기록(StageRecords, 목표 타수 통과)을 따른다 (<260724_2>(1)).
-            List<WordStage> available = stages.Where(s => StageRecords.IsGameStageUnlocked(s.Id))
-                                              .OrderBy(s => Array.IndexOf(StageOrder, s.Id))
-                                              .ToList();
+            List<GameStage> available = stages.Where(s => StageRecords.IsGameStageUnlocked(s.Id)).ToList();
             // 아무 단계도 해금 안 됐으면(예: 기록 없음) 목록상 첫 단계는 보여 준다(방어적 대비).
             if (available.Count == 0) available = stages.Take(1).ToList();
 
@@ -396,7 +442,7 @@ namespace OpenTyping
             StageCombo.SelectedIndex = available.Count - 1; // 가장 최근에 해금된 단계를 기본 선택
 
             // 같은 항목이 다시 선택되면 SelectionChanged가 안 오므로 여기서도 직접 갱신한다.
-            if (StageCombo.SelectedItem is WordStage sel)
+            if (StageCombo.SelectedItem is GameStage sel)
             {
                 UpdateBestRecordText(sel.Id);
                 BuildScenery(sel.Id);
@@ -406,7 +452,7 @@ namespace OpenTyping
         private void StageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // 시작 화면에서 단계를 고르면 그 단계의 최고 기록과 배경(누적 장식) 미리보기를 보여 준다.
-            if (StageCombo.SelectedItem is WordStage sel)
+            if (StageCombo.SelectedItem is GameStage sel)
             {
                 UpdateBestRecordText(sel.Id);
                 BuildScenery(sel.Id);
@@ -414,77 +460,34 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// words.json 후보 경로들. 순서가 곧 우선순위다 (<260830_2-3>(4-1) + <260831> 실사용 재현 수정):
-        ///  1) AppData(Roaming)\OTP\OpenTypingPlus\game\ — 위치 선택형 SFX 설치본의 실제 라이브 사본.
-        ///     설치본의 `OTP 폴더\game\`에는 편집용 "바로가기(.lnk)"만 있는데, File.ReadAllText는
-        ///     바로가기를 못 따라가므로(실사용 재현·확인) 실파일이 있는 이 경로를 1순위로 읽어야 한다.
-        ///  2) 실행 파일 옆 game\ — 개발 빌드(build\)와 예전 배치 방식용 폴백.
+        /// <260927_4> 이 자판의 오락 단계를 제시어 목록(<see cref="WordCatalog"/>, wordslist\words.json →
+        /// 내장 예비본)에서 만든다. 예비본이 늘 있으므로 보통은 비지 않지만, 그래도 비면 기본 단어로 연다.
         /// </summary>
-        internal static string[] WordsJsonCandidatePaths() => new[]
-        {
-            System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "OTP", "OpenTypingPlus", "game", "words.json"),
-            System.IO.Path.Combine(AppContext.BaseDirectory, "game", "words.json"),
-        };
-
-        /// <summary>words.json에서 단계 목록(정제 후)을 읽는다. 실패 시 빈 목록(대화상자 없음).
-        /// 게임 창(gameplay)과 오락 레지스트리(AcidRainGame의 메타 조회)가 함께 쓴다 (<260724_1>(1)).</summary>
-        public static List<WordStage> LoadStageList()
-        {
-            foreach (string path in WordsJsonCandidatePaths())
-            {
-                try
-                {
-                    if (!File.Exists(path)) continue;
-                    WordData data = JsonSerializer.Deserialize<WordData>(File.ReadAllText(path));
-                    if (data?.Stages == null) continue;
-
-                    // 배포 후 사용자가 words.json 을 편집할 수 있으므로 방어적으로 정제한다.
-                    // - 각 단어의 앞뒤 공백 제거 / 빈 항목 제거 / 중복 제거
-                    foreach (WordStage s in data.Stages)
-                    {
-                        if (s.Words == null) continue;
-                        s.Words = s.Words.Select(w => (w ?? "").Trim())
-                                         .Where(w => w.Length > 0)
-                                         .Distinct()
-                                         .ToList();
-                    }
-                    List<WordStage> stages =
-                        data.Stages.Where(s => s.Words != null && s.Words.Count >= 5).ToList();
-                    // 파싱은 됐지만 쓸 만한 단계가 하나도 없으면(사용자가 파일을 비웠거나 손상)
-                    // 다음 후보 경로를 마저 시도한다.
-                    if (stages.Count > 0) return stages;
-                }
-                catch { /* 이 후보는 손상 — 다음 후보로 */ }
-            }
-            return new List<WordStage>();
-        }
-
         private void LoadStages()
         {
-            stages = LoadStageList();
+            stages = GameStages.For(stageSet).ToList();
 
             if (stages.Count == 0)
             {
                 MessageBox.Show(
                     "단어 목록 파일을 읽을 수 없어 기본 단어 16개로 시작합니다.\n" +
-                    "찾아본 위치:\n" + string.Join("\n", WordsJsonCandidatePaths()),
+                    "찾아본 위치:\n" + string.Join("\n", WordCatalog.CandidatePaths()),
                     "열린타자+", MessageBoxButton.OK, MessageBoxImage.Warning);
 
-                stages = new List<WordStage>
-                {
-                    new WordStage
-                    {
-                        Id = 0, Name = "기본 단어(내장)",
-                        Words = new List<string>
-                        {
-                            "나라", "바다", "하늘", "구름", "나무", "사람", "사랑", "우리",
-                            "머리", "언니", "엄마", "아이", "가방", "다리", "거미", "기린",
-                        },
-                    },
-                };
+                List<string> basic = isEnglish
+                    ? new List<string> { "sea", "sky", "tree", "book", "home", "sun", "moon", "star",
+                                         "cat", "dog", "bird", "fish", "cake", "milk", "hand", "ball" }
+                    : new List<string> { "나라", "바다", "하늘", "구름", "나무", "사람", "사랑", "우리",
+                                         "머리", "언니", "엄마", "아이", "가방", "다리", "거미", "기린" };
+                stages = new List<GameStage> { new GameStage(0, "기본 단어(내장)", basic, null) };
             }
+        }
+
+        /// <summary>이 단계가 이 자판 오락 단계 중 몇 번째인가(0부터). 없으면 마지막으로 친다.</summary>
+        private int StageOrdinal(int stageId)
+        {
+            int idx = stages.FindIndex(s => s.Id == stageId);
+            return idx < 0 ? Math.Max(0, stages.Count - 1) : idx;
         }
 
         // ── 게임 시작/종료 ──
@@ -495,8 +498,8 @@ namespace OpenTyping
             // 시작 버튼이 눌리면 stages[0]에서 크래시가 나므로 방어한다.
             if (stages.Count == 0) return;
 
-            WordStage stage = StageCombo.SelectedItem as WordStage ?? stages[0];
-            pool = stage.Words;
+            GameStage stage = StageCombo.SelectedItem as GameStage ?? stages[0];
+            feed = new GameWordFeed(stage, random);   // <260927_4>(0.2) 9:1 섞기·5개 단위 중복 금지
             currentStageId = stage.Id;
             StageNameText.Text = stage.Name;
 
@@ -521,7 +524,7 @@ namespace OpenTyping
             frameTimer.Start();
             InputBox.Clear();
             InputBox.Focus();
-            SwitchToHangul();   // <260812_16>(1) 시작하자마자 한글로 칠 수 있게
+            SwitchInputLanguage();   // <260812_16>(1) 시작하자마자 그 자판 글자로 칠 수 있게
         }
 
         private void RetryButton_Click(object sender, RoutedEventArgs e)
@@ -535,6 +538,12 @@ namespace OpenTyping
         private void QuitButton_Click(object sender, RoutedEventArgs e)
         {
             QuitToStart();
+        }
+
+        // 게임 종료 화면의 '나가기': 이 오락 창 자체를 닫는다(연 곳 — 자리연습 화면 등 — 으로 돌아간다).
+        private void GameOverQuitButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         // 게임 진행 중 첫 화면으로 되돌아간다(포기하고 나가기). 그때까지의 점수도 기록 대상이다.
@@ -638,8 +647,9 @@ namespace OpenTyping
         {
             SceneryLayer.Children.Clear();
 
-            int idx = Array.IndexOf(StageOrder, stageId);
-            if (idx < 0) idx = StageOrder.Length - 1; // 내장 기본 단어 등: 전부 표시
+            // 이 자판 오락 단계 중 몇 번째인가. 마지막('연습한 키 전체') 단계는 장식을 전부 보인다.
+            int idx = StageOrdinal(stageId);
+            if (idx >= stages.Count - 1) idx = 8;
 
             if (idx >= 1)
             {
@@ -891,9 +901,18 @@ namespace OpenTyping
 
         internal int SpecialCatchGap(int stageId)
         {
-            if (!SpecialCatchRange.TryGetValue(stageId, out (int Min, int Max) r))
-                r = SpecialCatchRange[StageOrder[StageOrder.Length - 1]]; // 표에 없는 단계는 마지막 단계 기준
+            (int Min, int Max) r = SpecialCatchRangeOf(stageId);
             return random.Next(r.Min, r.Max + 1);   // 최솟값~최댓값(양 끝 포함)에서 균등하게
+        }
+
+        /// <summary>이 단계의 파란 단어 출현 간격. 마지막 단계는 표의 마지막 값(가장 잦음).</summary>
+        internal (int Min, int Max) SpecialCatchRangeOf(int stageId)
+        {
+            if (stages.Count == 0) LoadStages();
+            int idx = StageOrdinal(stageId);
+            bool last = idx >= stages.Count - 1;
+            return last ? SpecialCatchRanges[SpecialCatchRanges.Length - 1]
+                        : SpecialCatchRanges[Math.Min(idx, SpecialCatchRanges.Length - 1)];
         }
 
         private void UpdateEffectTimers(double dt)
@@ -1132,10 +1151,17 @@ namespace OpenTyping
             for (int i = 0; i < EarthStreams; i++)
                 earthAngles[i] = start + i * (Math.PI * 2 / EarthStreams);
 
+            earthFireFrameIndex = 0;
+            earthFireLastSize = EarthImageMinSize;
             BannerBlink("지구 환경을 지켜라!!", 2);
         }
 
-        /// <summary>큰 불꽃을 한 프레임 진행시킨다: 원운동 + 사방 확산 + 점점 풍성해짐 + 산성비 소멸.</summary>
+        /// <summary>
+        /// 큰 불꽃을 한 프레임 진행시킨다 (<260812_28.1>). 가운데 중심점에서 다섯 줄기가 원운동하며
+        /// 사방으로 퍼져 나가고(<260812_28>과 같은 물리), 줄기마다 지금 이 순간 자리에 스프라이트시트
+        /// 불꽃 그림(점점 커짐 + 프레임이 차례로 바뀌어 그 자체가 애니메이션)을 남겨 궤적이 보이게 한다.
+        /// 이 그림에 닿은 산성비는 사라진다.
+        /// </summary>
         private void UpdateEarthFirework(double dt)
         {
             if (earthTimer <= 0) return;
@@ -1144,28 +1170,55 @@ namespace OpenTyping
             double progress = 1 - Math.Max(0, earthTimer) / EarthDuration;   // 0 → 1
             earthRadius += EarthSpread * dt;
 
+            // 불꽃 그림 자체의 애니메이션: 한 장씩 건너뛴 31장(0, 2, …, 60)을 이벤트 동안 차례로 재생한다.
+            int shownFrames = (EarthFrameCount - 1) / EarthFrameStep + 1;
+            earthFireFrameIndex = Math.Min(shownFrames - 1, (int)(progress * shownFrames)) * EarthFrameStep;
+            // 불꽃 오브젝트 자체의 확대: 뒤로 갈수록 큰 그림을 남긴다. 커지는 속도 자체를 높이려고
+            // (초반에 빨리 커지고 끝에는 완만해지도록) progress 그대로가 아니라 제곱근을 쓴다 —
+            // 예를 들어 진행도 25%(0.6초) 시점에 이미 절반 크기(sqrt(0.25)=0.5)까지 자란다.
+            double sizeProgress = Math.Sqrt(progress);
+            double size = EarthImageMinSize + sizeProgress * (EarthImageMaxSize - EarthImageMinSize);
+            earthFireLastSize = size;
+
             for (int i = 0; i < EarthStreams; i++)
             {
-                earthAngles[i] += EarthSpin * dt;
-
-                double x = earthCenterX + Math.Cos(earthAngles[i]) * earthRadius;
+                earthAngles[i] += EarthSpin * dt;   // 원운동
+                double x = earthCenterX + Math.Cos(earthAngles[i]) * earthRadius;   // 사방으로 퍼지는 운동
                 double y = earthCenterY + Math.Sin(earthAngles[i]) * earthRadius;
 
-                // 점점 풍성하게: 알갱이가 커지고, 줄기 하나당 뿌리는 개수도 늘어난다.
-                // 이벤트 중간(progress=0.5)에 예전 크기(4+progress*7 → 7.5)의 5배(37.5)가 되도록
-                // 기울기를 키웠다. 끝(progress=1)에는 71까지 커진다.
-                double size = 4 + progress * 67;
-                int perStream = 1 + (int)(progress * 2);
-                for (int k = 0; k < perStream; k++)
-                {
-                    double jitter = (random.NextDouble() * 2 - 1) * (2 + progress * 5);
-                    Spark(x + jitter, y + jitter, size, 0.55, deep: k > 0);
-                }
+                // 줄기 하나당 틱마다 한 장만 남긴다(렌더링 부하를 줄이려고, 늘리지 않는다).
+                double jitter = (random.NextDouble() * 2 - 1) * (2 + progress * 5);
+                EarthSpark(x + jitter, y + jitter, size, 0.55);
 
                 BurnWordsNear(x, y);
             }
 
             if (earthTimer <= 0) earthTimer = 0;
+        }
+
+        /// <summary>
+        /// <260812_28.1> 다섯 줄기가 지나는 자리에 스프라이트시트 불꽃 그림 한 장을 놓고, 서서히
+        /// 옅어지다 스스로 없어지게 한다(<see cref="Spark"/>와 같은 방식이되 그림이 다르다). 여러 장이
+        /// 매 틱 새로 남으므로 줄기의 궤적이 눈에 보인다.
+        /// </summary>
+        private void EarthSpark(double x, double y, double size, double life)
+        {
+            var img = new Image
+            {
+                Width = size,
+                Height = size,
+                Stretch = Stretch.Uniform,
+                IsHitTestVisible = false,
+                Source = EarthFireFrames()[earthFireFrameIndex],
+            };
+            Canvas.SetLeft(img, x - size / 2);
+            Canvas.SetTop(img, y - size / 2);
+            FireworkLayer.Children.Add(img);
+
+            var fade = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromSeconds(life)))
+            { FillBehavior = FillBehavior.Stop };
+            fade.Completed += (s, e) => FireworkLayer.Children.Remove(img);
+            img.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
         /// <summary>불꽃에 닿은 산성비를 없앤다 (<260812_28>). 점수·생명에는 영향이 없다.</summary>
@@ -1450,15 +1503,8 @@ namespace OpenTyping
             for (double t = 0; t < seconds; t += 1.0 / 30) UpdateEarthFirework(1.0 / 30);
         }
 
-        /// <summary>검사용: 지금까지 뿌린 알갱이 중 가장 큰 크기(px). progress 가 커질수록 더 큰
-        /// 알갱이가 나중에 뿌려지므로, 가장 큰 값이 곧 가장 최근(가장 진행된) 크기다.</summary>
-        internal double EarthMaxSparkSizeForTest()
-        {
-            double max = 0;
-            foreach (UIElement el in FireworkLayer.Children)
-                if (el is Ellipse ell) max = Math.Max(max, ell.Width);
-            return max;
-        }
+        /// <summary>검사용: 진행 중인 큰 불꽃을 dt 초만큼 한 틱 더 진행시킨다.</summary>
+        internal void EarthFireworkStepForTest(double dt) => UpdateEarthFirework(dt);
 
         /// <summary>검사용: 레벨업 폭죽이 실제로 알갱이를 만드는지.</summary>
         internal int LevelUpFireworksTest()
@@ -1744,14 +1790,10 @@ namespace OpenTyping
 
         private void SpawnWord()
         {
-            if (pool.Count == 0) return;
-
-            // 이미 떠 있는 단어와 겹치지 않게 몇 번 다시 뽑는다 (모두 겹치면 중복 허용)
-            string text = pool[random.Next(pool.Count)];
-            for (int t = 0; t < 5 && active.Any(w => w.Text == text); t++)
-            {
-                text = pool[random.Next(pool.Count)];
-            }
+            // <260927_4>(0.2) 단어 공급 규칙(9:1 섞기·5개 단위 중복 금지)을 따르면서, 이미 떠 있는
+            // 단어와는 되도록 겹치지 않게 뽑는다(모두 겹치면 중복 허용).
+            string text = feed?.Next(t => active.Any(w => w.Text == t));
+            if (text == null) return;
 
             // 처치 수를 다 채웠으면 이번에 태어나는 단어가 파란 특수 단어다 (<260812_19>).
             // 화면에 이미 특수 단어가 떠 있으면 겹치지 않게 미룬다.
@@ -1901,13 +1943,22 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_16>(1) 입력 칸의 한글 입력기를 켠다. 단어 목록이 한글이라 영문 상태로 시작하면
-        /// 첫 단어를 칠 수 없다. 입력기가 없거나 한글 IME 가 아닌 환경에서는 조용히 넘어간다.
+        /// <260812_16>(1) 입력 칸의 입력기를 그 자판에 맞춘다. 한글 오락이면 한글 입력기를 켜고(영문
+        /// 상태로 시작하면 첫 단어를 칠 수 없다), 영문 오락(<260927_4>(2))이면 입력기를 꺼 영문이 바로
+        /// 들어가게 한다. 입력기가 없거나 한글 IME 가 아닌 환경에서는 조용히 넘어간다.
         /// </summary>
-        private void SwitchToHangul()
+        private void SwitchInputLanguage()
         {
             try
             {
+                if (isEnglish)
+                {
+                    InputMethod.SetPreferredImeState(InputBox, InputMethodState.Off);
+                    InputMethod.SetPreferredImeConversionMode(InputBox, ImeConversionModeValues.Alphanumeric);
+                    InputMethod.Current.ImeState = InputMethodState.Off;
+                    InputMethod.Current.ImeConversionMode = ImeConversionModeValues.Alphanumeric;
+                    return;
+                }
                 InputMethod.SetPreferredImeState(InputBox, InputMethodState.On);
                 InputMethod.SetPreferredImeConversionMode(InputBox, ImeConversionModeValues.Native);
                 InputMethod.Current.ImeState = InputMethodState.On;

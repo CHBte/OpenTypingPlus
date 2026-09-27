@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,29 +10,26 @@ namespace OpenTyping
 {
     /// <summary>
     /// 연습 창의 렌더링 키보드 위에 겹쳐 그리는 손가락 레이어.
-    /// 손 그림은 fingersmaple1 참고 그림(키별 실제 손 포즈 프레임)에서 추출한 실측 윤곽
-    /// 라이브러리(HandContourData → ContourHand.BuildLibrary)를 키보드 좌표계에 정합해
-    /// 그대로 그린다 (<260718_10>). 제시된 키에 해당 프레임의 실제 포즈가 표시되며(SetPose),
-    /// 프레임이 없는 키(숫자 행, [ㅕ])만 기본자세에서 담당 손가락을 합성 변형한다.
+    /// 손 그림은 hands\*.svg(손 모델 3D 로 "손 모양 json 추출"한 결과)를 그대로 읽어 그린다.
+    /// 제시된 키에 그 키 전용 SVG(hands\{행}-{열}-{손}.svg)가 있으면 그것을, 없으면 기본 자리
+    /// 그림(hands\home-{손}.svg)을 그대로 쓴다 (<260927_8>) — 프레임이 없는 키를 위해 기본자세를
+    /// 손가락별로 합성 변형해 그리던 예전 코드(ContourHand)는 걷어냈다: 물리 키별 SVG가 전부
+    /// 갖춰지면서 그 코드가 이미 실행되지 않고 있었고, 남은 유일한 예외(배정 자체가 없는 키)는
+    /// SetPose 가 애초에 <see cref="ShowHomePose"/>로 바로 보내 그 코드에 닿지 않았다.
     /// 누르는 손가락 외의 손끝은 기본 자리([ㅁ][ㄴ][ㅇ][ㄹ] / [ㅓ][ㅏ][ㅣ][;])에, 두 엄지는
     /// [Space] 위에 있다 (<260718_10-(2)>).
-    /// 포즈 기하는 처음 쓰일 때 한 번만 만들어 Freeze 후 캐시하므로(비트맵 없음) 실시간
-    /// 부담이 거의 없고, 부모 Viewbox 배율을 따라 창 크기 조절 시 자동으로 함께 커진다.
+    /// 파일에서 읽은 Geometry는 Freeze 후 파일 이름으로 캐시하므로, 키를 반복해 눌러도 디스크를
+    /// 다시 읽지 않는다.
     /// </summary>
     public partial class FingerLayer : UserControl
     {
-        // ===== 실측 손 포즈 라이브러리 (기본자세 + 키별 프레임, 본체·엄지 두 폐곡선) =====
-        private static readonly ContourHand LeftHand = ContourHand.BuildLibrary(isRight: false);
-        private static readonly ContourHand RightHand = ContourHand.BuildLibrary(isRight: true);
-
         private static bool TryGetFinger(KeyPos pos, out bool isRight, out int finger) =>
             ContourHand.TryGetFinger(pos.Row, pos.Column, out isRight, out finger);
 
-        // ===== 포즈 기하 캐시 =====
-        // key: (오른손 여부, row, col). row -1 = 홈 포즈, row -2 = 자기 쪽 [Shift] 포즈.
-        // 두벌식 고정 좌표라 창이 여러 번 열려도 공유되고, 전부 만들어져도 수백 KB 수준이다.
-        private static readonly Dictionary<(bool IsRight, int Row, int Col), Geometry> PoseCache =
-            new Dictionary<(bool IsRight, int Row, int Col), Geometry>();
+        /// <summary>SVG가 전혀 없을 때(설치 손상 등 최후의 경우) 그릴 빈 윤곽 — 화면엔 아무것도 안 보인다.</summary>
+        private static readonly Geometry EmptyGeometry = Freeze(new PathGeometry());
+
+        private static Geometry Freeze(Geometry g) { g.Freeze(); return g; }
 
         public FingerLayer()
         {
@@ -45,32 +40,30 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260811_31-2> 마지막으로 적용한 손 그림의 출처(hands\ 파일 이름, 폴백이면 "(contour)").
+        /// <260811_31-2> 마지막으로 적용한 손 그림의 출처(hands\ 파일 이름, 아무 SVG도 없으면 "(없음)").
         /// 설치·배선이 어긋나지 않았는지 밖에서 확인하기 위한 것으로, 화면 동작에는 영향이 없다.
         /// </summary>
         public string LastLeftSource { get; private set; } = "(none)";
         public string LastRightSource { get; private set; } = "(none)";
 
-        /// <summary>hands\ 의 SVG 가 있으면 그것을, 없으면 기존 ContourHand 합성을 쓰고 출처를 알려 준다.</summary>
-        private static Geometry LoadOrFallback(string fileName, Func<Geometry> fallback, out string source)
+        /// <summary>fileName 을 읽어 그리되, 없으면 그 손의 기본 자리 그림(home-{side}.svg)으로,
+        /// 그것마저 없으면 빈 윤곽으로 폴백한다 (<260927_8>).</summary>
+        private static Geometry LoadOrHome(string fileName, string side, out string source)
         {
             Geometry g = TryLoadHandSvg(fileName);
-            source = g != null ? fileName : "(contour)";
-            return g != null ? g : fallback();
+            if (g != null) { source = fileName; return g; }
+
+            string homeFile = $"home-{side}.svg";
+            Geometry home = TryLoadHandSvg(homeFile);
+            source = home != null ? homeFile : "(없음)";
+            return home ?? EmptyGeometry;
         }
 
-        /// <summary>
-        /// 두 손을 기본 자리(홈 포지션) 포즈로 되돌린다.
-        /// <260811_26>(2-1) 테스트: hands\home-left.svg / home-right.svg 가 있으면 그 벡터(손 모델
-        /// 3D 로 "손 모양 json 추출"한 결과)를 쓰고, 없으면 기존 ContourHand 합성 결과로 그대로
-        /// 폴백한다 — 아직 이 파일 하나뿐이라 나머지 포즈(SetPose)는 손대지 않았다. 다음 단계에서
-        /// 물리 키별 SVG 가 갖춰지면 SetPose 도 같은 방식으로 확장하거나 ContourHand 를 대체한다.
-        /// </summary>
+        /// <summary>두 손을 기본 자리(홈 포지션) 포즈로 되돌린다.</summary>
         public void ShowHomePose()
         {
-            string ls, rs;
-            LeftHandPath.Data = LoadOrFallback("home-left.svg", () => GetGeometry(LeftHand, -1, -1), out ls);
-            RightHandPath.Data = LoadOrFallback("home-right.svg", () => GetGeometry(RightHand, -1, -1), out rs);
+            LeftHandPath.Data = LoadOrHome("home-left.svg", "left", out string ls);
+            RightHandPath.Data = LoadOrHome("home-right.svg", "right", out string rs);
             LastLeftSource = ls; LastRightSource = rs;
         }
 
@@ -78,7 +71,7 @@ namespace OpenTyping
         /// 실행 파일 옆 hands\&lt;fileName&gt; 을 읽어 그 안의 첫 &lt;path d="..."&gt; 값을 Geometry 로
         /// 만든다. 손 모델 3D 의 SVG 출력이 이미 WPF Path.Data 미니 언어와 같은 "M x y L x y ... Z"
         /// 형식이라 별도 변환 없이 그대로 Geometry.Parse 에 넣을 수 있다. 파일이 없거나 읽기 실패하면
-        /// null(호출부가 기존 방식으로 폴백).
+        /// null(호출부가 기본 자리 그림으로 폴백).
         /// </summary>
         private static readonly Dictionary<string, Geometry> SvgCache = new Dictionary<string, Geometry>();
 
@@ -122,21 +115,18 @@ namespace OpenTyping
                 return;
             }
 
-            ContourHand acting = isRight ? RightHand : LeftHand;
-            ContourHand other = isRight ? LeftHand : RightHand;
-
-            // <260811_31> 손 모델 3D 로 만든 키별 손 모양(hands\{행}-{열}-{손}.svg)이 있으면 그것을 쓰고,
-            // 없으면 기존 ContourHand 합성 결과로 폴백한다. 윗글쇠면 반대 손이 자기 쪽 [Shift]를 누르는
-            // 모양(lshift/rshift.svg)이 되고, 아니면 기본자세 그대로 둔다.
+            // <260927_8> 손 모델 3D 로 만든 키별 손 모양(hands\{행}-{열}-{손}.svg)이 있으면 그것을 쓰고,
+            // 없으면 그 손의 기본 자리 그림(home-{손}.svg)을 그대로 쓴다(합성 변형은 더 이상 하지 않는다).
+            // 윗글쇠면 반대 손이 자기 쪽 [Shift]를 누르는 모양(lshift/rshift.svg)이 되고, 아니면
+            // 기본자세 그대로 둔다.
             string actSide = isRight ? "right" : "left";
             string otherSide = isRight ? "left" : "right";
-            string actSrc, otherSrc;
-            Geometry actingGeometry = LoadOrFallback(
-                $"{pos.Row}-{pos.Column}-{actSide}.svg",
-                () => GetGeometry(acting, pos.Row, pos.Column), out actSrc);
+
+            Geometry actingGeometry = LoadOrHome($"{pos.Row}-{pos.Column}-{actSide}.svg", actSide, out string actSrc);
             Geometry otherGeometry = isShift
-                ? LoadOrFallback(isRight ? "lshift.svg" : "rshift.svg", () => GetGeometry(other, -2, -2), out otherSrc)
-                : LoadOrFallback($"home-{otherSide}.svg", () => GetGeometry(other, -1, -1), out otherSrc);
+                ? LoadOrHome(isRight ? "lshift.svg" : "rshift.svg", otherSide, out string otherSrc)
+                : LoadOrHome($"home-{otherSide}.svg", otherSide, out otherSrc);
+
             if (isRight) { LastRightSource = actSrc; LastLeftSource = otherSrc; }
             else { LastLeftSource = actSrc; LastRightSource = otherSrc; }
 
@@ -178,38 +168,6 @@ namespace OpenTyping
             RightHandPath.Stroke = brush;
             LeftHandPath.StrokeThickness = thickness;
             RightHandPath.StrokeThickness = thickness;
-        }
-
-        // ===== 포즈 기하 생성 =====
-
-        private static Geometry GetGeometry(ContourHand hand, int row, int col)
-        {
-            bool isRight = ReferenceEquals(hand, RightHand);
-            var key = (isRight, row, col);
-            if (PoseCache.TryGetValue(key, out Geometry cached)) return cached;
-
-            // 프레임이 있는 키는 실측 포즈, 없는 키는 기본자세에서 합성 변형 (<260718_10>)
-            (ContourHand.Pt[] main, ContourHand.Pt[] thumb) = hand.GetPosePts(row, col);
-
-            var sb = new StringBuilder();
-            AppendFigure(sb, main);
-            AppendFigure(sb, thumb); // 엄지는 [Space] 위 (<260718_10-(2)>)
-
-            Geometry geometry = Geometry.Parse(sb.ToString());
-            geometry.Freeze();
-            PoseCache[key] = geometry;
-            return geometry;
-        }
-
-        private static void AppendFigure(StringBuilder sb, ContourHand.Pt[] pts)
-        {
-            for (int i = 0; i < pts.Length; i++)
-            {
-                sb.Append(i == 0 ? "M " : "L ");
-                sb.Append(string.Format(CultureInfo.InvariantCulture, "{0:0.#},{1:0.#} ",
-                    pts[i].X, pts[i].Y));
-            }
-            sb.Append("Z ");
         }
     }
 }

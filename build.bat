@@ -118,13 +118,14 @@ if errorlevel 8 (
     exit /b 1
 )
 
-rem  Acid-rain game word list. The app reads it from "game\words.json" next to
-rem  the exe. Source lives inside the project folder; copy it directly from
-rem  source (not the publish staging) so incremental single-file publish can
-rem  never leave it out and blank the deployed copy (<260723_2>).
-robocopy "%~dp0OpenTyping\game" "%BUILD_DIR%\game" /MIR /NFL /NDL /NJH /NJS >nul
+rem  Prompt word list (used by both stage practice and the acid-rain game,
+rem  <260927_2>). The app reads it from "wordslist\words.json" next to the exe.
+rem  Source lives inside the project folder; copy it directly from source (not
+rem  the publish staging) so incremental single-file publish can never leave
+rem  it out and blank the deployed copy (<260723_2>).
+robocopy "%~dp0OpenTyping\wordslist" "%BUILD_DIR%\wordslist" /MIR /NFL /NDL /NJH /NJS >nul
 if errorlevel 8 (
-    echo [FAILED] Could not copy game folder.
+    echo [FAILED] Could not copy wordslist folder.
     exit /b 1
 )
 
@@ -150,7 +151,7 @@ if errorlevel 8 (
 echo(
 echo [OK] Build complete
 echo      Output: the app exe in "%BUILD_DIR%"
-echo      Data  : "%BUILD_DIR%\layouts", "%BUILD_DIR%\data", "%BUILD_DIR%\game", "%BUILD_DIR%\stages", "%BUILD_DIR%\hands"
+echo      Data  : "%BUILD_DIR%\layouts", "%BUILD_DIR%\data", "%BUILD_DIR%\wordslist", "%BUILD_DIR%\stages", "%BUILD_DIR%\hands"
 echo(
 
 endlocal

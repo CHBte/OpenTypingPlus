@@ -27,14 +27,15 @@ namespace OpenTyping
         private readonly int? originalCheatUpTo;
         private bool userChangedSelection;
 
-        public CheatStageWindow(IList<PracticeStage> stages)
+        public CheatStageWindow(IReadOnlyList<PracticeStage> stages)
         {
             InitializeComponent();
             Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
-            HintText.Text = "고른 단계까지는 " + StageRecords.PassThreshold +
-                            "타를 넘긴 것으로 쳐서, 그 다음 단계 타일과 그때까지의 오락이 열립니다. " +
-                            "실제 기록은 바뀌지 않습니다.";
+            // <260927_5>(0), <260927_6>(0.1) 치트는 지금 '설정'에 지정된 자판의 기록에만 적용된다.
+            HintText.Text = "'" + StageSets.Current.LayoutName + "' 자판의 기록에만 적용됩니다. " +
+                            "고른 단계까지는 목표 타수를 넘긴 것으로 쳐서, 그 다음 단계 타일과 그때까지의 " +
+                            "오락이 열립니다. 실제 기록은 바뀌지 않습니다.";
 
             // Tag: null = 원래대로(치트 끔), 0 = 1단계도 통과 못함, n = n단계까지 (<260812_10-2>)
             StageCombo.Items.Add(new ComboBoxItem { Content = "원래대로", Tag = null });

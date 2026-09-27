@@ -37,6 +37,18 @@
                    MaxWidth="560"
                    Margin="0 8 0 0"/>
 
+        <!-- <2600919_2> 치트 상태(StageRecords.CheatOn)일 때만 보이는 경고 줄. 훗날 이 사실을
+             잊고 "왜 오락·다음 단계가 안 열리지"라며 헤매지 않도록 매번 상기시킨다. -->
+        <TextBlock x:Name="CheatWarningText"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontFamily="{StaticResource NanumGothic}"
+                   FontSize="12pt"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap"
+                   MaxWidth="560"
+                   Margin="0 8 0 0"
+                   Visibility="Collapsed"/>
+
         <!-- 버튼 모양은 '→ 연습 시작' 버튼 디자인을 따른다(디자인 통일 원칙 2). -->
         <StackPanel x:Name="ButtonPanel"
                     Orientation="Horizontal"
