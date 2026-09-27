@@ -14,51 +14,51 @@
 
 ### 대문 화면
 
-![대문 화면](images/01_main.png)
+<img src="images/01_main.png" title="" alt="대문 화면" width="300">
 
 ### 자리연습 (한글)
 
 두벌식 표준 한글 기준으로 단계별 타일이 나뉘어 있고, 목표 타수를 통과해야 다음 단계와 오락이 열립니다.
 
-![자리연습 화면(한글)](images/02_step_kor.png)
+<img src="images/02_step_kor.png" title="" alt="자리연습 화면(한글)" width="300">
 
 ### 자리연습 (영문)
 
 QWERTY 영문 자판에서도 오락이 제공됩니다.
 
-![자리연습 화면(영문)](images/03_step_en.png)
+<img src="images/03_step_en.png" title="" alt="자리연습 화면(영문)" width="300">
 
 ### 자리연습 새 창
 
 단계 타일을 클릭하면 열리는 창입니다. 렌더링 키보드 위에 손가락 레이어가 겹쳐지고, 제시된 키를 맞게 누르면 노란색으로, 틀리게 누르면 빨간색으로 표시됩니다.
 
-![자리연습 새 창](images/04_practice.png)
+<img src="images/04_practice.png" title="" alt="자리연습 새 창" width="300">
 
 ### 산성비 타자 오락
 
 자리연습 단계를 통과하면 열리는 오락입니다. 떨어지는 단어를 입력해 지우면 점수를 얻습니다.
 
-![산성비 타자 오락](images/05_game.png)
+<img src="images/05_game.png" title="" alt="산성비 타자 오락" width="300">
 
 ### 오락 특수 효과
 
 특정 조건을 만족하면 화면에 재미있는 효과가 나타납니다.
 
-![오락 효과](images/06_game_effect.png)
-![오락 효과](images/07_game_effect.png)
-![오락 효과 - 지구 환경을 지켜라](images/08_game_effect.png)
+<img src="images/06_game_effect.png" title="" alt="오락 효과" width="300">
+<img src="images/07_game_effect.png" title="" alt="오락 효과" width="300">
+<img src="images/08_game_effect.png" title="" alt="오락 효과 - 지구 환경을 지켜라" width="300">
 
 ### 문장연습 결과
 
 한 문장씩 나누어 연습하며, 완료 후 타속·정확도 변화를 그래프로 볼 수 있습니다.
 
-![문장연습 결과 그래프](images/09.png)
+<img src="images/09.png" title="" alt="문장연습 결과 그래프" width="300">
 
 ### 긴글연습
 
 하나의 장문을 여러 줄로 나누어 이어서 연습합니다.
 
-![긴글연습 화면](images/10.png)
+<img src="images/10.png" title="" alt="긴글연습 화면" width="300">
 
 ## 기여
 
