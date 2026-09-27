@@ -32,6 +32,9 @@ namespace OpenTyping
         /// <summary>'지금 입력 중' 칸 하나가 담을 수 있는 글자 수(<260812_2> 받아쓰기 칸 설계).</summary>
         private const int CellChars = 7;
 
+        /// <summary>'n타까지 쳤을 때 보일 글자'를 계산하는 규칙. 창이 자기 자판의 규칙(KeyboardMap)으로 바꿔 끼운다.</summary>
+        public System.Func<string, int, string> Prefix { get; set; } = HangulJamo.TypedPrefix;
+
         private string prompt = "";
         private int strokes;
         private string wrong = "";
@@ -59,7 +62,7 @@ namespace OpenTyping
         public void Wrong(string ch)
         {
             if (string.IsNullOrEmpty(ch)) return;
-            int room = CellChars - HangulJamo.TypedPrefix(prompt, strokes).Length - wrong.Length;
+            int room = CellChars - Prefix(prompt, strokes).Length - wrong.Length;
             if (room <= 0) return;
             wrong += ch.Length <= room ? ch : ch.Substring(0, room);
         }
@@ -88,7 +91,7 @@ namespace OpenTyping
         public List<(string Text, Brush Color)> Segments()
         {
             var list = new List<(string, Brush)>();
-            string done = HangulJamo.TypedPrefix(prompt, strokes);
+            string done = Prefix(prompt, strokes);
             if (done.Length > 0) list.Add((done, CorrectBrush));
             if (wrong.Length > 0) list.Add((wrong, WrongBrush));
             return list;
@@ -96,6 +99,6 @@ namespace OpenTyping
 
         /// <summary>검사·진단용 요약: "초록글자/파랑글자|빨강글자".</summary>
         public string Describe() =>
-            LastPassed + "/" + HangulJamo.TypedPrefix(prompt, strokes) + "|" + wrong;
+            LastPassed + "/" + Prefix(prompt, strokes) + "|" + wrong;
     }
 }

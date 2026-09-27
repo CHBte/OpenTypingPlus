@@ -17,6 +17,9 @@ namespace OpenTyping
     {
         public static KeyLayout CurrentKeyLayout { get; private set; }
 
+        /// <summary>검사용: 설정을 건드리지 않고 지금 자판만 바꾼다(헤드리스 진단 전용).</summary>
+        internal static void SetCurrentKeyLayoutForTest(KeyLayout layout) => CurrentKeyLayout = layout;
+
         public const string KeyLayoutDataDirStr = "KeyLayoutDataDir";
         public const string KeyLayoutStr = "KeyLayout";
         public const string PracticeDataDirStr = "PracticeDataDir";
@@ -268,11 +271,29 @@ namespace OpenTyping
 
             this.Loaded += MainWindow_Loaded;
             this.Closed += MainWindow_Closed;
+
+            // <260927_13> `자판 표시`를 클릭해도 '설정' 창이 열리게, 다섯 화면의 컨트롤 모두
+            // '설정' 버튼과 같은 처리(SettingsButton_Click)를 구독한다.
+            HomeMenu.KeyLayoutIndicator.Click += (s, e) => SettingsButton_Click(s, null);
+            KeyPracticeMenu.KeyLayoutIndicator.Click += (s, e) => SettingsButton_Click(s, null);
+            SyllablePracticeMenu.KeyLayoutIndicator.Click += (s, e) => SettingsButton_Click(s, null);
+            SentencePracticeMenu.KeyLayoutIndicator.Click += (s, e) => SettingsButton_Click(s, null);
+            ArticlePracticeMenu.KeyLayoutIndicator.Click += (s, e) => SettingsButton_Click(s, null);
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             CheckSyllablePractice();
+            WarnIfWordListUnreadable();
+        }
+
+        // 편집한 단어 목록(words.json)이 깨져 조용히 다른 목록으로 넘어갔으면 한 번 알린다. 단계 타일을
+        // 만들면서 목록을 이미 읽은 뒤에 불러야 한다(아직 안 읽었으면 아무것도 하지 않는다).
+        private void WarnIfWordListUnreadable()
+        {
+            string warning = WordCatalog.TakeUnreadableWarning();
+            if (warning != null)
+                MessageBox.Show(this, warning, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private static void MainWindow_Closed(object sender, EventArgs e)
@@ -332,22 +353,22 @@ namespace OpenTyping
             {
                 CurrentKeyLayout = settingsWindow.SelectedKeyLayout;
 
+                // 옛 자판 파일로 만들어 둔 글자→키 규칙·단계·오락 단어를 버린다(새 자판 파일로 다시 만들게).
+                StageSets.ResetCaches();
+
                 // 자판이 바뀌면 '자리연습' 화면 UI(단계 타일 ↔ 키 선택)도 함께 전환된다.
                 KeyPracticeMenu.RefreshLayout();
+                WarnIfWordListUnreadable();
+                // 기록·치트는 자판마다 따로이므로(<260927_5>(0)) 치트 표시(테마)도 새 자판 기준으로.
+                StageRecords.NotifyLayoutChanged();
 
-                var currentKeyLayoutNameBinding = new Binding
-                {
-                    Path = new PropertyPath("Name"),
-                    Source = CurrentKeyLayout,
-                };
-                HomeMenu.CurrentKeyLayoutName.SetBinding(TextBlock.TextProperty, currentKeyLayoutNameBinding);
-
-                var currentKeyLayoutCharBinding = new Binding
-                {
-                    Path = new PropertyPath("Character"),
-                    Source = CurrentKeyLayout,
-                };
-                HomeMenu.CurrentKeyLayoutChar.SetBinding(TextBlock.TextProperty, currentKeyLayoutCharBinding);
+                // <260927_10>·<260927_10.1> `자판 표시`가 다섯 화면(대문·자리연습·음절연습·문장연습·
+                // 긴글연습)에 하나씩 있으므로, 자판이 바뀌면 전부 다시 묶는다.
+                HomeMenu.KeyLayoutIndicator.Refresh();
+                KeyPracticeMenu.KeyLayoutIndicator.Refresh();
+                SyllablePracticeMenu.KeyLayoutIndicator.Refresh();
+                SentencePracticeMenu.KeyLayoutIndicator.Refresh();
+                ArticlePracticeMenu.KeyLayoutIndicator.Refresh();
 
                 var mostIncorrectBinding = new Binding
                 {

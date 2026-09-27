@@ -65,7 +65,9 @@ namespace OpenTyping
         /// </summary>
         public static void ApplyTo(KeyLayout keyLayout)
         {
-            if (!ReadFromDisk().TryGetValue(keyLayout.Name, out KeyLayoutUserData data)) return;
+            // 파일에 "자판 이름": null 로 적혀 있으면 값이 null로 들어온다 — 그대로 쓰면 시작 도중
+            // 예외로 앱이 아예 뜨지 않으므로, 저장된 것이 없는 것으로 친다.
+            if (!ReadFromDisk().TryGetValue(keyLayout.Name, out KeyLayoutUserData data) || data == null) return;
 
             keyLayout.Stats = data.Stats ?? new KeyLayoutStats();
             if (data.DefaultKeys != null)

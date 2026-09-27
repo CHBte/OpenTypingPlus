@@ -16,7 +16,9 @@ namespace OpenTyping
             InitializeComponent();
             Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
-            List<(int StageId, int Score, string When)> records = AcidRainWindow.LoadBestRecords();
+            // <260927_6>(0) 지금 '설정'의 자판(한글/영문) 오락 기록을 보여 준다.
+            IStageSet set = StageSets.Current;
+            List<(int StageId, int Score, string When)> records = AcidRainWindow.LoadBestRecords(set);
             IArcadeGame game = ArcadeGames.Default;
 
             if (records.Count == 0)
@@ -27,7 +29,7 @@ namespace OpenTyping
 
             foreach ((int stageId, int score, string when) in records)
             {
-                string stageName = game?.StageName(stageId) ?? (stageId + "단계");
+                string stageName = game?.StageName(set, stageId) ?? (stageId + "단계");
                 RecordPanel.Children.Add(Line(stageName, bold: true));
                 RecordPanel.Children.Add(Line("    " + AcidRainWindow.FormatBestRecord(score, when)));
             }

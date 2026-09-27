@@ -111,13 +111,19 @@ namespace OpenTyping
         private bool guideHighlighted;          // 1단계 검지 자리 안내 강조인지 (#1c7ed6)
 
         // 색만 상태에 맞게 다시 칠한다.
-        // 우선순위: 물리적으로 눌림(정답=주황, 오답=빨강) > 안내 강조(파랑) > 제시 키(녹색) > 기본(흰색)
+        // 우선순위: 물리적으로 눌림(정답=주황, 오답=빨강) > 경고 깜빡임(빨강) > 안내 강조(파랑)
+        //          > 제시 키(녹색) > 기본(흰색)
         private void ApplyTriggerColor()
         {
             if (physicallyPressed)
             {
                 KeyColor = physicallyPressedIncorrect ? IncorrectKeyColor : PhysicalPressKeyColor;
                 ShadowColor = physicallyPressedIncorrect ? IncorrectKeyShadowColor : PhysicalPressKeyShadowColor;
+            }
+            else if (warnBlinkLit)
+            {
+                KeyColor = IncorrectKeyColor;
+                ShadowColor = IncorrectKeyShadowColor;
             }
             else if (guideHighlighted)
             {
@@ -189,6 +195,35 @@ namespace OpenTyping
             blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.6))));
             HomePositionUnderline.BeginAnimation(OpacityProperty, blink);
         }
+
+        private System.Windows.Threading.DispatcherTimer warnBlinkTimer;
+        private bool warnBlinkLit;   // 경고 깜빡임의 '켜진' 순간인지
+
+        /// <summary>
+        /// <260927_3>(2) 키를 오답 색(빨강)으로 깜빡이거나 멈춘다([Caps Lock]이 켜졌을 때 알림용).
+        /// 오답 색은 기존 오답 표시와 같은 색을 쓴다(디자인 통일 원칙 1).
+        /// </summary>
+        public void SetWarnBlink(bool on)
+        {
+            if (on)
+            {
+                if (warnBlinkTimer != null) return;
+                warnBlinkLit = true;
+                warnBlinkTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(0.5) };
+                warnBlinkTimer.Tick += (s, e) => { warnBlinkLit = !warnBlinkLit; ApplyTriggerColor(); };
+                warnBlinkTimer.Start();
+            }
+            else
+            {
+                warnBlinkTimer?.Stop();
+                warnBlinkTimer = null;
+                warnBlinkLit = false;
+            }
+            ApplyTriggerColor();
+        }
+
+        /// <summary>검사용: 경고 깜빡임이 돌고 있는지.</summary>
+        internal bool IsWarnBlinking => warnBlinkTimer != null;
 
         /// <summary>BlinkHomeUnderline()으로 시작한 깜빡임을 멈추고 밑줄을 원래(항상 보임) 상태로 되돌린다.</summary>
         public void StopBlink()

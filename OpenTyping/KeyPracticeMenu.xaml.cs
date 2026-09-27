@@ -20,41 +20,32 @@ namespace OpenTyping
         // (<260812_8>에서 '두벌식 표준' → '두벌식 표준 한글'로 바뀌었다).
         internal const string StageLayoutName = "두벌식 표준 한글";
 
-        // 가장 긴 문구인 7단계 "(가운데 오른쪽 자리)"가 꼭 맞는 크기를 1~12단계 전체에 적용 (<260717_28-1>)
-        private const double TileWidth = 130;                      // 1~12단계 타일 가로 (<260718_2>)
+        // 타일 크기·간격은 예전 단계 타일과 같다 (<260718_2>, <260717_28-2>). 가장 긴 문구
+        // "(오른쪽 아랫자리)"도 두 줄로 나눠 이 크기에 들어간다.
+        private const double TileWidth = 130;
         private const double TileHeight = 64;
-        private const double TileGapX = 22;                        // 타일 좌우 간격 (<260717_28-2>)
-        private const double TileGapY = 22;                        // 행 사이(상하) 간격 (<260718_2>)
-        private const double Stage13Height = TileHeight * 2 / 3.0; // 13단계 타일 세로 (<260717_28-2>)
+        private const double TileGapX = 22;   // 타일 좌우 간격
+        private const double TileGapY = 22;   // 행 사이(상하) 간격
 
-        // 13단계 타일 가로: 헤더의 키보드 아이콘(FontAwesome KeyboardRegular) 벡터 데이터를 실측해
-        // 그 안의 [Space] 막대가 5키 나열 폭에 대해 갖는 비율(S비율)을 9~12단계 전체 폭에 적용한다 (<260718_2-1>).
-        //   길이1 = 한 줄 5개 키(각 48px, 80px 피치) 전체 폭 = (424+48) - 104 = 368
-        //   길이2 = [Space] 막대 폭 = 256
-        //   S비율 = 256 / 368 ≈ 0.6957  (아이콘에서 Space가 5키 약 70% 폭)
-        // 아이콘에서 Space 막대가 5키 아래 가운데 정렬(중심 288)돼 있으므로 13단계도 가운데 정렬한다.
-        private const double Stage13FullSpan = TileWidth * 4 + TileGapX * 3; // 9~12단계 전체 폭 (586)
-        private const double SRatio = 256.0 / 368.0;                         // 아이콘 [Space]폭 / 5키 나열폭
-        private const double Stage13Width = Stage13FullSpan * SRatio;        // ≈ 407.65
-        private const double Stage13LeftOffset = (Stage13FullSpan - Stage13Width) / 2.0;
-
-        // 1~3행 타일 색: 행마다 왼쪽부터 4개 타일에 순서대로 적용 (<260717_28>)
-        private static readonly Brush[] TileColumnColors =
+        // 행당 타일 수와 왼쪽부터의 색은 단계 정의 파일의 "tiles"가 정한다 (<260927_5>(2)(3), <260927_6>(2)(3)).
+        private static IReadOnlyList<Brush> TileBrushes(IStageSet set)
         {
-            new SolidColorBrush(Color.FromRgb(240, 62, 62)),
-            new SolidColorBrush(Color.FromRgb(28, 126, 214)),
-            new SolidColorBrush(Color.FromRgb(55, 178, 77)),
-            new SolidColorBrush(Color.FromRgb(247, 103, 7)),
-        };
-        private static readonly Brush Stage13Color = new SolidColorBrush(Color.FromRgb(245, 159, 0));
+            var brushes = new List<Brush>();
+            foreach (string hex in set.TileColors)
+            {
+                try { brushes.Add(new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex))); }
+                catch { /* 잘못 적힌 색은 건너뛴다 */ }
+            }
+            if (brushes.Count == 0) brushes.Add(new SolidColorBrush(Color.FromRgb(28, 126, 214)));
+            return brushes;
+        }
         // 비활성(앞 단계 미통과) 타일의 글자 색: 회색 (<260724_2>(2), 값은 <260812_11>)
         private static readonly Brush InactiveTileTextBrush = new SolidColorBrush(Color.FromRgb(190, 190, 190));
 
         public KeyPracticeMenu()
         {
             InitializeComponent();
-            BuildStageTiles();
-            RefreshLayout();
+            RefreshLayout(); // 단계가 있는 자판이면 이 안에서 타일·오락 목록을 만든다
 
             // 치트코드 입력을 받도록: 컨트롤이 보일 때 포커스를 잡고, 키 입력을 엿본다 (<260724_1>(2)).
             Focusable = true;
@@ -72,15 +63,16 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 치트코드 처리 (<260724_2>(3), <260812_10>). 꺼져 있으면 몇 단계까지 통과한 것으로 칠지
-        /// 물어보고, 이미 걸려 있으면 그대로 꺼서 원래 상태로 되돌린다. 실제 기록은 건드리지 않는다.
+        /// 치트코드 처리 (<260724_2>(3), <260812_10>, <260812_10-2>). 몇 단계까지 통과한 것으로 칠지
+        /// (또는 '원래대로' 되돌릴지) 고르는 창을 늘 띄운다. 실제 기록은 건드리지 않는다.
         /// </summary>
         private void ApplyCheat()
         {
             // <260812_10-2> 되돌리기('원래대로')도 목록의 한 항목이 되었으므로, 치트가 이미 걸려
             // 있든 아니든 늘 이 창을 띄운다. 그래야 걸려 있는 값을 다른 값으로 바꿀 수도 있다.
             // 치트 창은 다른 2단계 창과 달리 메인 창을 숨기지 않는다(사용자 지정).
-            var dialog = new CheatStageWindow(DubeolsikStages.Stages) { Owner = Window.GetWindow(this) };
+            // <260927_5>(0), <260927_6>(0.1) 치트는 지금 '설정'에 지정된 자판의 기록에만 적용된다.
+            var dialog = new CheatStageWindow(StageSets.Current.Stages) { Owner = Window.GetWindow(this) };
             dialog.ShowDialog();
             if (!dialog.Confirmed) return;   // 취소
 
@@ -97,21 +89,25 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 현재 자판에 맞는 UI를 보여준다: '두벌식 표준'이면 13개 연습 단계 타일,
-        /// 그 외 자판이면 기존 키 선택 UI. 설정에서 자판이 바뀔 때마다 다시 호출된다.
+        /// 현재 자판에 맞는 UI를 보여준다: 단계가 있는 자판(두벌식 표준 한글·QWERTY 영문)이면 연습
+        /// 단계 타일, 그 외 자판이면 기존 키 선택 UI. 설정에서 자판이 바뀔 때마다 다시 호출된다.
         /// </summary>
         public void RefreshLayout()
         {
             bool useStages = MainWindow.CurrentKeyLayout != null &&
-                             MainWindow.CurrentKeyLayout.Name == StageLayoutName;
+                             StageSets.HasStages(MainWindow.CurrentKeyLayout.Name);
 
             StageTilePanel.Visibility = useStages ? Visibility.Visible : Visibility.Collapsed;
             ClassicBody.Visibility = useStages ? Visibility.Collapsed : Visibility.Visible;
             ClassicBottomBar.Visibility = ClassicBody.Visibility;
 
-            // 오락 드롭다운은 '두벌식 표준'(연습 단계·게임 대응)에서만 보인다 (<260723_2>).
+            // 오락 드롭다운은 단계가 있는 자판에서만 보인다 (<260723_2>, <260927_6>(0)).
             GameStageCombo.Visibility = useStages ? Visibility.Visible : Visibility.Collapsed;
-            if (useStages) BuildGameDropdown();
+            if (useStages)
+            {
+                BuildStageTiles();   // 자판이 바뀌면 단계 구성·기록이 달라진다
+                BuildGameDropdown();
+            }
 
             if (!useStages)
             {
@@ -142,10 +138,10 @@ namespace OpenTyping
             IArcadeGame game = ArcadeGames.Default;
             if (game != null)
             {
-                foreach (int stageId in game.StageIds)
+                foreach (int stageId in game.StageIdsFor(StageSets.Current))
                 {
                     bool unlocked = StageRecords.IsGameStageUnlocked(stageId);
-                    string label = game.StageName(stageId);
+                    string label = game.StageName(StageSets.Current, stageId);
                     // <260812_3> 잠긴 단계도 고를 수는 있게 두고(비활성이면 클릭 자체가 먹지 않아
                     // 이유를 알려 줄 수 없다), 고르면 경고 문구를 띄운다.
                     var item = new ComboBoxItem
@@ -195,7 +191,7 @@ namespace OpenTyping
 
             if (!StageRecords.IsGameStageUnlocked(stageId)) { ShowLockedWarning(); return; }   // <260812_3>
 
-            Window gameWindow = game.CreateWindow(stageId);
+            Window gameWindow = game.CreateWindow(StageSets.Current, stageId);
             MainWindow.ShowDialogDimmed(gameWindow);
             BuildGameDropdown(); // 방어적 새로고침
         }
@@ -210,14 +206,15 @@ namespace OpenTyping
         {
             StageTilePanel.Children.Clear();
 
-            IList<PracticeStage> stages = DubeolsikStages.Stages;
+            IStageSet set = StageSets.Current;
+            IReadOnlyList<PracticeStage> stages = set.Stages;
+            int tilesPerRow = set.TilesPerRow;
+            IReadOnlyList<Brush> colors = TileBrushes(set);
 
-            // 타일 배치는 13개 단계(3행×4 + 13단계)를 전제로 한다. 단계 정의 JSON을 편집·손상해 13개
-            // 미만이 되면 인덱스 접근이 크래시하므로, 그 경우엔 타일을 그리지 않아 앱이 죽지 않게 한다
-            // (단계 개수를 바꾸면 타일 UI는 별도로 재설계 — <260724_1>(3) 범위 밖).
-            if (stages.Count < 13) return;
-
-            for (int row = 0; row < 3; row++)
+            // <260927_5>(2), <260927_6>(2)(2.1): 모든 타일은 같은 크기의 직사각형이고, 행마다 tilesPerRow 개씩
+            // 왼쪽부터 채운다(마지막 행이 덜 차면 그 타일들은 왼쪽 정렬).
+            // 단계 개수를 가정하지 않으므로 단계 정의 JSON을 편집해 개수가 바뀌어도 죽지 않는다.
+            for (int start = 0; start < stages.Count; start += tilesPerRow)
             {
                 var rowPanel = new StackPanel
                 {
@@ -226,29 +223,17 @@ namespace OpenTyping
                     Margin = new Thickness(0, 0, 0, TileGapY)
                 };
 
-                for (int col = 0; col < 4; col++)
+                int end = System.Math.Min(start + tilesPerRow, stages.Count);
+                for (int index = start; index < end; index++)
                 {
-                    int index = row * 4 + col;
+                    int col = index - start;
                     rowPanel.Children.Add(
-                        CreateStageTile(stages[index], index + 1, TileColumnColors[col],
-                                        TileWidth, TileHeight, col < 3 ? TileGapX : 0));
+                        CreateStageTile(stages[index], index + 1, colors[col % colors.Count],
+                                        TileWidth, TileHeight, col < tilesPerRow - 1 ? TileGapX : 0));
                 }
 
                 StageTilePanel.Children.Add(rowPanel);
             }
-
-            // 13단계: 4행에 두되, 가로는 9~12단계 전체 폭의 S비율(키보드 아이콘 [Space] 비율)만큼을
-            // 가운데 정렬하고 (<260718_2-1>), 세로는 다른 타일의 2/3 정도로 줄인다 (<260717_28-2>).
-            Tile stage13Tile = CreateStageTile(stages[12], 13, Stage13Color,
-                                              Stage13Width, Stage13Height, 0, Stage13LeftOffset);
-
-            var lastRowPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            lastRowPanel.Children.Add(stage13Tile);
-            StageTilePanel.Children.Add(lastRowPanel);
         }
 
         private Tile CreateStageTile(PracticeStage stage, int stageNumber, Brush background,
@@ -263,8 +248,7 @@ namespace OpenTyping
             // 비활성 타일은 굵지 않게 해 활성 타일과 더 뚜렷이 갈라 놓는다 (<260812_11-1>).
             FontWeight textWeight = active ? FontWeights.Bold : FontWeights.Normal;
 
-            // "x단계(...)" → 윗줄 "x단계", 아랫줄 "(...)" (<260717_28-1>).
-            // 13단계(전체 폭)는 한 줄 그대로 둔다.
+            // "x단계(...)" → 윗줄 "x단계", 아랫줄 "(...)" (<260717_28-1>, <260927_5>(1.1)).
             UIElement content;
             int parenIndex = stage.Name.IndexOf('(');
             bool twoLine = width < TileWidth * 2 && parenIndex > 0;
@@ -332,7 +316,7 @@ namespace OpenTyping
             tile.ToolTip = StageRecords.HasRecord(stageNumber)
                 ? "이 단계 최고 기록: " + StageRecords.BestTa(stageNumber) + "타"
                 : (active ? "아직 완주 기록이 없습니다"
-                          : "앞 단계를 " + StageRecords.PassThreshold + "타 이상으로 통과하면 열립니다");
+                          : "앞 단계를 " + StageRecords.TargetTa(stageNumber - 1) + "타 이상으로 통과하면 열립니다");
 
             // 활성 타일만 클릭(연습 시작) 가능 (<260724_2-1>(2)).
             // 잠긴 타일을 눌렀을 때는 왜 안 되는지 알려 준다 (<260812_3>).
@@ -355,9 +339,10 @@ namespace OpenTyping
         /// </summary>
         private void RunStage(PracticeStage stage)
         {
+            IStageSet set = StageSets.Current;
             while (stage != null)
             {
-                var keyPracticeWindow = new KeyPracticeWindow(stage);
+                var keyPracticeWindow = new KeyPracticeWindow(set, stage);
                 MainWindow.ShowDialogDimmed(keyPracticeWindow);
 
                 // 방금 연습에서 목표 타수로 통과했으면 다음 타일이 활성화되고 오락이 해금됐을 수 있으니
@@ -365,12 +350,12 @@ namespace OpenTyping
                 BuildStageTiles();
                 BuildGameDropdown();
 
-                int stageNumber = DubeolsikStages.Stages.IndexOf(stage) + 1;
+                int stageNumber = set.Stages.ToList().IndexOf(stage) + 1;
                 switch (keyPracticeWindow.FinishChoice)
                 {
                     case StageFinishWindow.Choice.NextStage:
-                        stage = stageNumber < DubeolsikStages.Stages.Count
-                            ? DubeolsikStages.Stages[stageNumber]   // 0-기반이라 이것이 n+1단계
+                        stage = stageNumber < set.Stages.Count
+                            ? set.Stages[stageNumber]   // 0-기반이라 이것이 n+1단계
                             : null;
                         continue;
 
@@ -378,7 +363,7 @@ namespace OpenTyping
                         IArcadeGame game = ArcadeGames.Default;
                         if (game != null)
                         {
-                            MainWindow.ShowDialogDimmed(game.CreateWindow(stage.GameStageId));
+                            MainWindow.ShowDialogDimmed(game.CreateWindow(set, stage.GameStageId));
                             BuildGameDropdown();
                         }
                         return;

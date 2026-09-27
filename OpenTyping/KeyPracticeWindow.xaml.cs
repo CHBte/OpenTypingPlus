@@ -37,12 +37,13 @@ namespace OpenTyping
             public string Display;                       // 제시 영역에 통째로 보여줄 문자열
             public List<HangulJamo.Stroke> Strokes;      // 순서대로 눌러야 하는 키들
             public int Index;                            // program 내 위치(클래식은 -1) — <260812_7>
+            public bool IsKey;                           // 키 하나짜리 제시어(낱자·숫자·기호)
         }
 
         private readonly IList<KeyPos> keyList;
         private readonly bool noShiftMode;
         private readonly PracticeStage stage;      // 단계 모드일 때만
-        private readonly int stageNumber;          // 단계 번호(1~13), 단계 모드일 때만 의미
+        private readonly int stageNumber;          // 단계 번호(1부터), 단계 모드일 때만 의미
         private readonly Dictionary<KeyPos, int> incorrectStats = new Dictionary<KeyPos, int>();
         private readonly HashSet<KeyPos> physicallyDownKeys = new HashSet<KeyPos>();
 
@@ -99,6 +100,9 @@ namespace OpenTyping
         // <260812_2> 받아쓰기 칸: 제시어를 어디까지 맞게 눌렀는지 색으로 보여 준다 (<260812_2-1>).
         private readonly DictationState dictation = new DictationState();
 
+        // 이 창 자판의 '글자 → 키 입력' 규칙(자판 파일에서 만든다). 제시어 분해·입력 진행 표시·Caps Lock 대상 키에 쓴다.
+        private readonly KeyboardMap keyboard;
+
         /// <summary>받아쓰기 칸을 지금 상태대로 다시 그린다.</summary>
         private void RefreshDictation()
         {
@@ -144,7 +148,7 @@ namespace OpenTyping
         private static readonly Brush NoticeWarnBrush = new SolidColorBrush(Color.FromRgb(0xf0, 0x3e, 0x3e)); // 빨강(경고)
         private static readonly Brush NoticeCongratsBrush = new SolidColorBrush(Color.FromRgb(0x1c, 0x7e, 0xd6)); // 파랑(축하)
 
-        /// <summary>기존 방식: 선택한 키 목록에서 조건부 2단계 복원추출 균등난수 방식으로 연습 ('두벌식 표준' 외 자판).</summary>
+        /// <summary>기존 방식: 선택한 키 목록에서 조건부 2단계 복원추출 균등난수 방식으로 연습 (단계 정의가 없는 자판).</summary>
         public KeyPracticeWindow(IList<KeyPos> keyList, bool noShiftMode)
         {
             InitializeComponent();
@@ -152,26 +156,46 @@ namespace OpenTyping
 
             this.keyList = keyList;
             this.noShiftMode = noShiftMode;
+            keyboard = KeyboardMaps.For(MainWindow.CurrentKeyLayout?.Name);
+            dictation.Prefix = keyboard.TypedPrefix;
 
             InitPractice();
         }
 
-        /// <summary>단계 모드: 단계 프로그램(순1~순4)을 차례로 진행 ('두벌식 표준' 자판) (<260723_4>).</summary>
-        public KeyPracticeWindow(PracticeStage stage)
+        /// <summary>단계 모드: 단계 프로그램(순1~)을 차례로 진행 (두벌식 표준 한글·QWERTY 영문) (<260927_3>).</summary>
+        public KeyPracticeWindow(IStageSet stageSet, PracticeStage stage)
         {
             InitializeComponent();
             Title = VersionInfo.WindowTitle; // <2600912_5-1>
 
+            this.stageSet = stageSet;
+            keyboard = stageSet.Keyboard;
+            dictation.Prefix = keyboard.TypedPrefix;
             this.stage = stage;
             isStageMode = true;
-            stageNumber = DubeolsikStages.Stages.IndexOf(stage) + 1;
-            isStage1 = ReferenceEquals(stage, DubeolsikStages.Stages[0]);
+            stageNumber = IndexOfStage(stageSet, stage) + 1;
+            isStage1 = stageSet.Stages.Count > 0 && ReferenceEquals(stage, stageSet.Stages[0]);
+            // 대소문자가 있는 문자(한글 외)의 단계 창은 Caps Lock을 살핀다 (<260927_3>(2)).
+            isEnglishStage = keyboard.HasCaseLetters;
+
+            // 1단계 창의 검지 자리 안내 문구는 단계 정의 파일의 index_guide 를 따른다(없으면 창의 기본 문구).
+            // 자리(물리 키)는 자판과 무관하게 같다.
+            if (!string.IsNullOrEmpty(stageSet.IndexGuide)) IndexGuideText.Text = stageSet.IndexGuide;
 
             InitPractice();
         }
 
+        private static int IndexOfStage(IStageSet set, PracticeStage stage)
+        {
+            for (int i = 0; i < set.Stages.Count; i++)
+                if (ReferenceEquals(set.Stages[i], stage)) return i;
+            return -1;
+        }
+
+        private readonly IStageSet stageSet;       // 단계 모드일 때만
         private readonly bool isStageMode;
         private readonly bool isStage1;
+        private readonly bool isEnglishStage;      // QWERTY 영문 단계 창인가(<260927_3>(2) Caps Lock 처리)
 
         private void InitPractice()
         {
@@ -182,7 +206,7 @@ namespace OpenTyping
             MinHeight += dictationRowHeight;
             Height += dictationRowHeight;
 
-            // 안내문("10개의 손가락을...")은 1단계 창에서만 쓰므로, 그 외 창(2~13단계·기존 방식)에서는
+            // 안내문("10개의 손가락을...")은 1단계 창에서만 쓰므로, 그 외 창(2단계 이후·기존 방식)에서는
             // 한 줄짜리 안내문 행을 없애고 창 세로도 그만큼 줄인다 (<260718_3-1>).
             if (!isStage1)
             {
@@ -195,7 +219,7 @@ namespace OpenTyping
 
             // 카운트 행에 "손 모양" 버튼이 있어 그 행이 커지는 만큼 키보드가 아래로 밀려, 렌더링 키보드
             // 바닥 간격이 표준 바닥 간격 15px보다 8px 작다. 그래서 세로를 8px 늘려 맞춘다 (<260718_6>).
-            // <260811_33> 클래식 창(두벌식 표준 외 자판)도 단계 창과 같은 구성(손 모양 버튼·손가락
+            // <260811_33> 클래식 창(단계 정의가 없는 자판)도 단계 창과 같은 구성(손 모양 버튼·손가락
             // 레이어)을 쓰게 되었으므로, 이 보정을 두 경우 모두에 적용한다.
             {
                 const double bottomGapAdjust = 8;
@@ -205,7 +229,7 @@ namespace OpenTyping
             }
 
             // <260718_3-2>: 빨간 ⓧ 바닥→키보드 꼭대기 '안내 문구 영역'을 모든 창에서 표준 36 logical로 통일.
-            // 현재 값: 1단계 45, 2~13단계 29, 클래식 28.5 → 목표 36이 되도록 창/그리드 세로를 델타만큼 조정.
+            // 현재 값: 1단계 45, 2단계 이후 29, 클래식 28.5 → 목표 36이 되도록 창/그리드 세로를 델타만큼 조정.
             double topGapAdjust;
             if (isStage1)
             {
@@ -213,7 +237,7 @@ namespace OpenTyping
             }
             else
             {
-                // 2~13단계와 클래식 창: 1단계와 같은 구조(안내문 행 21px 빈 스페이서 + 창 세로 동일)로
+                // 2단계 이후와 클래식 창: 1단계와 같은 구조(안내문 행 21px 빈 스페이서 + 창 세로 동일)로
                 // 맞춰 안내 문구 영역을 36으로 한다 (<260811_33> 로 두 경우의 구성이 같아졌다).
                 topGapAdjust = 21;
             }
@@ -240,10 +264,11 @@ namespace OpenTyping
             Deactivated += KeyPracticeWindow_Deactivated;
 
             // 손가락 레이어 인트로가 끝난 뒤에야 연습 값이 제시된다 (<260717_29-2>).
-            // <260811_33> 클래식 창(두벌식 표준 외 자판)도 단계 창과 똑같이 손가락 레이어·"손 모양"
+            // <260811_33> 클래식 창(단계 정의가 없는 자판)도 단계 창과 똑같이 손가락 레이어·"손 모양"
             // 버튼·안내 문구를 쓴다. 손 모양 벡터는 물리 키 위치(행·열) 기준이라 자판이 달라도 그대로
             // 재활용된다. 배정이 없는 키(`⧵` 등)는 SetPose 가 기본자세로 되돌리므로 손이 가만히 있는다.
             Loaded += (sender, e) => RunFingerLayerIntro();
+            Loaded += (sender, e) => StartCapsLockWatch();   // <260927_3>(2) 영문 단계 창만
 
             BuildShakeAnimation();
         }
@@ -313,10 +338,11 @@ namespace OpenTyping
             if (p.IsText)
             {
                 lp.Display = p.Text;
-                lp.Strokes = HangulJamo.Decompose(p.Text);
+                lp.Strokes = keyboard.Decompose(p.Text);
             }
             else
             {
+                lp.IsKey = true;
                 lp.Display = PromptDisplay(p);
                 lp.Strokes = new List<HangulJamo.Stroke> { new HangulJamo.Stroke(p.Key, p.IsShift) };
             }
@@ -436,8 +462,9 @@ namespace OpenTyping
                 return;
             }
 
-            // 제시어 하나를 끝냈으니 '원래 방식'의 글자수 환산에 더한다 (<260812_12>).
-            measuredLetters += TypingMeasurer.CountLetter(curLive.Display);
+            // 제시어 하나를 끝냈으니 '원래 방식'의 글자수 환산에 더한다 (<260812_12>). 키 하나짜리
+            // 제시어는 1글자다 — 세벌식의 "ㄱ (받침)"처럼 키 이름이 긴 경우 그 이름을 세면 부풀려진다.
+            measuredLetters += curLive.IsKey ? 1 : TypingMeasurer.CountLetter(curLive.Display);
 
             // 프롬프트 완료 → 받아쓰기 칸을 곧바로 비우고 다음 프롬프트로 (<260812_2-3>(2))
             dictation.Pass();
@@ -464,6 +491,13 @@ namespace OpenTyping
 
             if (e.IsRepeat) return;
 
+            // <260927_3>(2) [Caps Lock]을 누르면 켜짐/꺼짐이 바뀐 뒤의 상태로 경고를 곧바로 맞춘다.
+            if (actualKey == System.Windows.Input.Key.CapsLock)
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(RefreshCapsLockWarning));
+                return;
+            }
+
             // 인트로/종료 상태에서는 트리거 작동 안 함.
             if (curLive == null || practiceFinished || strokeIndex >= curLive.Strokes.Count) return;
 
@@ -481,6 +515,9 @@ namespace OpenTyping
                         || Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift);
 
             bool correct = expected.Pos == pos && expected.IsShift == isShift;
+
+            // <260927_3>(2) 영문 단계에서 Caps Lock이 켜져 있으면 글자 키는 대문자가 되므로 오답이다.
+            if (correct && CapsLockOn && keyboard.IsCaseLetterKey(pos)) correct = false;
 
             // <260812_14>(1) 첫 타건에 시계를 켠다.
             if (!practiceClock.IsRunning) practiceClock.Restart();
@@ -502,7 +539,11 @@ namespace OpenTyping
                 KeyLayoutBox.GetKeyBox(pos).PressPhysicalIncorrect();
                 physicallyDownKeys.Add(pos);
                 measuredWrong++;                          // <260812_12> '원래 방식'의 정확도용
-                dictation.Wrong(KeyChar(pos, isShift));   // <260812_2-1>(3) 틀린 글자는 빨강
+                string typed = KeyChar(pos, isShift);
+                // Caps Lock이 켜진 영문 창에서는 글자 키가 실제로 대문자(윗글쇠면 소문자)를 낸다.
+                if (typed != null && CapsLockOn && keyboard.IsCaseLetterKey(pos))
+                    typed = isShift ? typed.ToLowerInvariant() : typed.ToUpperInvariant();
+                dictation.Wrong(typed);                   // <260812_2-1>(3) 틀린 글자는 빨강
                 RefreshDictation();
                 ShowTypoWarning();                        // <260812_15>
                 RecordIncorrect();
@@ -517,7 +558,13 @@ namespace OpenTyping
 
             if (expected.IsShift && IsRightShiftCorrect(expected.Pos) != isRight)
             {
+                // 다른 키 입력과 똑같이, 오타도 '타건한 순간'이다: 첫 타건이면 시계를 켜고(<260812_14>(1)),
+                // 결합된 글자 구간의 첫 타건이면 측정을 다시 시작한다(<260812_7>). 그 뒤에 오타를 센다.
+                if (!practiceClock.IsRunning) practiceClock.Restart();
+                RestartTpmIfCombinedTailBegan();
+
                 shiftBox.PressPhysicalIncorrect();
+                measuredWrong++;     // <260812_12> '원래 방식'의 정확도도 다른 오타와 똑같이 센다
                 RecordIncorrect();
                 ShowTypoWarning();   // <260812_15> 반대쪽 Shift 도 오타다
                 RegisterInput(false);
@@ -543,6 +590,9 @@ namespace OpenTyping
         // (클래식은 끝이 없어 축하 문구는 나올 일이 없고, 경고 문구만 해당된다).
         private bool RegisterInput(bool correct)
         {
+            // <260927_3>(0.3.1) 영문 자리연습에서 Caps Lock이 켜져 있는 동안은 이 판단을 하지 않는다.
+            if (CapsLockOn) return false;
+
             groupInputCount++;
             if (!correct) groupWrongCount++;
 
@@ -569,7 +619,13 @@ namespace OpenTyping
             sabotageNoticeActive = true;   // 이 10초 동안은 오타 경고(<260812_15>)가 끼어들지 않는다
             noticeTimer?.Stop();
             noticeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-            noticeTimer.Tick += (s, e) => { noticeTimer.Stop(); sabotageNoticeActive = false; HideNotice(); };
+            noticeTimer.Tick += (s, e) =>
+            {
+                noticeTimer.Stop();
+                sabotageNoticeActive = false;
+                HideNotice();
+                RefreshCapsLockWarning();   // 그사이 Caps Lock이 켜졌으면 이제 그 경고를 보인다
+            };
             noticeTimer.Start();
 
             // 맞은/틀린 카운트 0으로 초기화하고 단계 연습을 처음부터 다시 시작.
@@ -670,7 +726,10 @@ namespace OpenTyping
 
         private void UpdateTpm()
         {
-            TpmText.Text = CurrentTpm().ToString();   // <260812_21> '타속' 타일 안의 숫자
+            // 측정 시작 직후엔 1타 ÷ 몇 밀리초로 수천이 잠깐 보이므로 1초가 지나기 전엔 0으로 보인다.
+            // 표시만 그렇고, 기록(FinishStage)은 CurrentTpm을 그대로 쓴다.
+            bool tooEarly = !practiceFinished && practiceClock.Elapsed.TotalSeconds < 1;
+            TpmText.Text = (tooEarly ? 0 : CurrentTpm()).ToString();   // <260812_21> '타속' 타일 안의 숫자
         }
 
         // ===== 종료 / 오락 해금 (<260723_4> (1)) =====
@@ -689,18 +748,23 @@ namespace OpenTyping
             if (!isStageMode) return; // 클래식은 종료 개념 없음(무한)
 
             int tpm = CurrentTpm();
-            // 이번 완주로 '처음' 목표 타수를 넘겨 오락이 새로 열리는지(이전 최고가 목표 타수 미만) 기록 전에 판정한다.
-            bool newlyUnlocked = tpm >= StageRecords.PassThreshold
-                                 && StageRecords.BestTa(stageNumber) < StageRecords.PassThreshold;
+            // 이번 완주로 이 단계가 '처음' 통과 처리되어 오락이 새로 열리는지를, 기록 전후의 통과 여부로
+            // 판정한다. 목표 타수(단계마다 다름, <260927_3>(0.4))와 치트(<260812_10-1>: 치트 중엔
+            // 기록과 무관하게 치트가 정한 단계까지만 통과)를 모두 IsPassed 한 곳이 따지므로, 치트 중에
+            // "오락이 열렸습니다"가 잘못 뜨지 않는다.
+            bool wasPassed = StageRecords.IsPassed(stageNumber);
 
             // 매 완주마다 이 단계의 최고 타 기록을 갱신한다 (<260724_2-1>).
             StageRecords.Record(stageNumber, tpm);
+            bool newlyUnlocked = !wasPassed && StageRecords.IsPassed(stageNumber);
 
-            // 처음 목표 타수를 넘긴 순간에만, 오락이 있는 단계(9~12 제외)면 축하 문구를 띄운다 (<260724_2>(1)).
+            // 처음 목표 타수를 넘긴 순간에만, 오락이 있는 단계(한글 7~9단계 제외)면 축하 문구를 띄운다
+            // (<260927_3>(1)·(2)).
             // (다음 자리연습 단계 타일 활성화·오락 해금은 최고 기록에서 파생되므로 문구와 무관하게 이뤄진다.)
             // <260812_4-2>: 완주할 때마다 결과 문구를 띄우던 <260812_4>·<260812_4-1>은 폐기되어,
             // 여기 표시는 원래의 이 축하 문구로 되돌아왔다.
-            if (newlyUnlocked && stage.GameStageId != 0)
+            // 오락이 실제로 있는지(단어 목록이 비어 오락 단계가 빠진 경우 제외)는 완료 창과 같은 기준으로 본다.
+            if (newlyUnlocked && StageFinishWindow.HasGame(stage.GameStageId))
                 ShowNotice("축하합니다! " + stageNumber + "단계의 오락이 열렸습니다",
                            NoticeCongratsBrush, hideOthers: true);
 
@@ -722,8 +786,8 @@ namespace OpenTyping
             // 먼저 걸러낸다.
             if (!IsLoaded) return;
 
-            var win = new StageFinishWindow(stageNumber, DubeolsikStages.Stages.Count,
-                                            CurrentTpm(), stage.GameStageId)
+            var win = new StageFinishWindow(stageNumber, stageSet.Stages.Count,
+                                            CurrentTpm(), stage.GameStageId, stageSet.ScriptName)
             {
                 Owner = this
             };
@@ -755,8 +819,64 @@ namespace OpenTyping
 
         private void ShowTypoWarning()
         {
-            if (sabotageNoticeActive) return;
+            if (sabotageNoticeActive || capsWarningShown) return;   // Caps Lock 경고가 먼저다
             ShowNotice(TypoWarning, NoticeWarnBrush, hideOthers: true);
+        }
+
+        // ===== Caps Lock (<260927_3>(2)) =====
+
+        internal const string CapsLockWarning = "[Caps Lock]을 한 번 눌러 Caps Lock을 꺼주세요.";
+
+        private bool capsWarningShown;
+        private DispatcherTimer capsLockTimer;
+
+        /// <summary>영문 단계 창에서 지금 Caps Lock이 켜져 있는가(그 외 창에서는 늘 false).</summary>
+        private bool CapsLockOn =>
+            isEnglishStage && (CapsLockOverrideForTest ?? Keyboard.IsKeyToggled(System.Windows.Input.Key.CapsLock));
+
+        /// <summary>검사용: 실제 키보드 대신 이 값을 Caps Lock 상태로 본다(null이면 실제 상태).</summary>
+        internal static bool? CapsLockOverrideForTest;
+
+        /// <summary>검사용: 렌더링 키보드의 [Caps Lock]이 경고로 깜빡이는 중인가.</summary>
+        internal bool CapsLockBlinkingForTest => KeyLayoutBox.CapsLockKeyBox.IsWarnBlinking;
+
+
+        /// <summary>
+        /// Caps Lock이 켜져 있으면 렌더링 키보드의 [Caps Lock]을 빨갛게 깜빡이고 안내 문구 영역에 빨간
+        /// 경고를 띄운다. 꺼지면 즉시 둘 다 거둔다. 10초짜리 '의도적 오타' 경고가 떠 있는 동안에는
+        /// 그 문구만 보여야 하므로(<260927_3>(0.3)) 문구는 그 뒤에 띄운다.
+        /// </summary>
+        private void RefreshCapsLockWarning()
+        {
+            if (!isEnglishStage || !IsLoaded) return;
+            bool on = CapsLockOn;
+            KeyLayoutBox.CapsLockKeyBox.SetWarnBlink(on);
+
+            if (on)
+            {
+                if (sabotageNoticeActive || practiceFinished) return;
+                capsWarningShown = true;
+                ShowNotice(CapsLockWarning, NoticeWarnBrush, hideOthers: true);
+            }
+            else if (capsWarningShown)
+            {
+                capsWarningShown = false;
+                if (NoticeText.Visibility == Visibility.Visible && NoticeText.Text == CapsLockWarning) HideNotice();
+            }
+        }
+
+        private void StartCapsLockWatch()
+        {
+            if (!isEnglishStage) return;
+            // 창 밖에서 Caps Lock을 바꾸고 돌아오는 경우 등도 놓치지 않도록 짧게 살핀다.
+            capsLockTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            capsLockTimer.Tick += (s, e) =>
+            {
+                bool on = CapsLockOn;
+                if (on != capsWarningShown || on != KeyLayoutBox.CapsLockKeyBox.IsWarnBlinking) RefreshCapsLockWarning();
+            };
+            capsLockTimer.Start();
+            RefreshCapsLockWarning();
         }
 
         private void HideTypoWarning()
@@ -782,7 +902,17 @@ namespace OpenTyping
         {
             NoticeText.Visibility = Visibility.Collapsed;
             // 1단계의 상시 안내문("10개의 손가락을...")은 다시 보여 준다(연습이 계속되는 경우).
-            if (isStage1 && !practiceFinished) GuideTextPanel.Visibility = Visibility.Visible;
+            if (isStage1 && !practiceFinished)
+            {
+                GuideTextPanel.Visibility = Visibility.Visible;
+                // 첫 15초 안내가 아직 진행 중이면(예: 인트로 중 뜬 Caps Lock 경고를 끈 경우) 검지·엄지
+                // 안내도 되살린다 — 안 그러면 키 강조·밑줄만 남고 설명 문구가 없다.
+                if (stage1GuideActive)
+                {
+                    IndexGuideOverlay.Visibility = Visibility.Visible;
+                    ThumbGuideOverlay.Visibility = Visibility.Visible;
+                }
+            }
         }
 
         private void KeyPracticeWindow_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -869,9 +999,13 @@ namespace OpenTyping
         {
             stage1GuideActive = true;
 
-            GuideTextPanel.Visibility = Visibility.Visible;
-            IndexGuideOverlay.Visibility = Visibility.Visible;
-            ThumbGuideOverlay.Visibility = Visibility.Visible;
+            // 인트로 도중 이미 안내 문구 영역에 경고(예: Caps Lock)가 떠 있으면, 그 경고를 띄울 때처럼
+            // (ShowNotice의 hideOthers) 안내문을 숨긴 채로 둔다 — 같은 자리라 겹쳐 보인다. 경고가
+            // 사라지면 HideNotice가 상시 안내문을 되살린다.
+            Visibility guide = NoticeText.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            GuideTextPanel.Visibility = guide;
+            IndexGuideOverlay.Visibility = guide;
+            ThumbGuideOverlay.Visibility = guide;
 
             foreach (KeyPos pos in Stage1IndexKeys)
             {
@@ -920,6 +1054,8 @@ namespace OpenTyping
         {
             tpmTimer?.Stop();
             noticeTimer?.Stop();
+            capsLockTimer?.Stop();
+            KeyLayoutBox.CapsLockKeyBox.SetWarnBlink(false);
             stage1GuideTimer?.Stop(); // 1단계 안내 15초 타이머가 닫힌 창에서 뒤늦게 발화하지 않도록
             MainWindow.CurrentKeyLayout.Stats.AddStats(new KeyLayoutStats()
             {

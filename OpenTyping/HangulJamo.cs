@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace OpenTyping
 {
@@ -6,7 +8,8 @@ namespace OpenTyping
     /// 완성형 한글 음절(및 낱자·특수기호)을 '두벌식 표준' 자판에서 실제로 눌러야 하는
     /// 키 입력 시퀀스((KeyPos, 윗글쇠여부))로 분해한다. 순3('한 글자 조합')·순4('2음절 이상 단어')
     /// 를 렌더링 키보드에 자모 단위로 순차 하이라이트할 때 쓴다 (<260723_4>, <260723_2>).
-    /// 겹자모(ㅘ·ㄳ 등)는 두 번의 입력으로 분해한다.
+    /// 겹자모(ㅘ·ㄳ 등)는 두 번의 입력으로 분해한다. QWERTY 영문 글자도 같은 물리 키 자리로
+    /// 분해한다(<260927_3>(2)).
     /// </summary>
     public static class HangulJamo
     {
@@ -100,6 +103,17 @@ namespace OpenTyping
             m['0'] = new[] { S(0, 10) };  m[')'] = new[] { S(0, 10, true) };
             m['-'] = new[] { S(0, 11) };  m['_'] = new[] { S(0, 11, true) };
             m['='] = new[] { S(0, 12) };  m['+'] = new[] { S(0, 12, true) };
+
+            // <260927_3>(2) QWERTY 영문 글자. 물리 키 자리는 두벌식 격자와 같고, 대문자는 윗글쇠.
+            // 한글 낱자를 먼저 넣었으므로 역방향 표(SingleStrokeToJamo)는 계속 한글 낱자를 가리킨다.
+            string[] qwertyRows = { "qwertyuiop", "asdfghjkl", "zxcvbnm" };
+            for (int r = 0; r < qwertyRows.Length; r++)
+                for (int c = 0; c < qwertyRows[r].Length; c++)
+                {
+                    char lower = qwertyRows[r][c];
+                    m[lower] = new[] { S(r + 1, c) };
+                    m[char.ToUpperInvariant(lower)] = new[] { S(r + 1, c, true) };
+                }
 
             return m;
         }
@@ -297,6 +311,45 @@ namespace OpenTyping
             int half2 = System.Array.IndexOf(TailJamo, FirstComponent(TailJamo[tail]));  // 겹받침 앞 자음: 닭 → 달
             return Compose(lead, vowel, half2 < 0 ? 0 : half2).ToString();
         }
+
+        // ===== 자판과 무관한 음절 계산 (자판별 키 규칙은 KeyboardMap) =====
+
+        /// <summary>완성형 음절을 초성·중성·종성 낱자로 나눈다(종성 없으면 '\0'). 음절이 아니면 false.</summary>
+        public static bool TrySplitSyllable(char ch, out char lead, out char vowel, out char tail)
+        {
+            lead = vowel = tail = '\0';
+            if (ch < SBase || ch >= SBase + LCount * VCount * TCount) return false;
+            int s = ch - SBase;
+            lead = LeadJamo[s / (VCount * TCount)];
+            vowel = VowelJamo[(s % (VCount * TCount)) / TCount];
+            tail = TailJamo[s % TCount];
+            return true;
+        }
+
+        /// <summary>낱자 셋으로 완성형 음절을 만든다(tail 이 '\0'이면 받침 없음). 못 만들면 초성만.</summary>
+        public static string Compose(char lead, char vowel, char tail)
+        {
+            int l = Array.IndexOf(LeadJamo, lead), v = Array.IndexOf(VowelJamo, vowel);
+            int t = tail == '\0' ? 0 : Array.IndexOf(TailJamo, tail);
+            if (l < 0 || v < 0 || t < 0) return lead.ToString();
+            return Compose(l, v, t).ToString();
+        }
+
+        /// <summary>겹모음·겹받침의 구성 낱자(ㅘ→ㅗㅏ, ㄳ→ㄱㅅ). 쌍자음은 해당 없음.</summary>
+        public static bool TryCompoundParts(char jamo, out char[] parts) => CompoundJamo.TryGetValue(jamo, out parts);
+
+        private static readonly Dictionary<char, char> DoubleConsonant = new Dictionary<char, char>
+        {
+            ['ㄲ'] = 'ㄱ', ['ㄸ'] = 'ㄷ', ['ㅃ'] = 'ㅂ', ['ㅆ'] = 'ㅅ', ['ㅉ'] = 'ㅈ',
+        };
+
+        /// <summary>쌍자음의 홑자음(ㄲ→ㄱ). 쌍자음 키가 없는 자판(세벌식)은 홑자음을 두 번 친다.</summary>
+        public static bool TryDoubleBase(char jamo, out char single) => DoubleConsonant.TryGetValue(jamo, out single);
+
+        /// <summary>코드에 적어 둔 한 타짜리 글자 자리 전부(자판 파일을 못 찾을 때의 예비용).</summary>
+        internal static IEnumerable<(KeyPos Pos, bool IsShift, string Label)> SingleStrokeKeys() =>
+            JamoToStrokes.Where(kv => kv.Value.Length == 1)
+                         .Select(kv => (kv.Value[0].Pos, kv.Value[0].IsShift, kv.Key.ToString()));
 
         /// <summary>완성형 한글 음절 개수(자리연습 '타' 계산용: '나라'=2). 음절이 하나도 없으면 1(단독 자모·기호).</summary>
         public static int SyllableCount(string text)
