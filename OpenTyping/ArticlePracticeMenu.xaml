@@ -18,28 +18,34 @@
 
         <DockPanel Grid.Row="0"
                    Margin="14 5 14 5">
-            <StackPanel DockPanel.Dock="Top"
-                        Orientation="Vertical"
-                        Margin="0 0 0 12">
-                <StackPanel Orientation="Horizontal"
-                            Margin="0 0 0 2">
-                    <Rectangle Width="40" 
-                               Height="40"
-                               Margin="0 0 8 0"
-                               Fill="#212529">
-                        <Rectangle.OpacityMask>
-                            <VisualBrush Visual="{iconPacks:FontAwesome Kind=BookSolid}"/>
-                        </Rectangle.OpacityMask>
-                    </Rectangle>
-                    <TextBlock Style="{StaticResource NormalTextBlock}" 
-                               Text="긴글연습"
-                               FontSize="32pt"
-                               Margin="0 2 0 0"/>
+            <Grid DockPanel.Dock="Top"
+                  Margin="0 0 0 12">
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0 0 0 2">
+                        <Rectangle Width="40"
+                                   Height="40"
+                                   Margin="0 0 8 0"
+                                   Fill="#212529">
+                            <Rectangle.OpacityMask>
+                                <VisualBrush Visual="{iconPacks:FontAwesome Kind=BookSolid}"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                        <TextBlock Style="{StaticResource NormalTextBlock}"
+                                   Text="긴글연습"
+                                   FontSize="32pt"
+                                   Margin="0 2 0 0"/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource NormalTextBlock}"
+                               Text=": 하나의 장문을 대상으로 연습합니다."
+                               FontSize="14pt"/>
                 </StackPanel>
-                <TextBlock Style="{StaticResource NormalTextBlock}" 
-                           Text=": 하나의 장문을 대상으로 연습합니다."
-                           FontSize="14pt"/>
-            </StackPanel>
+                <!-- `자판 표시`(<260927_9>·<260927_10>): 큰 제목 글씨의 오른쪽, 오른쪽·위쪽 정렬. -->
+                <local:KeyLayoutIndicator x:Name="KeyLayoutIndicator"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Top"
+                                          Margin="0 4 10 0"/>
+            </Grid>
             <Grid DockPanel.Dock="Bottom">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
