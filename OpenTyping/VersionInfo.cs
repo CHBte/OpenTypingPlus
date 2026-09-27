@@ -11,11 +11,11 @@ namespace OpenTyping
     /// </summary>
     public static class VersionInfo
     {
-        /// <summary>"0.5.0.0"처럼 네 자리 그대로.</summary>
+        /// <summary>"1.0.0.0"처럼 네 자리 그대로.</summary>
         public static readonly string Version4 =
             Assembly.GetExecutingAssembly().GetName().Version?.ToString(4) ?? "0.0.0.0";
 
-        /// <summary>창 제목에 프로그램 이름 뒤에 붙이는 짧은 표기. 예: "열린타자+ v0.5.0.0".</summary>
+        /// <summary>창 제목에 프로그램 이름 뒤에 붙이는 짧은 표기. 예: "열린타자+ v1.0.0.0".</summary>
         public static readonly string WindowTitle = "열린타자+ v" + Version4;
     }
 }
