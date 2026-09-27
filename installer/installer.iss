@@ -3,7 +3,7 @@
 ; 이 파일을 열고 컴파일(Ctrl+F9)하면 되며, 그 경우 아래 기본값(버전/닷넷 설치 파일 경로)이 쓰인다.
 ;
 ; 전제: build.bat을 먼저 실행해 "..\build\" 아래에 열린타자+.exe와
-; layouts\ data\ game\ stages\ hands\ 폴더가 이미 만들어져 있어야 한다.
+; layouts\ data\ wordslist\ stages\ hands\ 폴더가 이미 만들어져 있어야 한다.
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.5.0.0"
@@ -62,19 +62,19 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 Source: "..\build\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\layouts\*"; DestDir: "{app}\layouts"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\build\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-; <260830_2-3>(4-1): words.json은 {app}\game\에 넣지 않는다 — AppData(Roaming)로 대신 들어가고,
-; {app}\game\에는 [Icons]로 그 파일의 바로가기만 생긴다. build\game\ 폴더 안에는 원래 words.json
-; 하나뿐이라(build.bat 참고), 그걸 빼면 복사할 게 없어 game\* 와일드카드 자체를 없앴다 — 와일드카드가
+; <260830_2-3>(4-1): words.json은 {app}\wordslist\에 넣지 않는다 — AppData(Roaming)로 대신 들어가고,
+; {app}\wordslist\에는 [Icons]로 그 파일의 바로가기만 생긴다. build\wordslist\ 폴더 안에는 원래 words.json
+; 하나뿐이라(build.bat 참고), 그걸 빼면 복사할 게 없어 wordslist\* 와일드카드 자체를 없앴다 — 와일드카드가
 ; 아무것도 못 찾으면 Inno Setup이 컴파일 에러로 취급하기 때문이다(실제로 컴파일해서 확인함).
 Source: "..\build\stages\*"; DestDir: "{app}\stages"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\build\hands\*"; DestDir: "{app}\hands"; Flags: ignoreversion recursesubdirs createallsubdirs
-; <260830_2-3>(4-1): words.json의 실제 라이브 사본은 AppData\Roaming\OTP\OpenTypingPlus\game\에 둔다.
+; <260830_2-3>(4-1): words.json의 실제 라이브 사본은 AppData\Roaming\OTP\OpenTypingPlus\wordslist\에 둔다.
 ; (4-1-1)/(4-1-2)에서 사용자가 "보존"을 고르면 ShouldInstallWordsJson이 False가 되어 이 항목을 건너뛴다.
-Source: "..\build\game\words.json"; DestDir: "{userappdata}\OTP\OpenTypingPlus\game"; Flags: ignoreversion; Check: ShouldInstallWordsJson
+Source: "..\build\wordslist\words.json"; DestDir: "{userappdata}\OTP\OpenTypingPlus\wordslist"; Flags: ignoreversion; Check: ShouldInstallWordsJson
 ; words.json은 {tmp}에도 항상(조건 없이) 꺼내 둔다 — (4-1-1) 비교와 words-original.json 생성에
 ; "이번 설치 패키지가 원래 기본값으로 담고 있는 내용"이 필요한데, 그건 사용자가 "보존"을 골라
 ; 위 항목이 실제로 안 깔릴 수도 있어 그것만으론 알 수 없기 때문이다.
-Source: "..\build\game\words.json"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "..\build\wordslist\words.json"; DestDir: "{tmp}"; Flags: dontcopy
 ; .NET 런타임 설치 파일은 SFX 안에 압축 포함만 하고(dontcopy), 실제로 필요할 때만
 ; ExtractTemporaryFile로 {tmp}에 꺼낸다 (아래 [Code]의 CurStepChanged 참고).
 Source: "{#DotNetInstallerPath}"; DestDir: "{tmp}"; Flags: dontcopy
@@ -82,7 +82,7 @@ Source: "{#DotNetInstallerPath}"; DestDir: "{tmp}"; Flags: dontcopy
 [Icons]
 ; <260830_2-3>(4-1): 사용자가 AppData에 직접 갈 필요 없이, OTP 폴더 안에서 바로 단어 목록을
 ; 편집할 수 있게 하는 바로가기. 대상이 AppData 쪽 실제 파일이라 사용자가 더블클릭하면 그 파일이 열린다.
-Name: "{app}\game\단어 목록 편집 (words.json)"; Filename: "{userappdata}\OTP\OpenTypingPlus\game\words.json"
+Name: "{app}\wordslist\단어 목록 편집 (words.json)"; Filename: "{userappdata}\OTP\OpenTypingPlus\wordslist\words.json"
 
 [Run]
 ; (1)/(1-1): .NET 10 Desktop Runtime(x64)이 없을 때만 마이크로소프트 공식 설치 창을 그대로 띄운다.
@@ -116,13 +116,14 @@ var
   PreserveWordsJson: Boolean;
   { <260830_2-4>(3-1)/(3-2)에서 "취소"를 고르면 True — 이후 모든 단계를 건너뛴다. }
   InstallCancelled: Boolean;
-  { <260831 검토>(3-1)/(4-1)의 삭제 예약. 예전엔 프롬프트에서 곧바로 DelTree를 했는데, 그 시점은
+  { <260831 검토>(3-1)의 삭제 예약. 예전엔 프롬프트에서 곧바로 DelTree를 했는데, 그 시점은
     아직 사용자가 준비 완료 페이지에서 "설치"를 누르기 전이라, 거기서 취소하거나 설치가 실패하면
     "설치는 안 됐는데 기존 폴더·데이터는 이미 사라진" 상태가 됐다. 이제 선택만 여기 기억해 두고
-    실제 삭제는 설치가 확정된 뒤(ssInstall)에 한다. }
+    실제 삭제는 설치가 확정된 뒤(ssInstall)에 한다.
+    (<260927_15.1>: 바탕화면 OTP 폴더 쪽은 더는 통째로 지우지 않고 덮어쓰기 설치로 바뀌어서
+    이런 예약이 필요 없다 — 아래 PendingDesktopDelete가 없어진 이유.) }
   PendingRoamingCleanup: Boolean;
   PendingLocalCleanup: Boolean;
-  PendingDesktopDelete: Boolean;
   // <260831 2차 검토>: "보존"을 고른 words.json의 백업 위치. Inno의 임시 폴더(tmp 상수)에 두면
   // 설치가 중간에 취소·실패했을 때 Inno가 그 폴더를 통째로 지우면서 백업본까지 함께 사라져
   // (원본은 이미 DelTree로 없어진 뒤) 데이터가 영구 소실된다. 그래서 설치가 끝나도 남는
@@ -435,10 +436,12 @@ begin
     FileListMemo.ReadOnly := True;
     FileListMemo.ScrollBars := ssVertical;
     FileListMemo.Lines.Text :=
-      'key_layout_data.json' + #13#10 + 'stage_records.json' + #13#10 +
+      'key_layout_data.json' + #13#10 +
+      'stage_records_ko.json' + #13#10 + 'stage_records_en.json' + #13#10 +
       'DubeolsikStandard.json' + #13#10 + 'Dvorak.json' + #13#10 +
       'Qwerty.json' + #13#10 + 'Sebeolsik390.json' + #13#10 +
-      'game_records.json' + #13#10 + 'user_settings.json' + #13#10 +
+      'game_records_ko.json' + #13#10 + 'game_records_en.json' + #13#10 +
+      'user_settings.json' + #13#10 +
       'words-original.json' + #13#10 + 'words.json' + #13#10 +
       '권리장전.json' + #13#10 + '대한민국 헌법 전문.json' + #13#10 +
       '명언 모음.json' + #13#10 + '미합중국 수정헌법.json' + #13#10 +
@@ -625,11 +628,14 @@ begin
 end;
 
 { (4-1): 바탕화면에 이미 내용이 있는 OTP 폴더가 있을 때 뜨는 창.
-  반환값: 0=취소, 1=삭제하고 설치(→(4-1-1)로), 2=사용자 지정 경로에 설치(→(5)로) }
+  <260927_15.1>: "삭제하고 설치"는 폴더를 통째로 지운 뒤 새로 깔았지만, 이제 지우지 않고
+  같은 이름의 파일·폴더만 덮어써서 설치한다("덮어쓰기 설치") — 무관한 파일은 그대로 남는다.
+  반환값: 0=취소, 1=덮어쓰기 설치, 2=사용자 지정 경로에 설치 — 둘 다 그대로 (5)로 이어진다. }
 function ShowDesktopConflictPrompt(): Integer;
 var
   MsgLabel: TNewStaticText;
-  DeleteButton, CustomNameButton: TNewButton;
+  OverwriteButton, CustomNameButton: TNewButton;
+  OverwriteBorderPanel: TPanel;
   NeededHeight, BottomY: Integer;
 begin
   Result := 0;
@@ -651,30 +657,54 @@ begin
     MsgLabel.WordWrap := True;
     MsgLabel.Caption :=
       '바탕화면에 이미 "OTP" 폴더가 있습니다.' + #13#10 +
-      '삭제하고 설치할까요, 다른 이름의 폴더에 설치할까요?';
+      '덮어쓰기 설치할까요, 다른 이름의 폴더에 설치할까요?';
     EnsureFormWideEnoughForLabel(DcpForm, MsgLabel.Font, MsgLabel.Caption, 32);
     MsgLabel.Width := DcpForm.ClientWidth - 32;
     MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
 
     { <260830_2-4-3-2>(2): 버튼과 경로 입력란을 라벨 바로 아래가 아니라 폼 맨 아래로 내린다
       (요청대로). 우선 컨트롤을 다 만들어 실제 크기(특히 DcpPathEdit의 기본 높이)를 안 뒤,
-      아래서 위로 — 찾아보기/사용자 지정 경로 버튼 행 → 경로 입력란 → 삭제/다른 이름 버튼 행 —
+      아래서 위로 — 찾아보기/사용자 지정 경로 버튼 행 → 경로 입력란 → 덮어쓰기/다른 이름 버튼 행 —
       세로 위치를 계산한다. }
-    DeleteButton := TNewButton.Create(DcpForm);
-    DeleteButton.Parent := DcpForm;
-    DeleteButton.Caption := '삭제하고 설치';
-    DeleteButton.Height := WizardForm.CancelButton.Height;
-    DeleteButton.Width := TextButtonWidth(DeleteButton.Font, DeleteButton.Caption, 40, 75);
-    DeleteButton.Left := 16;
-    DeleteButton.ModalResult := mrYes;
-    DeleteButton.Default := True;
+    OverwriteButton := TNewButton.Create(DcpForm);
+    OverwriteButton.Caption := '덮어쓰기 설치';
+    OverwriteButton.Height := WizardForm.CancelButton.Height;
+    OverwriteButton.Width := TextButtonWidth(OverwriteButton.Font, OverwriteButton.Caption, 40, 75);
+    OverwriteButton.ModalResult := mrYes;
+    { <260927_15> 기본 선택(Default+첫 포커스, [Enter]로 바로 눌림). <260927_15.1>: 폴더를
+      통째로 지우던 이전과 달리 지금은 덮어쓰기(같은 이름의 파일·폴더만 교체)라 위험이 훨씬
+      적지만, 그래도 기본 선택임을 뚜렷이 보이도록 두껍고 진한 테두리를 둘러 눈에 띄게 한다
+      (아래 OverwriteBorderPanel). }
+    OverwriteButton.Default := True;
+
+    { <260927_15>/<260927_15.1>: TNewButton엔 테두리색을 직접 지정하는 속성이 없어(224행 주석의
+      Canvas 부재와 같은 제약), 버튼보다 사방 4px 큰 진한 색 패널을 뒤에 깔고 그 안에 버튼을 4px
+      띄워 앉힌다. 패널을 통째로 그 색으로 채우면(테두리·안쪽 홈 없이) 버튼 둘레로 남는 4px 띠가
+      두껍고 진한 테두리처럼 보인다.
+      <260927_15.1>: 검정으로는 화면에서 테두리가 드러나지 않았다 — TPanel이 기본으로
+      ParentBackground(테마의 부모 배경을 그대로 씀)를 켜 둔 채라 Color 지정이 무시되고 있었다.
+      ParentBackground를 꺼야 Color가 실제로 칠해진다. 색도 진한 빨강으로 바꾼다. }
+    OverwriteBorderPanel := TPanel.Create(DcpForm);
+    OverwriteBorderPanel.Parent := DcpForm;
+    OverwriteBorderPanel.ParentBackground := False;
+    OverwriteBorderPanel.BevelOuter := bvNone;
+    OverwriteBorderPanel.BevelInner := bvNone;
+    { TColor는 $00BBGGRR 순서라(RGB 함수는 Pascal Script에 없음 — 컴파일해서 확인함), RGB(139,0,0)
+      "다크레드"를 그 순서로 직접 적는다. }
+    OverwriteBorderPanel.Color := $0000008B; { 매우 진한 빨강(다크레드, RGB 139,0,0) }
+    OverwriteBorderPanel.Width := OverwriteButton.Width + 8;
+    OverwriteBorderPanel.Height := OverwriteButton.Height + 8;
+    OverwriteBorderPanel.Left := 16;
+    OverwriteButton.Parent := OverwriteBorderPanel;
+    OverwriteButton.Left := 4;
+    OverwriteButton.Top := 4;
 
     CustomNameButton := TNewButton.Create(DcpForm);
     CustomNameButton.Parent := DcpForm;
     CustomNameButton.Caption := '다른 이름의 폴더에 설치';
     CustomNameButton.Height := WizardForm.CancelButton.Height;
     CustomNameButton.Width := TextButtonWidth(CustomNameButton.Font, CustomNameButton.Caption, 40, 75);
-    CustomNameButton.Left := DeleteButton.Left + DeleteButton.Width + 8;
+    CustomNameButton.Left := OverwriteBorderPanel.Left + OverwriteBorderPanel.Width + 8;
     CustomNameButton.OnClick := @DcpCustomNameButtonClick;
 
     DcpPathEdit := TNewPathEdit.Create(DcpForm);
@@ -708,26 +738,27 @@ begin
     DcpBrowseButton.Left := DcpUseCustomButton.Left - 8 - DcpBrowseButton.Width;
 
     { 라벨 실측 높이를 포함해 실제로 필요한 폼 높이를 구하고, 기존 260보다 작으면 늘린다. }
-    NeededHeight := 16 + MsgLabel.Height + 16 + DeleteButton.Height + 16 +
+    NeededHeight := 16 + MsgLabel.Height + 16 + OverwriteBorderPanel.Height + 16 +
       DcpPathEdit.Height + 10 + DcpBrowseButton.Height + 10;
     if NeededHeight > DcpForm.ClientHeight then
       DcpForm.ClientHeight := NeededHeight;
 
     { 폼 맨 아래에서부터 위로 배치 — 찾아보기/사용자 지정 경로 버튼 행 → 경로 입력란 →
-      삭제/다른 이름 버튼 행. }
+      덮어쓰기/다른 이름 버튼 행. }
     BottomY := DcpForm.ClientHeight - 10;
     DcpBrowseButton.Top := BottomY - DcpBrowseButton.Height;
     DcpUseCustomButton.Top := DcpBrowseButton.Top;
     DcpPathEdit.Top := DcpBrowseButton.Top - 10 - DcpPathEdit.Height;
-    DeleteButton.Top := DcpPathEdit.Top - 16 - DeleteButton.Height;
-    CustomNameButton.Top := DeleteButton.Top;
+    OverwriteBorderPanel.Top := DcpPathEdit.Top - 16 - OverwriteBorderPanel.Height;
+    { 테두리가 없는 CustomNameButton은 두꺼워진 OverwriteBorderPanel과 같은 '행'으로 보이게 세로 가운데를 맞춘다. }
+    CustomNameButton.Top := OverwriteBorderPanel.Top + (OverwriteBorderPanel.Height - CustomNameButton.Height) div 2;
 
     DcpForm.Left := WizardForm.Left + (WizardForm.Width - DcpForm.Width) div 2;
     DcpForm.Top := WizardForm.Top + (WizardForm.Height - DcpForm.Height) div 2;
-    DcpForm.ActiveControl := DeleteButton;
+    DcpForm.ActiveControl := OverwriteButton; { <260927_15> 기본 선택 — 위 테두리로 뚜렷이 표시 }
 
     if DcpForm.ShowModal() = mrYes then
-      Result := 1 { 삭제하고 설치 }
+      Result := 1 { 덮어쓰기 설치 }
     else if DcpCustomPathChosen then
     begin
       FinalInstallDir := DcpChosenPath;
@@ -747,11 +778,15 @@ var
   LivePath, PackagedPath: String;
 begin
   Result := True; { 비교 대상 파일이 없으면 "달라진 게 없다"로 취급(=보존 안 해도 됨) }
-  LivePath := RoamingOtpFolder() + '\game\words.json';
+  LivePath := RoamingOtpFolder() + '\wordslist\words.json';
   PackagedPath := ExpandConstant('{tmp}\words.json'); { 이번 설치 패키지 자체의 기본값 }
   if not FileExists(LivePath) or not FileExists(PackagedPath) then Exit;
   if not LoadStringFromFile(LivePath, LiveContent) then Exit;
   if not LoadStringFromFile(PackagedPath, PackagedContent) then Exit;
+  { <260927_2> 제시어 목록 형식이 바뀌었다(자리연습·오락 공용, "hangul"/"english" 묶음). 예전 형식의
+    words.json 은 새 프로그램이 읽지 못해(내장 예비본 10개씩만 쓰게 됨) 보존할 의미가 없으므로,
+    내용이 달라도 '보존할 것 없음'으로 보고 새 목록을 깐다. }
+  if Pos('"hangul"', LiveContent) = 0 then Exit;
   Result := (LiveContent = PackagedContent);
 end;
 
@@ -776,7 +811,7 @@ begin
     MsgLabel.AutoSize := False;
     MsgLabel.WordWrap := True;
     MsgLabel.Caption :=
-      '기존 설치된 것 중 산성비 오락의 단어 목록(OTP 폴더\game\words.json)이 변경되어' + #13#10 +
+      '기존 설치된 것 중 자리연습·산성비 오락의 단어 목록(OTP 폴더\wordslist\words.json)이 변경되어' + #13#10 +
       '있습니다. 기존의 단어 목록이 설치하려는 단어 목록보다 최신일 수도 있습니다.';
     EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
     MsgLabel.Width := ConfirmForm.ClientWidth - 32;
@@ -861,7 +896,6 @@ begin
     PreserveWordsJson := False;
     PendingRoamingCleanup := False;
     PendingLocalCleanup := False;
-    PendingDesktopDelete := False;
     PreservedBackupDir := '';
     PreservedRestoreOk := False;
     // (4-1-1) 비교, words-original.json 생성 어느 쪽이든 "이번 설치 패키지 자체의 기본
@@ -890,9 +924,7 @@ begin
     begin
       case ShowDesktopConflictPrompt() of
         0: begin { 취소 } Result := False; WizardForm.Close(); Exit; end;
-        1: begin { 삭제하고 설치 — 실제 삭제는 설치가 확정된 뒤(ssInstall)에 한다 }
-             PendingDesktopDelete := True;
-           end;
+        1: begin { 덮어쓰기 설치 — [Files]가 같은 이름의 파일만 덮어쓰므로 여기선 할 일이 없다 } end;
         2: begin { 사용자 지정 경로에 설치 - FinalInstallDir는 ShowDesktopConflictPrompt 안에서 이미 설정됨 } end;
       end;
     end;
@@ -963,7 +995,7 @@ begin
     // 백업을 Inno 임시 폴더가 아니라 바탕화면에 두는 이유는 위 PreservedBackupDir 주석 참고.
     if PreserveWordsJson then
     begin
-      LivePath := RoamingOtpFolder() + '\game\words.json';
+      LivePath := RoamingOtpFolder() + '\wordslist\words.json';
       if FileExists(LivePath) then
       begin
         PreservedBackupDir := ExpandConstant('{userdesktop}\OTP_words_보존_') +
@@ -989,8 +1021,8 @@ begin
       DelTree(RoamingOtpFolder(), True, True, True);
     if PendingLocalCleanup and DirExists(LocalOtpFolder()) then
       DelTree(LocalOtpFolder(), True, True, True);
-    if PendingDesktopDelete and DirExists(FinalInstallDir) then
-      DelTree(FinalInstallDir, True, True, True);
+    { <260927_15.1>: 바탕화면 OTP 폴더는 더 이상 통째로 지우지 않는다 — [Files]가 같은 이름의
+      파일·폴더만 덮어쓰고(ignoreversion, onlyifdoesntexist 없음) 무관한 파일은 그대로 둔다. }
   end;
 
   if CurStep = ssPostInstall then
@@ -1002,8 +1034,8 @@ begin
       PreservedPath := PreservedBackupDir + '\words.json';
       if FileExists(PreservedPath) then
       begin
-        if ForceDirectories(RoamingOtpFolder() + '\game') and
-           FileCopy(PreservedPath, RoamingOtpFolder() + '\game\words.json', False) then
+        if ForceDirectories(RoamingOtpFolder() + '\wordslist') and
+           FileCopy(PreservedPath, RoamingOtpFolder() + '\wordslist\words.json', False) then
           PreservedRestoreOk := True
         else
           { 사본이 남아 있는 바탕화면 폴더를 알려 준다 — 이 폴더는 설치가 끝나도 지워지지 않는다. }
@@ -1020,9 +1052,9 @@ begin
     // <260830_2-4>(5): 삭제 프로그램이 나중에 비교할 원본 사본을 Local에 별도 저장.
     // "보존"을 골라 실제 words.json은 안 새로 깔렸어도, 이번 패키지의 기본값은
     // tmp 폴더에 항상 있으므로 그걸 그대로 옮겨 적는다.
-    ForceDirectories(LocalOtpFolder() + '\game');
+    ForceDirectories(LocalOtpFolder() + '\wordslist');
     if LoadStringFromFile(ExpandConstant('{tmp}\words.json'), PackagedContent) then
-      SaveStringToFile(LocalOtpFolder() + '\game\words-original.json', PackagedContent, False);
+      SaveStringToFile(LocalOtpFolder() + '\wordslist\words-original.json', PackagedContent, False);
   end;
 
   if CurStep = ssDone then
@@ -1047,8 +1079,8 @@ var
   NeededHeight: Integer;
 begin
   Result := True;
-  LivePath := ExpandConstant('{userappdata}\OTP\OpenTypingPlus\game\words.json');
-  OriginalPath := ExpandConstant('{localappdata}\OTP\OpenTypingPlus\game\words-original.json');
+  LivePath := ExpandConstant('{userappdata}\OTP\OpenTypingPlus\wordslist\words.json');
+  OriginalPath := ExpandConstant('{localappdata}\OTP\OpenTypingPlus\wordslist\words-original.json');
 
   if not FileExists(LivePath) or not FileExists(OriginalPath) then Exit;
   if not LoadStringFromFile(LivePath, LiveContent) then Exit;
@@ -1110,7 +1142,7 @@ begin
 
   if Preserve then
   begin
-    { words.json과 그걸 담은 game 폴더만 삭제 대상에서 벗어나게, 삭제 전에 임시로 옮겨 둔다.
+    { words.json과 그걸 담은 wordslist 폴더만 삭제 대상에서 벗어나게, 삭제 전에 임시로 옮겨 둔다.
       <260831 검토>: 예전엔 두 호출의 실패를 무시해서, 바탕화면에 쓰지 못하면(디스크 부족,
       "제어된 폴더 액세스" 차단 등) 보존을 골랐는데도 아무 경고 없이 원본이 삭제됐다. 사본을
       확실히 만들지 못하면 삭제 자체를 중단한다. }
