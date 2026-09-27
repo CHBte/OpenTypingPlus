@@ -26,7 +26,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0"
@@ -52,12 +51,19 @@
                        Style="{StaticResource NormalTextBlock}" 
                        FontWeight="Light" 
                        FontSize="42pt"/>
-            <TextBlock Grid.Row="1" 
+            <TextBlock Grid.Row="1"
                        Grid.Column="1"
                        Text=": 현대적인 오픈 소스 타자 연습 프로그램"
                        Style="{StaticResource NormalTextBlock}"
                        FontSize="15pt"/>
         </Grid>
+        <!-- `자판 표시`(<260927_9>·<260927_10>·<260927_10.1>): 큰 제목 글씨("열린타자+")의 오른쪽,
+             오른쪽·위쪽 정렬 — 자리연습·음절연습·문장연습·긴글연습 화면과 같은 위치. -->
+        <local:KeyLayoutIndicator x:Name="KeyLayoutIndicator"
+                                  Grid.Row="0"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Top"
+                                  Margin="0 10 10 0"/>
 
         <Border Grid.Row="1"
                 BorderThickness="1"
@@ -111,63 +117,5 @@
                 </mah:Tile>
             </StackPanel>
         </Border>
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Border Background="#4263eb"
-                    CornerRadius="5"
-                    HorizontalAlignment="Left"
-                    Margin="3 0 0 0"
-                    Padding="5">
-                <StackPanel Orientation="Horizontal">
-                    <Rectangle Style="{StaticResource TabItemIconRectangle}" 
-                               Width="35" 
-                               Height="22"
-                               Fill="White"
-                               VerticalAlignment="Center">
-                    <Rectangle.OpacityMask>
-                            <VisualBrush Stretch="Uniform" 
-                                         Visual="{iconPacks:FontAwesome KeyboardSolid}"/>
-                        </Rectangle.OpacityMask>
-                    </Rectangle>
-                    <TextBlock x:Name="CurrentKeyLayoutName"
-                               Text="{Binding Path=Name,
-                                              Source={x:Static local:MainWindow.CurrentKeyLayout}}"
-                               Foreground="White"
-                               FontFamily="{StaticResource NanumBarunGothic}"
-                               FontSize="14pt"
-                               Margin="5 0 0 0"
-                               VerticalAlignment="Center"/>
-
-                </StackPanel>
-            </Border>
-            <Border Background="#37b24d"
-                    CornerRadius="5"
-                    HorizontalAlignment="Left"
-                    Margin="7 0 0 0"
-                    Padding="5">
-                <StackPanel Orientation="Horizontal">
-                    <Rectangle Style="{StaticResource TabItemIconRectangle}" 
-                               Width="47" 
-                               Height="22"
-                               Fill="White"
-                               VerticalAlignment="Center">
-                    <Rectangle.OpacityMask>
-                            <VisualBrush Stretch="Uniform" 
-                                         Visual="{iconPacks:FontAwesome LanguageSolid}"/>
-                        </Rectangle.OpacityMask>
-                    </Rectangle>
-                    <TextBlock x:Name="CurrentKeyLayoutChar"
-                               Text="{Binding Path=Character,
-                                              Source={x:Static local:MainWindow.CurrentKeyLayout}}"
-                               Foreground="White"
-                               FontFamily="{StaticResource NanumBarunGothic}"
-                               FontSize="14pt"
-                               Margin="5 0 0 0"
-                               VerticalAlignment="Center"/>
-
-                </StackPanel>
-            </Border>
-        </StackPanel>
     </Grid>
 </UserControl>
