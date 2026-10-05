@@ -21,6 +21,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $otp = Join-Path (Split-Path -Parent $PSScriptRoot) "OpenTyping"
+$filterFileGiven = $FilterFile -ne ""
 if ($FilterFile -eq "") { $FilterFile = Join-Path $otp "Resources\필터링_단어.txt" }
 
 function Fail($msg) {
@@ -34,7 +35,15 @@ try {
     Fail ("도구를 준비하지 못했습니다: " + $_.Exception.Message)
 }
 
-if (-not (Test-Path -LiteralPath $FilterFile)) { Fail "필터링 파일이 없습니다: $FilterFile" }
+if (-not (Test-Path -LiteralPath $FilterFile)) {
+    # 필터링 파일은 공개 저장소에 올리지 않는다(.gitignore). 저장소를 새로 받은 경우처럼 기본 위치에 없으면 함께 올린 예시 파일
+    # (Resources\필터링_단어.example.txt, 한 음절만)로 대신해 빌드가 멈추지 않게 한다. -FilterFile 로 준 파일이 없으면 그대로 실패한다.
+    $example = Join-Path $otp "Resources\필터링_단어.example.txt"
+    if (-not $filterFileGiven -and (Test-Path -LiteralPath $example)) {
+        Write-Host ("[한 음절 포함 파일] 참고: 필터링 파일이 없어 예시 파일로 대신합니다: " + $example)
+        $FilterFile = $example
+    } else { Fail "필터링 파일이 없습니다: $FilterFile" }
+}
 $bytes = [System.IO.File]::ReadAllBytes($FilterFile)
 try {
     $filterText = (New-Object System.Text.UTF8Encoding($false, $true)).GetString($bytes)   # 올바르지 않은 바이트에서 예외
@@ -60,6 +69,8 @@ $dir = Split-Path -Parent $OutFile
 if ($dir -ne "" -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 if ((Test-Path -LiteralPath $OutFile) -and ([System.IO.File]::ReadAllText($OutFile, $utf8) -ceq $content)) {
+    # 내용이 같아도 파일 시각은 새로 해 둔다 — 그래야 MSBuild 가 이 단계를 '최신'으로 보고 다음 빌드부터 건너뛴다.
+    try { [System.IO.File]::SetLastWriteTime($OutFile, [DateTime]::Now) } catch { }
     Write-Host ("[한 음절 포함 파일] 한 음절 {0}개 (그대로)" -f $lines.Count)
     exit 0
 }

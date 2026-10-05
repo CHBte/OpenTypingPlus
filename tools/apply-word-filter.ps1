@@ -1,5 +1,6 @@
 ﻿<#
-단어 필터 도구 (<261003_1>(4)) — build.bat 이 앱을 빌드하기 전에 자동으로 실행한다.
+단어 필터 도구 (<261003_1>(4)) — build.bat 이 앱을 빌드하기 전에, 그리고 dotnet build 도 OpenTyping.csproj 의 ApplyWordFilter 단계로
+(2026-10-06) 자동으로 실행한다.
 
   ① 필터링 파일(OpenTyping\Resources\필터링_단어.txt)을 읽어 모든 항목을 검사한다(<261003_1>(4.6)).
      올바른 UTF-8이 아니거나, 깨진 글자(U+FFFD)·한글/영문 이외의 글자가 든 항목이 있으면 어느 항목이
@@ -27,6 +28,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $otp = Join-Path (Split-Path -Parent $PSScriptRoot) "OpenTyping"
+$filterFileGiven = $FilterFile -ne ""
 if ($FilterFile   -eq "") { $FilterFile   = Join-Path $otp "Resources\필터링_단어.txt" }
 if ($WordsJson    -eq "") { $WordsJson    = Join-Path $otp "wordslist\words.json" }
 if ($FallbackJson -eq "") { $FallbackJson = Join-Path $otp "Resources\words_fallback.json" }
@@ -45,7 +47,15 @@ try {
 }
 
 # ---------- ① 필터링 파일 검사 ----------
-if (-not (Test-Path -LiteralPath $FilterFile)) { Fail "필터링 파일이 없습니다: $FilterFile" }
+if (-not (Test-Path -LiteralPath $FilterFile)) {
+    # 필터링 파일은 공개 저장소에 올리지 않는다(.gitignore). 저장소를 새로 받은 경우처럼 기본 위치에 없으면 함께 올린 예시 파일
+    # (Resources\필터링_단어.example.txt, 한 음절만)로 대신해 빌드가 멈추지 않게 한다. -FilterFile 로 준 파일이 없으면 그대로 실패한다.
+    $example = Join-Path $otp "Resources\필터링_단어.example.txt"
+    if (-not $filterFileGiven -and (Test-Path -LiteralPath $example)) {
+        Write-Host ("[단어 필터 도구] 참고: 필터링 파일이 없어 예시 파일로 대신합니다: " + $example)
+        $FilterFile = $example
+    } else { Fail "필터링 파일이 없습니다: $FilterFile" }
+}
 $bytes = [System.IO.File]::ReadAllBytes($FilterFile)
 try {
     $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)   # 올바르지 않은 바이트에서 예외

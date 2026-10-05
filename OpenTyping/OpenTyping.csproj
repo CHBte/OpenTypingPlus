@@ -17,7 +17,8 @@
     <Product>Open Typing Plus</Product>
     <Copyright>Copyright © 2018</Copyright>
     <!-- <2600912_5>: 메이저 자리는 사용자가 직접 지시하기 전까지 올리지 않는다.
-         <260927_16>로 1.0.0.0(첫 정식 릴리스)까지 올림. 이후 Minor.Build.Revision은 Claude가 자동으로 올린다. -->
+         <260927_16>로 1.0.0.0(첫 정식 릴리스)까지 올림. <2600912_5.3>: 이후 Minor.Build.Revision은 push할 때마다, 그리고 push할 때만 Claude가 바뀐 내용에 맞는 자리를
+         골라 올린다(지난번과 구분되도록 최소 한 자리는 반드시 올린다). 프로젝트 CLAUDE.md "버전 번호" 참고. -->
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
@@ -82,6 +83,20 @@
     <ItemGroup>
       <EmbeddedResource Include="$(IntermediateOutputPath)FilterSyllables.txt" LogicalName="OpenTyping.FilterSyllables.txt" />
     </ItemGroup>
+  </Target>
+
+  <!-- <261003_1> 기존 단어 필터링 단어를 단어 목록(wordslist\words.json)과 내장 예비본(Resources\words_fallback.json)에서 지운다.
+       예전에는 build.bat 만 이 단계(tools\apply-word-filter.ps1)를 돌렸으나, 2026-10-06 썰렁이 지시로 dotnet build 도 같은 단계를
+       거치게 했다 — 어느 빌드로 만든 결과든 필터링이 같고, 필터링 파일에 문제가 있으면 빌드가 멈춘다. 필터링 파일·단어 목록·도구가
+       마지막 실행(obj\...\WordFilter.stamp)보다 새로울 때만 다시 돌린다. build.bat 도 빌드 전에 같은 도구를 먼저 돌려 보므로
+       (실패 시 일찍 멈추려는 것) 두 번 돌 수 있으나 두 번째는 지울 것이 없어 파일을 건드리지 않는다. 도구는 단어 목록 원본 파일을
+       직접 고친다(지울 단어가 있을 때만). -->
+  <Target Name="ApplyWordFilter" BeforeTargets="BeforeBuild"
+          Inputs="Resources\필터링_단어.txt;wordslist\words.json;Resources\words_fallback.json;FilterWords.cs;..\tools\apply-word-filter.ps1;..\tools\WordListEditor.cs"
+          Outputs="$(IntermediateOutputPath)WordFilter.stamp">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\tools\apply-word-filter.ps1&quot;" />
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Touch Files="$(IntermediateOutputPath)WordFilter.stamp" AlwaysCreate="true" />
   </Target>
 
   <ItemGroup>
