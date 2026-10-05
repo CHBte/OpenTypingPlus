@@ -55,7 +55,7 @@
     <Resource Include="Resources\Fonts\NanumBarunGothicUltraLight.ttf" />
     <Resource Include="Resources\icon.png" />
     <Resource Include="Resources\logo.png" />
-    <!-- <260812_28.1> '지구 환경을 지켜라' 큰 불꽃 애니메이션 프레임(8열 스프라이트시트, 61장 사용). -->
+    <!-- <산성비 타자 오락 260812_28.1> '지구 환경을 지켜라' 큰 불꽃 애니메이션 프레임(8열 스프라이트시트, 61장 사용). -->
     <Resource Include="Resources\earth_fire_spritesheet.png" />
     <Resource Include="icon.ico" />
   </ItemGroup>
@@ -65,6 +65,24 @@
          wordslist\words.json 이 없거나 깨졌을 때만 쓴다. -->
     <EmbeddedResource Include="Resources\words_fallback.json" />
   </ItemGroup>
+
+  <!-- <261003_1.1>(5.1.1) 필터링 파일(Resources\필터링_단어.txt) 전체가 아니라 한 음절 필터링 단어만 실행 파일 안에
+       넣는다. 빌드할 때마다 tools\make-filter-syllables.ps1 이 필터링 파일에서 한 글자 항목만 뽑아 빌드 중간 폴더에
+       '한 음절 포함 파일'(FilterSyllables.txt)을 만들고, 그 파일만 포함한다 — 기존 단어 필터링 단어와 '#' 주석은 배포되는
+       실행 파일에 들어가지 않는다. build.bat 이든 dotnet build 든 같은 단계를 거치며, 필터링 파일에 문제가 있으면
+       빌드가 멈춘다. 사용자 PC 에는 따로 설치하지 않는다. 기존 단어 필터링 단어는 build.bat 이 빌드 전에
+       tools\apply-word-filter.ps1 로 단어 목록에서 이미 지운다. 리소스 이름은 FilterWords.ResourceName 과 같아야 한다. -->
+  <Target Name="MakeFilterSyllables" BeforeTargets="BeforeBuild"
+          Inputs="Resources\필터링_단어.txt;FilterWords.cs;..\tools\make-filter-syllables.ps1"
+          Outputs="$(IntermediateOutputPath)FilterSyllables.txt">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\tools\make-filter-syllables.ps1&quot; -OutFile &quot;$(MSBuildProjectDirectory)\$(IntermediateOutputPath)FilterSyllables.txt&quot;" />
+  </Target>
+  <!-- 위 단계가 '이미 최신'이라 건너뛰어져도 포함은 항상 되도록 따로 둔다. -->
+  <Target Name="EmbedFilterSyllables" BeforeTargets="BeforeBuild" DependsOnTargets="MakeFilterSyllables">
+    <ItemGroup>
+      <EmbeddedResource Include="$(IntermediateOutputPath)FilterSyllables.txt" LogicalName="OpenTyping.FilterSyllables.txt" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <!-- <260927_2> 제시어 목록(자리연습과 오락이 함께 쓴다, 사용자 편집 가능). 설치본은 AppData 의
@@ -92,6 +110,20 @@
          이후 단계에서 물리 키별 파일이 늘어난다. wordslist/stages 와 같은 이유로 dev 빌드는 이 Content
          복사로, 배포(single-file)는 build.bat이 소스에서 직접 robocopy 한다. -->
     <Content Include="hands\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 자판 파일(layouts\*.json)과 문장·긴글 연습 글(data\*.json)은 이 프로젝트 폴더 밖(OpenTypingPlus\layouts,
+         OpenTypingPlus\data)에 있다. 배포(single-file)는 build.bat이 소스에서 직접 robocopy 하지만, 개발 빌드는 그동안
+         출력 폴더에 이 두 폴더가 없어 자판 파일을 읽는 -edgetest·-layouttest 항목이 실패했다(예전엔 손으로 복사해 둔
+         것이 있었을 뿐 — 2026-10-03 bin\ 정리 후 드러남). wordslist·stages·hands 와 같이 개발 빌드 때도 출력 폴더로
+         복사한다. data\basic.json 은 build.bat 과 같이 뺀다(로컬 시험용 파일). -->
+    <Content Include="..\layouts\*.json" LinkBase="layouts">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\data\*.json" Exclude="..\data\basic.json" LinkBase="data">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

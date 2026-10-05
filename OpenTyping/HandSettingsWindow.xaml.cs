@@ -136,7 +136,13 @@ namespace OpenTyping
 
         private void HandSettingsWindow_Closed(object sender, EventArgs e)
         {
-            UserSettingsStore.Save();
+            if (!UserSettingsStore.TrySave(out string error))
+            {
+                MessageBox.Show("설정을 저장하지 못했습니다.\n" + error,
+                                "열린타자+",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+            }
         }
     }
 }

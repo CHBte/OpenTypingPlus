@@ -125,10 +125,34 @@ namespace OpenTyping
                     .Distinct().ToList();
         }
 
-        /// <summary>'조합이 가능한 한 음절' 목록에서 뺄 음절들. 그 묶음을 읽어 온 파일의 값(없으면 빈 문자열).</summary>
+        /// <summary>
+        /// '조합이 가능한 한 음절' 목록에서 뺄 음절들. 그 묶음을 읽어 온 단어 목록 파일의 syllable_blacklist 에
+        /// 실행 파일에 포함된 한 음절 필터링 단어를 더한 것이다(<261003_1>(3.2) — 어느 하나에만 있어도
+        /// 뺀다). 사용자가 옛 words.json 을 유지해 써도 필터링 파일의 한 음절은 항상 적용된다.
+        /// </summary>
         public static string SyllableBlacklist(string section) =>
-            SourceFor(section)?.SyllableBlacklist
-            ?? Sources.Select(s => s.SyllableBlacklist).FirstOrDefault(b => b != null) ?? "";
+            (SourceFor(section)?.SyllableBlacklist
+             ?? Sources.Select(s => s.SyllableBlacklist).FirstOrDefault(b => b != null) ?? "")
+            + FilterSyllables.Value;
+
+        // <261003_1>(5) 실행 파일에 포함된 한 음절 필터링 단어. 실행 중 바뀌지 않으므로 한 번만 읽는다.
+        // <261003_1.1>(5.1.1) 실행 파일에는 빌드 때 필터링 파일에서 한 음절만 뽑은 '한 음절 포함 파일'이 들어 있다.
+        // 기존 단어 필터링 단어(두 글자 이상)는 실행 중에 적용하지 않는다(실행 파일 안에 아예 없다) — 빌드 전에 단어
+        // 목록에서 이미 지워졌고, 사용자가 고쳐 유지하는 단어 목록은 사용자의 책임이기 때문이다. 문제 항목은 무시하고
+        // 오류를 띄우지 않는다.
+        private static readonly Lazy<string> FilterSyllables = new Lazy<string>(() =>
+        {
+            try
+            {
+                using (Stream s = typeof(WordCatalog).Assembly.GetManifestResourceStream(FilterWords.ResourceName))
+                {
+                    if (s == null) return "";
+                    using (var reader = new StreamReader(s, Encoding.UTF8))
+                        return FilterWords.SyllablesOf(FilterWords.Parse(reader.ReadToEnd()));
+                }
+            }
+            catch (Exception) { return ""; }
+        });
 
         private static Source Parse(string json, string origin)
         {
@@ -148,11 +172,12 @@ namespace OpenTyping
                     {
                         if (!int.TryParse(lt["level"]?.ToString(), out int ln) || ln <= 0) continue;
                         var words = new List<string>();
+                        var seen = new HashSet<string>();   // 단어가 아주 많은 파일에서 List.Contains 가 O(n²) 로 느려지지 않게
                         if (lt["words"] is JArray wa)
                             foreach (JToken w in wa)
                             {
                                 string word = ToComposed(w?.ToString()?.Trim());
-                                if (!string.IsNullOrEmpty(word) && !words.Contains(word)) words.Add(word);
+                                if (!string.IsNullOrEmpty(word) && seen.Add(word)) words.Add(word);
                             }
                         byLevel[ln] = words;
                     }

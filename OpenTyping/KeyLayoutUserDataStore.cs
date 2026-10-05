@@ -36,7 +36,10 @@ namespace OpenTyping
             return Path.Combine(dir, "key_layout_data.json");
         }
 
-        private static Dictionary<string, KeyLayoutUserData> ReadFromDisk()
+        /// <param name="forSave">저장하려고 읽는 것이면 true. 이때 일시적인 읽기 실패(다른 프로그램이 잡고 있는 경우 등)를
+        /// 빈 상태로 보고 넘어가면, 곧이어 쓰는 파일이 다른 자판의 통계·연습 키를 모두 지워 버린다 — 그래서 예외를
+        /// 그대로 올려(TrySaveKeyLayout 이 받아 알린다) 저장을 건너뛰게 한다.</param>
+        private static Dictionary<string, KeyLayoutUserData> ReadFromDisk(bool forSave = false)
         {
             try
             {
@@ -47,9 +50,15 @@ namespace OpenTyping
                     if (data != null) return data;
                 }
             }
-            catch (Exception ex) when (ex is JsonException || ex is IOException || ex is UnauthorizedAccessException)
+            catch (JsonException)
             {
-                /* 손상 시 빈 상태로 시작 — 다음 저장에서 정상 내용으로 복구된다 */
+                /* 손상 시 빈 상태로 시작 — 다음 저장에서 정상 내용으로 복구된다. 단 그 저장이 손상 파일을 덮어쓰기
+                   전에 사본(.bad)을 남겨, 손으로 살릴 수 있게 한다. */
+                AtomicFile.BackUpCorrupt(FilePath);
+            }
+            catch (Exception ex) when (!forSave && (ex is IOException || ex is UnauthorizedAccessException))
+            {
+                /* 읽기만 하는 호출(시작 때 ApplyTo)은 빈 상태로 계속한다 */
             }
             return new Dictionary<string, KeyLayoutUserData>();
         }
@@ -80,7 +89,7 @@ namespace OpenTyping
         {
             // 다른 자판의 데이터를 잃지 않도록 디스크의 최신 내용과 병합한 뒤 이 자판 항목만 갱신한다
             // (여러 창·프로세스가 서로 다른 자판을 각각 저장할 때를 대비 — StageRecords와 같은 이유).
-            Dictionary<string, KeyLayoutUserData> all = ReadFromDisk();
+            Dictionary<string, KeyLayoutUserData> all = ReadFromDisk(forSave: true);
             all[layoutName] = new KeyLayoutUserData { Stats = stats, DefaultKeys = defaultKeys };
             AtomicFile.WriteText(FilePath, JsonConvert.SerializeObject(all, Formatting.Indented));
         }

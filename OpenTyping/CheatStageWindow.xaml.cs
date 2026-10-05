@@ -22,7 +22,7 @@ namespace OpenTyping
         /// </summary>
         public int? Stages { get; private set; }
 
-        // <260812_10-3> 창을 열었을 때 걸려 있던 원래 값(옛 '전부 열기'=int.MaxValue 등, 지금
+        // 창을 열었을 때 걸려 있던 원래 값(옛 '전부 열기'=int.MaxValue 등, 지금
         // 단계 수보다 클 수 있다)과, 사용자가 단계 선택을 실제로 건드렸는지.
         private readonly int? originalCheatUpTo;
         private bool userChangedSelection;
@@ -73,7 +73,14 @@ namespace OpenTyping
         private void SetMethod(string method)
         {
             UserSettingsStore.TpmMethod = method;
-            UserSettingsStore.Save();
+            // 저장이 실패해도(파일 잠김·디스크 가득 등) 전역 오류창 대신 이유를 알리고, 지금 고른 방식은 그대로 보여 준다.
+            if (!UserSettingsStore.TrySave(out string saveError))
+            {
+                MessageBox.Show(this, "설정을 저장하지 못했습니다.\n" + saveError,
+                                "열린타자+",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+            }
             ShowMethod();
         }
 

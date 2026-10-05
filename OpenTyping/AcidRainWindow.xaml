@@ -68,7 +68,7 @@
                     <TextBlock x:Name="LevelText" Text="  레벨 1" FontSize="15"
                                Foreground="{StaticResource SubInkBrush}" VerticalAlignment="Center" Margin="14 0 0 0"/>
                 </StackPanel>
-                <!-- 연속 성공 문구는 HUD 가운데 (<260812_19>(2)). 단계·레벨 글자 길이에 상관없이
+                <!-- 연속 성공 문구는 HUD 가운데 (<산성비 타자 오락 260812_19>(2)). 단계·레벨 글자 길이에 상관없이
                      늘 같은 자리에 오도록 왼쪽 묶음에서 떼어 내 Grid 가운데에 겹쳐 놓는다. -->
                 <TextBlock x:Name="ComboText" Text="" FontSize="15" FontWeight="Bold"
                            Foreground="#f76707"
@@ -91,7 +91,7 @@
                 </LinearGradientBrush>
             </Grid.Background>
             <!-- 땅 위 배경 장식(산·나무·꽃·동물·사람). 단계가 오를수록 코드에서 누적해 추가한다. -->
-            <!-- 겹치는 차례를 선언 순서가 아니라 ZIndex 로 못박는다 (<260812_26>).
+            <!-- 겹치는 차례를 선언 순서가 아니라 ZIndex 로 못박는다 (<산성비 타자 오락 260812_26>).
                  배경 장식(0) < 안내 배너(10) < 산성비(20) < 땅(30). 배너가 산성비보다 뒤라
                  떨어지는 글자를 가리지 않는다. 필요할 때만 코드에서 앞으로(40) 올린다. -->
             <Canvas x:Name="SceneryLayer" Height="90" VerticalAlignment="Bottom" IsHitTestVisible="False"
@@ -100,16 +100,21 @@
             <Border x:Name="GroundStrip" Height="26" VerticalAlignment="Bottom"
                     Background="#69db7c" BorderBrush="#2f9e44" BorderThickness="0 2 0 0"
                     IsHitTestVisible="False" Panel.ZIndex="30"/>
-            <!-- 조작 안내 (<260812_16>(2)): 땅(초록 띠) 안, 즉 산성비가 닿는 경계선 아래에 둔다. -->
+            <!-- 조작 안내 (<산성비 타자 오락 260812_16>(2)): 땅(초록 띠) 안, 즉 산성비가 닿는 경계선 아래에 둔다. -->
             <Grid Height="26" VerticalAlignment="Bottom" IsHitTestVisible="False" Margin="14 0 14 0"
                   Panel.ZIndex="31">
                 <TextBlock Text="일시정지 [Esc]" FontSize="12" Foreground="White"
                            HorizontalAlignment="Left" VerticalAlignment="Center"/>
                 <TextBlock Text="단어 입력 후 [Enter]/[Space]" FontSize="12" Foreground="White"
                            HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                <!-- <261005_4> 영문 산성비에서 [Caps Lock]이 켜져 있으면 두 안내 사이 가운데에 빨간 경고를 띄운다
+                     (코드의 RefreshCapsLockWarning). 사용자가 일부러 켰을 수도 있으므로 경고만 하고 입력·판정은 그대로다. -->
+                <TextBlock x:Name="CapsLockWarningText" Text="Caps Lock이 켜져 있습니다." FontSize="12" FontWeight="Bold"
+                           Foreground="#f03e3e" Visibility="Collapsed"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
             <!-- 특수 이벤트·레벨업 안내 배너 (코드에서 페이드 애니메이션) -->
-            <!-- 폭죽·불꽃 (<260812_24-1>, <260812_28>): 산성비(20)보다 앞이면서 문구(40)보다는 뒤(38). -->
+            <!-- 폭죽·불꽃 (<산성비 타자 오락 260812_24-1>, <산성비 타자 오락 260812_28>): 산성비(20)보다 앞이면서 문구(40)보다는 뒤(38). -->
             <Canvas x:Name="FireworkLayer" ClipToBounds="True" IsHitTestVisible="False" Panel.ZIndex="38"/>
             <TextBlock x:Name="EventBanner" Text="" FontSize="26" FontWeight="Bold"
                        Foreground="{StaticResource AccentBrush}" TextAlignment="Center"
@@ -121,7 +126,7 @@
         <!-- 입력 영역 -->
         <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="0 1 0 0"
                 Padding="14 10">
-            <!-- 조작 안내는 땅 그림 위로 옮겼다 (<260812_16>(2)). -->
+            <!-- 조작 안내는 땅 그림 위로 옮겼다 (<산성비 타자 오락 260812_16>(2)). -->
             <TextBox x:Name="InputBox" FontSize="19" Padding="8 5"
                      TextAlignment="Center"
                      BorderBrush="{StaticResource LineBrush}"

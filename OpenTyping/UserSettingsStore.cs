@@ -34,6 +34,10 @@ namespace OpenTyping
         }
 
         private static readonly string FilePath = BuildPath();
+
+        // 파일이 있는데 입출력 오류(다른 프로그램이 잡고 있는 경우 등)로 끝내 못 읽었으면 true — 이때 기본값으로 시작하되,
+        // 그 기본값이 사용자의 진짜 설정 파일을 덮어쓰지 않도록 Save 가 건너뛴다.
+        private static bool unreadable;
         private static readonly Store Data = Load();
 
         private static string BuildPath()
@@ -47,16 +51,49 @@ namespace OpenTyping
 
         private static Store Load()
         {
-            try
+            // 바이러스 검사기 등이 잠깐 파일을 잡는 일은 짧게 기다리면 풀리므로 몇 번 다시 읽어 본다.
+            for (int attempt = 1; attempt <= 3; attempt++)
             {
-                if (File.Exists(FilePath))
+                try
                 {
-                    Store s = JsonConvert.DeserializeObject<Store>(File.ReadAllText(FilePath));
-                    if (s != null) return s;
+                    if (File.Exists(FilePath))
+                    {
+                        Store s = JsonConvert.DeserializeObject<Store>(File.ReadAllText(FilePath));
+                        if (s != null)
+                        {
+                            Sanitize(s);
+                            return s;
+                        }
+                    }
+                    return new Store();
                 }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    if (attempt == 3) unreadable = true;
+                    else System.Threading.Thread.Sleep(100);
+                }
+                catch { return new Store(); /* 손상 시 기본값으로 시작 */ }
             }
-            catch { /* 손상 시 기본값으로 시작 */ }
             return new Store();
+        }
+
+        /// <summary>
+        /// 손으로 고치거나 손상된 파일의 값을 쓸 수 있는 값으로 되돌린다. 특히 JSON 의 NaN(Newtonsoft 가 읽는다)은
+        /// 손 모양 창의 슬라이더에 넣는 순간 예외를 내서, 그 창에서만 고칠 수 있는 설정이 그 창을 못 열게 만든다.
+        /// 범위는 손가락 레이어가 실제로 받아들이는 범위(FingerLayer.ApplySettings: 두께 0.5~12, 투명도 5~100%)와 같다 —
+        /// 손으로 고친 그 안쪽 값을 더 좁게 바꾸지 않는다.
+        /// </summary>
+        private static void Sanitize(Store s)
+        {
+            s.KeyLayout = s.KeyLayout ?? "";
+            s.KeyLayoutDataDir = s.KeyLayoutDataDir ?? "";
+            s.PracticeDataDir = s.PracticeDataDir ?? "";
+            s.TpmMethod = s.TpmMethod ?? "simple";
+            if (string.IsNullOrWhiteSpace(s.FingerLayerColor)) s.FingerLayerColor = DefaultFingerLayerColor;
+            s.FingerLayerThickness = double.IsNaN(s.FingerLayerThickness)
+                ? 3.5 : Math.Max(0.5, Math.Min(12.0, s.FingerLayerThickness));
+            s.FingerLayerOpacity = double.IsNaN(s.FingerLayerOpacity)
+                ? 0.65 : Math.Max(0.05, Math.Min(1.0, s.FingerLayerOpacity));
         }
 
         public static string KeyLayout
@@ -148,7 +185,30 @@ namespace OpenTyping
         /// (KeyLayoutUserDataStore.Save()와 같은 방침 — 실패를 조용히 감추지 않음).</summary>
         public static void Save()
         {
+            if (unreadable)
+                throw new IOException("설정 파일을 읽지 못한 채 기본값으로 시작해서, 원래 설정을 덮어쓰지 않으려고 저장하지 않았습니다. 프로그램을 다시 실행해 보세요.");
             AtomicFile.WriteText(FilePath, JsonConvert.SerializeObject(Data, Formatting.Indented));
+        }
+
+        /// <summary>
+        /// <see cref="Save"/>와 같지만, 파일이 잠겼거나 디스크가 가득 찼거나 읽기 전용인 경우(입출력 실패)를
+        /// 예외 대신 메시지로 돌려준다. 창을 닫는 도중 저장하는 곳(Closed·Closing 처리기)이 쓴다 — 거기서 예외가
+        /// 나면 전역 처리기의 엉뚱한 오류창이 뜨기 때문이다(MainWindow_Closed 와 같은 방침).
+        /// </summary>
+        public static bool TrySave(out string error)
+        {
+            try
+            {
+                Save();
+                error = null;
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
+                                       ex is System.Security.SecurityException)
+            {
+                error = ex.Message;
+                return false;
+            }
         }
     }
 }

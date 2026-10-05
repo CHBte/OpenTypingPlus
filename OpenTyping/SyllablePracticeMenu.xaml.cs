@@ -60,7 +60,25 @@ namespace OpenTyping
 
             if (result.HasValue && result.Value)
             {
-                string content = File.ReadAllText(practiceFileDialog.FileName);
+                string content;
+                try
+                {
+                    content = File.ReadAllText(practiceFileDialog.FileName);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    // 다른 프로그램(워드·엑셀 등)이 잡고 있거나 읽을 수 없는 파일 — 전역 오류창 대신 이유를 알린다.
+                    MessageBox.Show("파일을 읽을 수 없습니다.\n" + ex.Message,
+                                    "열린타자+",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Error);
+                    return;
+                }
+
+                // 자모를 풀어 쓴(NFD) 파일(macOS·일부 편집기)도 완성형 음절로 맞춰 읽는다 — 안 그러면 음절이 하나도
+                // 안 잡혀 "서로 다른 한글 음절 개수가 1개 이하"라는 엉뚱한 안내가 뜬다.
+                try { content = content.Normalize(NormalizationForm.FormC); }
+                catch (ArgumentException) { /* 짝 없는 서로게이트 등: 원문 그대로 */ }
                 string hangulList = string.Concat(content.Where(Hangul.IsSyllable));
 
                 if (hangulList.Distinct().Count() <= 1) // 서로 다른 음절이 2개 이상이어야 함 (전부 같은 글자면 다음 음절 선택이 불가능)

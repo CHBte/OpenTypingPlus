@@ -5,7 +5,7 @@ using WinKey = System.Windows.Input.Key;
 namespace OpenTyping
 {
     /// <summary>
-    /// (<260724_2>(3), <260812_15>) "효범미남"/"gyqjaalska"/"GYQJAALSKA" 치트코드 감지.
+    /// (<260724_2>(3), <산성비 타자 오락 260812_15>) "효범미남"/"gyqjaalska"/"GYQJAALSKA" 치트코드 감지.
     /// 자리연습('자리연습' 메뉴)과 산성비 오락이 각자 같은 물리 키 시퀀스·버퍼 로직을 따로
     /// 들고 있던 것을 한 곳으로 모았다. 물리 키(WinKey)로 보므로 한글 IME 여부·대소문자와
     /// 무관하게 잡힌다.

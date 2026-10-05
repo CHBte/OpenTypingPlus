@@ -120,6 +120,12 @@ namespace OpenTyping
                                    + keyLayout.KeyLayoutData[i].Count + "개가 주어졌습니다.";
                     throw new InvalidKeyLayoutDataException(message);
                 }
+
+                // 키 칸이 null 로 적혀 있으면 클래식 연습 창이 그 칸을 고를 때 NullReferenceException 을 낸다 — 빈 키로 대신한다.
+                for (int j = 0; j < keyLayout.KeyLayoutData[i].Count; j++)
+                {
+                    if (keyLayout.KeyLayoutData[i][j] == null) keyLayout.KeyLayoutData[i][j] = new Key();
+                }
             }
 
             // 손상되었거나 조작된 파일에 대비해 파싱 단계에서 정리한다.
@@ -145,6 +151,13 @@ namespace OpenTyping
                 (keyLayout.Stats.KeyIncorrectCount ?? new Dictionary<KeyPos, int>())
                     .Where(kv => InRange(kv.Key))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // 횟수·평균은 음수일 수 없다 — 손상된 파일의 음수가 평균 계산(합이 0 이 되어 0 으로 나눔)을 깨뜨리지 않게.
+            keyLayout.Stats.SentencePracticeCount = Math.Max(0, keyLayout.Stats.SentencePracticeCount);
+            keyLayout.Stats.AverageTypingSpeed = Math.Max(0, keyLayout.Stats.AverageTypingSpeed);
+            keyLayout.Stats.AverageAccuracy = Math.Max(0, Math.Min(100, keyLayout.Stats.AverageAccuracy));
+            keyLayout.Stats.KeyIncorrectCount =
+                keyLayout.Stats.KeyIncorrectCount.ToDictionary(kv => kv.Key, kv => Math.Max(0, kv.Value));
 
             // MostIncorrect도 저장된 값을 신뢰하지 않고 정리된 딕셔너리에서 다시 계산한다.
             keyLayout.Stats.RecomputeMostIncorrect();

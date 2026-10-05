@@ -17,6 +17,19 @@
   #define DotNetInstallerPath "..\OpenTyping\obj\installer-cache\" + DotNetInstallerFileName
 #endif
 
+; <261005_2>(2) 이번 설치 파일에 든 stages·layouts·hands 의 파일 목록(하위 폴더 포함, 설치 폴더 기준 상대 경로)을
+; 컴파일할 때 만들어 [Code] 의 InstallManifest 상수로 넣는다. 같은 폴더에 다시 설치할 때, 이 목록에 없는 파일
+; ('남는 파일')을 찾는 데 쓴다. 아래 [Files] 의 stages·layouts·hands 항목과 같은 폴더를 본다.
+; 항목은 '|'로 잇고 끝에도 '|'를 둔다. 파일 이름의 작은따옴표는 Pascal 문자열 안이므로 두 번 적는다.
+#define BuildDir AddBackslash(SourcePath) + "..\build"
+#define ScanDir(str Rel) ScanLoop(FindFirst(BuildDir + "\" + Rel + "\*", faAnyFile), Rel)
+#define ScanLoop(int H, str Rel) \
+  H == 0 ? "" : ScanEntry(H, Rel, FindGetFileName(H)) + (FindNext(H) ? ScanLoop(H, Rel) : (FindClose(H), ""))
+#define ScanEntry(int H, str Rel, str Name) \
+  (Name == "." || Name == "..") ? "" : \
+  (DirExists(BuildDir + "\" + Rel + "\" + Name) ? ScanDir(Rel + "\" + Name) : (StringChange(Rel + "\" + Name, "'", "''") + "|"))
+#define InstallManifest ScanDir("stages") + ScanDir("layouts") + ScanDir("hands")
+
 [Setup]
 ; 이 GUID는 고정값이다. 절대 바꾸지 말 것 — 바뀌면 Windows가 다른 프로그램으로 인식한다.
 AppId={{6213C516-00A9-46B3-A63B-4671D3E53731}
@@ -69,11 +82,12 @@ Source: "..\build\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesu
 Source: "..\build\stages\*"; DestDir: "{app}\stages"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\build\hands\*"; DestDir: "{app}\hands"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; <260830_2-3>(4-1): words.json의 실제 라이브 사본은 AppData\Roaming\OTP\OpenTypingPlus\wordslist\에 둔다.
-; (4-1-1)/(4-1-2)에서 사용자가 "보존"을 고르면 ShouldInstallWordsJson이 False가 되어 이 항목을 건너뛴다.
+; (4-1-1)/(4-1-2)에서 사용자가 "기존의 단어 목록 계속 사용(유지)"를 고르면 ShouldInstallWordsJson이 False가 되어
+; 이 항목을 건너뛴다.
 Source: "..\build\wordslist\words.json"; DestDir: "{userappdata}\OTP\OpenTypingPlus\wordslist"; Flags: ignoreversion; Check: ShouldInstallWordsJson
 ; words.json은 {tmp}에도 항상(조건 없이) 꺼내 둔다 — (4-1-1) 비교와 words-original.json 생성에
-; "이번 설치 패키지가 원래 기본값으로 담고 있는 내용"이 필요한데, 그건 사용자가 "보존"을 골라
-; 위 항목이 실제로 안 깔릴 수도 있어 그것만으론 알 수 없기 때문이다.
+; "이번 설치 패키지가 원래 기본값으로 담고 있는 내용"이 필요한데, 그건 사용자가 "기존의 단어 목록 계속
+; 사용(유지)"를 골라 위 항목이 실제로 안 깔릴 수도 있어 그것만으론 알 수 없기 때문이다.
 Source: "..\build\wordslist\words.json"; DestDir: "{tmp}"; Flags: dontcopy
 ; .NET 런타임 설치 파일은 SFX 안에 압축 포함만 하고(dontcopy), 실제로 필요할 때만
 ; ExtractTemporaryFile로 {tmp}에 꺼낸다 (아래 [Code]의 CurStepChanged 참고).
@@ -82,7 +96,14 @@ Source: "{#DotNetInstallerPath}"; DestDir: "{tmp}"; Flags: dontcopy
 [Icons]
 ; <260830_2-3>(4-1): 사용자가 AppData에 직접 갈 필요 없이, OTP 폴더 안에서 바로 단어 목록을
 ; 편집할 수 있게 하는 바로가기. 대상이 AppData 쪽 실제 파일이라 사용자가 더블클릭하면 그 파일이 열린다.
-Name: "{app}\wordslist\단어 목록 편집 (words.json)"; Filename: "{userappdata}\OTP\OpenTypingPlus\wordslist\words.json"
+; <261003_1.1>: 이름을 '단어 목록 편집 (words.json)'에서 '단어 목록 편집(words.json)'으로 바꿨다.
+Name: "{app}\wordslist\단어 목록 편집(words.json)"; Filename: "{userappdata}\OTP\OpenTypingPlus\wordslist\words.json"
+
+[InstallDelete]
+; <261003_1.1>: 예전 이름의 바로가기가 남아 있으면 지운다(덮어쓰기 설치는 같은 이름의 파일만 바꾸므로 그냥 두면
+; 두 개가 남는다). 정확히 이 이름의 바로가기 파일(.lnk) 하나만 지우고(files 형식은 폴더를 지우지 않는다),
+; 지우지 못해도 설치는 그대로 진행된다(Inno 의 InstallDelete 는 실패해도 설치를 멈추지 않는다).
+Type: files; Name: "{app}\wordslist\단어 목록 편집 (words.json).lnk"
 
 [Run]
 ; (1)/(1-1): .NET 10 Desktop Runtime(x64)이 없을 때만 마이크로소프트 공식 설치 창을 그대로 띄운다.
@@ -102,18 +123,31 @@ Filename: "{tmp}\{#DotNetInstallerFileName}"; StatusMsg: ".NET 10 Desktop Runtim
 [UninstallDelete]
 ; <260830_2-2> "설치삭제.exe"(원래 unins000.exe)를 실행하면, 설치 때 넣은 파일들 외에도
 ; AppData의 OTP\OpenTypingPlus 폴더(로밍/로컬 둘 다)를 통째로 삭제한다.
-; words.json/words-original.json의 예외 처리는 아래 [Code]의 CurUninstallStepChanged가
-; 이 삭제가 실행되기 전에 미리 다른 곳으로 옮겨 두는 방식으로 처리한다 (<260830_2-5>).
+; words.json의 예외 처리는 아래 [Code]의 InitializeUninstall이 이 삭제가 실행되기 전에 바탕화면에
+; 사본을 만들어 두는 방식으로 처리한다 (<260830_2-5>).
 Type: filesandordirs; Name: "{userappdata}\OTP\OpenTypingPlus"
 Type: filesandordirs; Name: "{localappdata}\OTP\OpenTypingPlus"
+; <261003_1.1>: 바로가기는 옛 이름과 새 이름 모두, 정확히 그 이름의 바로가기 파일만 지운다.
+Type: files; Name: "{app}\wordslist\단어 목록 편집 (words.json).lnk"
+Type: files; Name: "{app}\wordslist\단어 목록 편집(words.json).lnk"
 
 [Code]
 var
   { <260830_2-4>(4): 최종 설치 위치. 기본값은 DefaultDirName과 같은 바탕화면\OTP. }
   FinalInstallDir: String;
-  { <260830_2-4>(4-1-2): "기존 단어 목록 보존하기"를 골랐으면 True — words.json을 AppData에
-    새로 안 쓰고 이미 있는 걸 그대로 둔다. }
-  PreserveWordsJson: Boolean;
+  { <260830_2-4>(4-1-2)·<261003_1.1>(7.3): "기존의 단어 목록 계속 사용(유지)"를 골랐으면 True — words.json을
+    AppData에 새로 안 쓰고 이미 있는 걸 그대로 둔다. (7.5.1)에서 "고친 기존의 단어 목록 계속 사용하기"를 골라도 True.
+    KeepChosen 은 (7.3) 창에서 고른 값 자체 — [설치]를 누른 뒤의 처리(PrepareToInstall)는 이 값에서 다시 시작한다. }
+  KeepWordsJson: Boolean;
+  KeepChosen: Boolean;
+  { <261003_1.1>(7.3.1)·<261005_1>: 사용자가 이미 취소를 고른 경우 Inno 기본 "설치를 종료하시겠습니까?"를 다시
+    묻지 않고 바로 끝내기 위한 표시(CancelButtonClick 참고). }
+  SilentCancel: Boolean;
+  { CurStepChanged(ssInstall) — 실제 설치(파일 복사·AppData 정리)가 시작됐는가 / ssPostInstall 까지 갔는가. }
+  InstallStarted: Boolean;
+  PostInstallReached: Boolean;
+  { <261005_2>(7.2) 남는 파일 중 지우는 도중에 지우지 못한 파일(설치가 끝나면 알린다). }
+  LeftoverDeleteFailed: String;
   { <260830_2-4>(3-1)/(3-2)에서 "취소"를 고르면 True — 이후 모든 단계를 건너뛴다. }
   InstallCancelled: Boolean;
   { <260831 검토>(3-1)의 삭제 예약. 예전엔 프롬프트에서 곧바로 DelTree를 했는데, 그 시점은
@@ -124,12 +158,20 @@ var
     이런 예약이 필요 없다 — 아래 PendingDesktopDelete가 없어진 이유.) }
   PendingRoamingCleanup: Boolean;
   PendingLocalCleanup: Boolean;
-  // <260831 2차 검토>: "보존"을 고른 words.json의 백업 위치. Inno의 임시 폴더(tmp 상수)에 두면
-  // 설치가 중간에 취소·실패했을 때 Inno가 그 폴더를 통째로 지우면서 백업본까지 함께 사라져
-  // (원본은 이미 DelTree로 없어진 뒤) 데이터가 영구 소실된다. 그래서 설치가 끝나도 남는
-  // 바탕화면에 둔다. 복원까지 성공하면 ssDone에서 정리하고, 실패하면 그대로 남겨 둔다.
+  { (3-1)에서 고른 값 자체 — PrepareToInstall 이 다시 시작할 때 PendingRoamingCleanup 을 이 값으로 되돌린다. }
+  RoamingCleanupChosen: Boolean;
+  // <260831 2차 검토>·<261003_1.1>(7.3.2): "기존의 단어 목록 계속 사용(유지)"를 고른 words.json의 임시 사본
+  // 폴더(바탕화면 OTP_words_tmp_(날짜시각)). Inno의 임시 폴더(tmp 상수)에 두면 설치가 중간에 취소·실패했을 때
+  // Inno가 그 폴더를 통째로 지우면서 사본까지 함께 사라져(원본은 이미 DelTree로 없어진 뒤) 데이터가 영구
+  // 소실된다. 그래서 설치가 끝나도 남는 바탕화면에 둔다. 되돌리기까지 성공하면 ssDone에서 지우고, 실패하면
+  // 그대로 남겨 둔다. 이번 설치에서 만든 폴더일 때만 값이 있다.
   PreservedBackupDir: String;
   PreservedRestoreOk: Boolean;
+  { <261003_1>(7.5): 사용자가 고친 단어 목록이 있는데 '단계 개정판 번호'가 달라 유지할 수 없을 때 True.
+    새 목록을 설치하고, 고친 목록은 바탕화면 사본 폴더(StageMismatchBackupDir, OTP_words_보존_(날짜시각))로 남긴다.
+    StageMismatchBackupDir 은 이번 설치에서 만든 폴더일 때만 값이 있다. }
+  StageVersionMismatch: Boolean;
+  StageMismatchBackupDir: String;
   { <260901_2>: 완료 페이지의 "Open Typing Plus 실행" 체크박스. Inno이 자동 생성하는
     TNewCheckListBox 대신 우리가 직접 만드는 진짜 TNewCheckBox(네이티브 Win32 체크박스라
     DPI에 맞게 그려짐)다. LaunchAfterFinish는 그 체크 상태를 기억해 뒀다가, 폼이 이미 닫힌 뒤
@@ -137,10 +179,19 @@ var
     수 있어 컨트롤이 아니라 이 변수를 믿는다). }
   LaunchCheckBox: TNewCheckBox;
   LaunchAfterFinish: Boolean;
+  { 같은 폴더에 다시 설치할 때 예전 설치삭제.exe/.dat 를 unins000.exe/.dat 로 되돌려 놓았으면 True
+    (PrepareUninstallerForAppend 참고). UninstallerNameDone 은 ssDone 에서 이름 바꾸기를 마쳤는가. }
+  UninstallerRestoredForAppend: Boolean;
+  UninstallerNameDone: Boolean;
 
 const
   OtpAppGuid = '6213C516-00A9-46B3-A63B-4671D3E53731';
   MarkerFileName = '.otp-identity';
+  { <261005_2>(2) 이번 설치 파일에 든 stages·layouts·hands 파일 목록(위 전처리기 InstallManifest 참고). }
+  InstallManifest = '{#InstallManifest}';
+  CancelMessage = '설치를 취소합니다.';
+
+#include "install_helpers.iss"
 
 { ============== (1) .NET 10.0 Desktop Runtime 감지 ============== }
 { 실제로 이 개발 컴퓨터의 레지스트리를 직접 조회해 확인한 위치를 1순위로 쓰고,
@@ -313,6 +364,94 @@ begin
   Needed := TextWidestLine(AFont, ACaption) + HMargin;
   if Needed > AForm.ClientWidth then
     AForm.ClientWidth := Needed;
+end;
+
+{ <261003_1.1>: 두 버튼을 라벨 아래 TopY 부터 놓는다. 한 줄(오른쪽 정렬, B1 이 왼쪽·B2 가 오른쪽)에 들어가면 좌/우로,
+  창 너비를 넘길 것 같으면 상/하(B1 이 위)로 둔다. 상/하일 때는 두 버튼의 너비를 넓은 쪽에 맞춘다.
+  돌려주는 값은 버튼들의 맨 아래 y. 폼 높이는 부르는 쪽이 이 값에 맞춘다. }
+function LayoutTwoButtons(AForm: TSetupForm; B1, B2: TNewButton; TopY: Integer): Integer;
+var
+  W: Integer;
+begin
+  if B1.Width + 8 + B2.Width <= AForm.ClientWidth - 32 then
+  begin
+    B1.Top := TopY;
+    B2.Top := TopY;
+    B2.Left := AForm.ClientWidth - 16 - B2.Width;
+    B1.Left := B2.Left - 8 - B1.Width;
+    Result := TopY + B1.Height;
+  end
+  else
+  begin
+    W := B1.Width;
+    if B2.Width > W then W := B2.Width;
+    if W > AForm.ClientWidth - 32 then W := AForm.ClientWidth - 32;
+    B1.Width := W;
+    B2.Width := W;
+    B1.Left := AForm.ClientWidth - 16 - W;
+    B2.Left := B1.Left;
+    B1.Top := TopY;
+    B2.Top := TopY + B1.Height + 6;
+    Result := B2.Top + B2.Height;
+  end;
+end;
+
+{ 화면 밖에 놓는 보이지 않는 버튼. 버튼 두 개 중 어느 것도 [Esc]에 대응하지 않는 창에서, [Esc]를 누르면
+  ModalResult = mrCancel 로 창이 닫히게 한다(창 닫기 X 와 같은 결과). VCL 은 보이는(Visible) 버튼만 [Esc]에
+  반응하므로 숨기지 않고 화면 밖 좌표에 둔다. }
+procedure AddEscCancelButton(AForm: TSetupForm);
+var
+  B: TNewButton;
+begin
+  B := TNewButton.Create(AForm);
+  B.Parent := AForm;
+  B.Left := -1000;
+  B.Top := -1000;
+  B.Width := 10;
+  B.Height := 10;
+  B.TabStop := False;
+  B.Cancel := True;
+  B.ModalResult := mrCancel;
+end;
+
+{ <261003_1.1>(7.3)(7.5)(7.7) 바탕화면에 BaseName 폴더를 새로 만든다. 같은 이름의 폴더나 파일(확장자가 없는
+  파일)이 이미 있으면 ' (2)'부터 차례로 아직 없는 번호를 붙인다. 만든 폴더의 전체 경로를 돌려주고, 만들지
+  못하면 '' 를 돌려준다(그때 Attempted 에는 만들려던 경로가 들어 있다). }
+function CreateUniqueDesktopDir(const BaseName: String; var Attempted: String): String;
+var
+  Desktop: String;
+  N: Integer;
+begin
+  Result := '';
+  Desktop := ExpandConstant('{userdesktop}');
+  N := 1;
+  repeat
+    Attempted := AddBackslash(Desktop) + NumberedName(BaseName, N);
+    N := N + 1;
+  until (not DirExists(Attempted) and not FileExists(Attempted)) or (N > 1000);
+  if DirExists(Attempted) or FileExists(Attempted) then Exit;
+  if ForceDirectories(Attempted) then
+    Result := Attempted;
+end;
+
+{ 바탕화면 폴더를 만들고 그 안에 words.json 사본을 만든다. 성공하면 폴더 경로, 실패하면 '' 를 돌려준다.
+  폴더는 만들었는데 사본 복사에 실패하면 이번에 만든 그 빈 폴더를 지운다(<261003_1.1>(7.3.2.3)(7.5.1.6.1)(7.7)).
+  Attempted 에는 만들려던(또는 만든) 폴더 경로가 들어간다. }
+function CopyWordsJsonToNewDesktopDir(const BaseName, LivePath: String; var Attempted: String): String;
+var
+  Dir: String;
+begin
+  Result := '';
+  Dir := CreateUniqueDesktopDir(BaseName, Attempted);
+  if Dir = '' then Exit;
+  if FileCopy(LivePath, Dir + '\words.json', False) then
+    Result := Dir
+  else
+  begin
+    { 이번에 새로 만든 폴더라 그 안에는 복사하다 만 사본 말고는 없다. }
+    DeleteFile(Dir + '\words.json');
+    RemoveDir(Dir); { 비어 있을 때만 지워진다 }
+  end;
 end;
 
 { (3-1): 신원이 확인된 흔적을 지울지 묻는다. "예" 외엔(아니오/X) 전부 설치 취소. }
@@ -771,35 +910,39 @@ begin
   end;
 end;
 
-{ ============== (4-1-1)/(4-1-2): words.json 비교 후 보존 여부 ============== }
-function WordsJsonUnchanged(): Boolean;
+{ ============== (4-1-1)/(4-1-2): words.json 비교 후 계속 사용(유지) 여부 ============== }
+#include "words_decision.iss"
+
+{ <261003_1>(7) 판단(DecideWordsJson, words_decision.iss)에 넘길 세 파일을 읽는다. 파일이 없거나 읽지 못하면
+  지킬 것이 없는 것으로 보고 0(묻지 않고 새 목록 설치). }
+function WordsJsonDecision(): Integer;
 var
-  LiveContent, PackagedContent: AnsiString;
-  LivePath, PackagedPath: String;
+  LiveContent, PackagedContent, OriginalContent: AnsiString;
+  LivePath, PackagedPath, OriginalPath: String;
+  HasOriginal: Boolean;
 begin
-  Result := True; { 비교 대상 파일이 없으면 "달라진 게 없다"로 취급(=보존 안 해도 됨) }
+  Result := 0;
   LivePath := RoamingOtpFolder() + '\wordslist\words.json';
   PackagedPath := ExpandConstant('{tmp}\words.json'); { 이번 설치 패키지 자체의 기본값 }
   if not FileExists(LivePath) or not FileExists(PackagedPath) then Exit;
   if not LoadStringFromFile(LivePath, LiveContent) then Exit;
   if not LoadStringFromFile(PackagedPath, PackagedContent) then Exit;
-  { <260927_2> 제시어 목록 형식이 바뀌었다(자리연습·오락 공용, "hangul"/"english" 묶음). 예전 형식의
-    words.json 은 새 프로그램이 읽지 못해(내장 예비본 10개씩만 쓰게 됨) 보존할 의미가 없으므로,
-    내용이 달라도 '보존할 것 없음'으로 보고 새 목록을 깐다. }
-  if Pos('"hangul"', LiveContent) = 0 then Exit;
-  Result := (LiveContent = PackagedContent);
+  OriginalPath := LocalOtpFolder() + '\wordslist\words-original.json';
+  HasOriginal := FileExists(OriginalPath) and LoadStringFromFile(OriginalPath, OriginalContent);
+  Result := DecideWordsJson(LiveContent, PackagedContent, OriginalContent, HasOriginal);
 end;
 
-{ (4-1-2) 문구·버튼. 반환: True = 보존, False = 보존 안 함 }
-function ShowWordsJsonPreservePrompt(): Boolean;
+{ (4-1-2)·<261003_1.1>(7.3) 사용자가 고쳤고 단계 개정판 번호가 같을 때, 기존의 단어 목록을 계속 사용(유지)할지
+  묻는 창. 반환: 1 = 기존의 단어 목록 계속 사용(유지), 2 = 설치 파일 안의 새 단어 목록 사용, 0 = 설치 취소.
+  기본 버튼은 '새 단어 목록 사용'이고(<261003_1.1> — 고친 목록을 잃는 것은 사용자 책임), 창 닫기(X)·[Esc]는
+  설치 취소다(<261003_1.1>(7.3.1)). }
+function ShowWordsJsonKeepPrompt(): Integer;
 var
   ConfirmForm: TSetupForm;
   MsgLabel: TNewStaticText;
-  KeepButton, DiscardButton: TNewButton;
-  NeededHeight: Integer;
+  NewListButton, KeepButton: TNewButton;
+  Bottom: Integer;
 begin
-  { <260830_2-4-3>(2): 아래 두 버튼의 캡션이 길어(14자/11자) 기존 420 너비에선 문구가 잘렸다
-    (실제 화면에서 확인됨). 여유 있게 넓힌다. }
   ConfirmForm := CreateCustomForm(520, 170, True, True);
   try
     ConfirmForm.Caption := 'Open Typing Plus';
@@ -811,42 +954,42 @@ begin
     MsgLabel.AutoSize := False;
     MsgLabel.WordWrap := True;
     MsgLabel.Caption :=
-      '기존 설치된 것 중 자리연습·산성비 오락의 단어 목록(OTP 폴더\wordslist\words.json)이 변경되어' + #13#10 +
+      '기존 설치된 것 중에서 자리연습·산성비 오락의 단어 목록(OTP 폴더\wordslist\단어 목록 편집(words.json))이 변경되어' + #13#10 +
       '있습니다. 기존의 단어 목록이 설치하려는 단어 목록보다 최신일 수도 있습니다.';
     EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
     MsgLabel.Width := ConfirmForm.ClientWidth - 32;
     MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
 
-    DiscardButton := TNewButton.Create(ConfirmForm);
-    DiscardButton.Parent := ConfirmForm;
-    DiscardButton.Caption := '기존 단어 목록 보존하지 않기';
-    DiscardButton.Height := WizardForm.CancelButton.Height;
-    DiscardButton.Width := TextButtonWidth(DiscardButton.Font, DiscardButton.Caption, 40, 75);
-    { 라벨의 실측 높이가 원래 여유 공간보다 클 수 있으니, 버튼 행과 겹치지 않게 폼 높이를
-      필요하면 늘린다. 버튼은 ClientHeight 기준 상대 좌표라 자동으로 같이 밀려난다. }
-    NeededHeight := MsgLabel.Top + MsgLabel.Height + 16 + DiscardButton.Height + 10;
-    if NeededHeight > ConfirmForm.ClientHeight then
-      ConfirmForm.ClientHeight := NeededHeight;
-    DiscardButton.Top := ConfirmForm.ClientHeight - DiscardButton.Height - 10;
-    DiscardButton.Left := ConfirmForm.ClientWidth - DiscardButton.Width - 16;
-    DiscardButton.ModalResult := mrNo;
+    NewListButton := TNewButton.Create(ConfirmForm);
+    NewListButton.Parent := ConfirmForm;
+    NewListButton.Caption := '설치 파일 안의 새 단어 목록 사용';
+    NewListButton.Height := WizardForm.CancelButton.Height;
+    NewListButton.Width := TextButtonWidth(NewListButton.Font, NewListButton.Caption, 40, 75);
+    NewListButton.ModalResult := mrNo;
+    NewListButton.Default := True;
 
     KeepButton := TNewButton.Create(ConfirmForm);
     KeepButton.Parent := ConfirmForm;
-    KeepButton.Caption := '기존 단어 목록 보존하기';
+    KeepButton.Caption := '기존의 단어 목록 계속 사용(유지)';
     KeepButton.Height := WizardForm.CancelButton.Height;
     KeepButton.Width := TextButtonWidth(KeepButton.Font, KeepButton.Caption, 40, 75);
-    KeepButton.Top := DiscardButton.Top;
-    KeepButton.Left := DiscardButton.Left - KeepButton.Width - 8;
     KeepButton.ModalResult := mrYes;
-    KeepButton.Default := True;
-    KeepButton.Cancel := True;   { Esc도 보존(안전) 쪽으로 }
-    ConfirmForm.ActiveControl := KeepButton;
+
+    AddEscCancelButton(ConfirmForm);   { [Esc] = 설치 취소 }
+
+    Bottom := LayoutTwoButtons(ConfirmForm, NewListButton, KeepButton, MsgLabel.Top + MsgLabel.Height + 16);
+    ConfirmForm.ClientHeight := Bottom + 10;
+    ConfirmForm.ActiveControl := NewListButton;
 
     ConfirmForm.Left := WizardForm.Left + (WizardForm.Width - ConfirmForm.Width) div 2;
     ConfirmForm.Top := WizardForm.Top + (WizardForm.Height - ConfirmForm.Height) div 2;
 
-    Result := (ConfirmForm.ShowModal() <> mrNo);   { X/Esc = 보존(안전) 쪽 }
+    case ConfirmForm.ShowModal() of
+      mrYes: Result := 1;
+      mrNo: Result := 2;
+    else
+      Result := 0;   { 창 닫기(X)·[Esc] }
+    end;
   finally
     ConfirmForm.Free();
   end;
@@ -854,14 +997,117 @@ end;
 
 function ShouldInstallWordsJson(): Boolean;
 begin
-  Result := not PreserveWordsJson;
+  Result := not KeepWordsJson;
+end;
+
+{ ============== <261005_1> 이미 설치된 것보다 낮은 버전을 설치하려 할 때 경고 ============== }
+{ 설치 폴더(FinalInstallDir)에 이미 열린타자+.exe 가 있고, 그 파일 버전이 지금 설치하려는 버전보다 높으면 묻는다.
+  반환: True = 계속 설치(경고 없음 포함), False = 설치 취소. 파일이 없거나 버전을 읽을 수 없으면 묻지 않는다. }
+function ConfirmDowngrade(): Boolean;
+var
+  ExePath, Installed, Setup: String;
+  ConfirmForm: TSetupForm;
+  MsgLabel: TNewStaticText;
+  CancelBtn, InstallBtn: TNewButton;
+  Bottom: Integer;
+begin
+  Result := True;
+  ExePath := AddBackslash(FinalInstallDir) + '{#MyAppExeName}';
+  if not FileExists(ExePath) then Exit;
+  if not GetVersionNumbersString(ExePath, Installed) then Exit;
+  Setup := '{#MyAppVersion}';
+  if CompareVersionStrings(Installed, Setup) <= 0 then Exit;   { 같거나 낮으면 경고하지 않는다 }
+
+  ConfirmForm := CreateCustomForm(480, 170, True, True);
+  try
+    ConfirmForm.Caption := 'Open Typing Plus';
+
+    MsgLabel := TNewStaticText.Create(ConfirmForm);
+    MsgLabel.Parent := ConfirmForm;
+    MsgLabel.Left := 16;
+    MsgLabel.Top := 16;
+    MsgLabel.AutoSize := False;
+    MsgLabel.WordWrap := True;
+    MsgLabel.Caption :=
+      '이 폴더에 더 높은 버전의 Open Typing Plus(설치된 버전: ' + Installed + ')가 설치되어 있습니다.' + #13#10 +
+      '지금 설치하려는 버전(' + Setup + ')은 더 낮은 버전입니다.' + #13#10 +
+      '낮은 버전을 설치하면 일부 기능이나 단어 목록이 예전 것으로 돌아갑니다.' + #13#10 +
+      '낮은 버전을 설치하시겠습니까?';
+    EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
+    MsgLabel.Width := ConfirmForm.ClientWidth - 32;
+    MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
+
+    CancelBtn := TNewButton.Create(ConfirmForm);
+    CancelBtn.Parent := ConfirmForm;
+    CancelBtn.Caption := '설치 취소';
+    CancelBtn.Height := WizardForm.CancelButton.Height;
+    CancelBtn.Width := TextButtonWidth(CancelBtn.Font, CancelBtn.Caption, 40, 75);
+    CancelBtn.ModalResult := mrCancel;
+    CancelBtn.Default := True;
+    CancelBtn.Cancel := True;   { 창 닫기(X)·[Esc]도 설치 취소 }
+
+    InstallBtn := TNewButton.Create(ConfirmForm);
+    InstallBtn.Parent := ConfirmForm;
+    InstallBtn.Caption := '낮은 버전 설치하기';
+    InstallBtn.Height := WizardForm.CancelButton.Height;
+    InstallBtn.Width := TextButtonWidth(InstallBtn.Font, InstallBtn.Caption, 40, 75);
+    InstallBtn.ModalResult := mrYes;
+
+    Bottom := LayoutTwoButtons(ConfirmForm, CancelBtn, InstallBtn, MsgLabel.Top + MsgLabel.Height + 16);
+    ConfirmForm.ClientHeight := Bottom + 10;
+    ConfirmForm.ActiveControl := CancelBtn;
+
+    ConfirmForm.Left := WizardForm.Left + (WizardForm.Width - ConfirmForm.Width) div 2;
+    ConfirmForm.Top := WizardForm.Top + (WizardForm.Height - ConfirmForm.Height) div 2;
+
+    Result := (ConfirmForm.ShowModal() = mrYes);
+  finally
+    ConfirmForm.Free();
+  end;
 end;
 
 { ============== 이벤트 함수 ============== }
 { <260830_2-2> 자동 생성된 삭제 프로그램(unins000.exe / .dat)의 이름을 "설치삭제.exe"로
   바꾼다. 두 파일을 같이 바꿔야 한다 — 삭제 프로그램은 자기 이름과 같은 이름의 .dat에서
   삭제할 파일 목록을 읽으므로, 이름이 서로 안 맞으면 못 찾는다. 제일 마지막 단계(ssDone)에서
-  해야 그 시점엔 두 파일이 확실히 다 만들어져 있다. }
+  해야 그 시점엔 두 파일이 확실히 다 만들어져 있다.
+  같은 폴더에 다시 설치하면 첫 설치의 설치삭제.exe/.dat 가 이미 있어 RenameFile 이 실패하고(대상 이름의 파일이
+  있으면 실패 — Inno 도움말), 새 unins000.* 와 예전 설치삭제.* 가 함께 남았다(2026-10-05 실제 확인). 그래서
+  ssInstall 에서 예전 설치삭제.* 를 unins000.* 로 되돌려 Inno 가 그 기록에 이어 쓰게 하고
+  (PrepareUninstallerForAppend), 여기서는 그래도 남은 예전 설치삭제.* 를 지운 뒤 이름을 바꾼다. }
+
+{ 삭제 프로그램 두 파일을 한 쌍으로 개명한다. 하나만 바뀌면 이름이 어긋나 삭제 프로그램이 자기 .dat 를 못
+  찾으므로, .dat 개명이 실패하면 .exe 를 원래 이름으로 되돌린다. 대상 이름의 파일은 없어야 한다. }
+function RenameUninstallerPair(OldExe, OldDat, NewExe, NewDat: String): Boolean;
+begin
+  Result := False;
+  if not FileExists(OldDat) then
+    Exit;
+  if FileExists(OldExe) and not RenameFile(OldExe, NewExe) then
+    Exit;
+  if RenameFile(OldDat, NewDat) then
+    Result := True
+  else if FileExists(NewExe) then
+    RenameFile(NewExe, OldExe);
+end;
+
+// Inno 는 같은 폴더(UninstallFilesDir)에서 AppId 가 같은 unins???.dat 를 찾아 그 삭제 기록에 이어 쓴다(Inno 도움말
+// "Uninstall log appending"). 우리가 설치삭제.dat 로 이름을 바꿔 두어 Inno 가 그걸 못 찾고 늘 새 기록을 만들었으므로,
+// 실제 설치가 시작되기 직전(ssInstall)에 unins000.* 로 되돌려 놓는다. 그러면 삭제할 때 예전 설치에서 넣은 파일도
+// 함께 지워진다. 이미 unins000.* 가 있으면(이 고침 전의 설치 파일로 다시 설치해 둘 다 남은 경우) 건드리지 않는다 —
+// Inno 가 그 unins000.dat 에 이어 쓰고, 남은 예전 설치삭제.* 는 ssDone 에서 지운다.
+// (중괄호 경로 상수를 쓰므로 // 줄 주석으로 쓴다.)
+procedure PrepareUninstallerForAppend();
+var
+  Dir: String;
+begin
+  Dir := ExpandConstant('{app}\설치삭제');
+  if FileExists(Dir + '\설치삭제.dat') and not FileExists(Dir + '\unins000.dat') and
+     not FileExists(Dir + '\unins000.exe') then
+    UninstallerRestoredForAppend := RenameUninstallerPair(
+      Dir + '\설치삭제.exe', Dir + '\설치삭제.dat', Dir + '\unins000.exe', Dir + '\unins000.dat');
+end;
+
 procedure RenameUninstaller();
 var
   OldExe, OldDat, NewExe, NewDat: String;
@@ -876,10 +1122,20 @@ begin
   OldDat := ChangeFileExt(OldExe, '.dat');
   NewExe := ExpandConstant('{app}\설치삭제\설치삭제.exe');
   NewDat := ExpandConstant('{app}\설치삭제\설치삭제.dat');
-  if FileExists(OldExe) then
-    RenameFile(OldExe, NewExe);
-  if FileExists(OldDat) then
-    RenameFile(OldDat, NewDat);
+  UninstallerNameDone := True;
+  if not FileExists(OldDat) then
+    Exit;
+  // 이번 설치가 이어 쓰지 않은 예전 설치삭제.exe/.dat 가 남아 있으면 지운다(남겨 두면 사용자가 낡은 삭제
+  // 프로그램을 실행하게 된다). 이어 쓴 경우엔 ssInstall 에서 이미 unins000.* 로 이름이 바뀌어 여기 없다.
+  if FileExists(NewExe) then
+    DeleteFile(NewExe);
+  if FileExists(NewDat) then
+    DeleteFile(NewDat);
+  if FileExists(NewExe) or FileExists(NewDat) or
+     not RenameUninstallerPair(OldExe, OldDat, NewExe, NewDat) then
+    MsgBox('삭제 프로그램의 이름을 "설치삭제.exe"로 바꾸지 못했습니다.' + #13#10 +
+           '프로그램을 지울 때는 아래 폴더의 "' + ExtractFileName(OldExe) + '"을 실행해 주세요.' + #13#10 +
+           ExtractFileDir(OldExe), mbError, MB_OK);
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -887,27 +1143,46 @@ begin
   Result := True;
   { 라이선스 페이지에서 "다음"을 눌러 넘어가는 시점 = 라이선스에 동의한 시점
     (Inno Setup이 "동의하지 않음" 상태에서는 애초에 다음으로 못 넘어가게 막아준다).
-    여기서 (3) AppData 신원 확인과 (4) 바탕화면 OTP 폴더 확인을 순서대로 처리한다.
-    DisableDirPage=yes라 별도의 "대상 위치 선택" 페이지가 없으므로 전부 여기서 처리한다. }
+    DisableDirPage=yes라 별도의 "대상 위치 선택" 페이지가 없으므로 설치 전 질문을 전부 여기서 처리한다.
+    <261005_1>(7): 낮은 버전 설치 경고가 다른 질문보다 먼저 뜨도록, 설치 폴더를 정하는 (4) 바탕화면 OTP 폴더
+    확인을 맨 앞에 두고 → 낮은 버전 경고 → (3) AppData 신원 확인 → (4-1-1) 단어 목록 질문 순서로 한다.
+    (예전 순서는 단어 목록 → (3) → (4)였다. 앞의 질문들은 선택만 기억하고 실제 삭제·복사는 설치가 확정된 뒤에
+    하므로 순서를 바꿔도 동작은 같다.) }
   if CurPageID = wpLicense then
   begin
     InstallCancelled := False;
+    SilentCancel := False;
     FinalInstallDir := ExpandConstant('{autodesktop}\OTP');
-    PreserveWordsJson := False;
+    KeepWordsJson := False;
+    KeepChosen := False;
     PendingRoamingCleanup := False;
     PendingLocalCleanup := False;
+    RoamingCleanupChosen := False;
     PreservedBackupDir := '';
     PreservedRestoreOk := False;
+    StageVersionMismatch := False;
+    StageMismatchBackupDir := '';
     // (4-1-1) 비교, words-original.json 생성 어느 쪽이든 "이번 설치 패키지 자체의 기본
     // words.json 내용"이 필요하므로, 여기서 미리(조건 없이) tmp 폴더에 꺼내 둔다.
     ExtractTemporaryFile('words.json');
 
-    { <260831 검토>(4-1-1)/(4-1-2): 이 비교를 여기서 — 어떤 삭제보다도 먼저 — 한다.
-      예전엔 (3-1)의 DelTree가 라이브 words.json을 먼저 지운 뒤에야 비교가 돌아서,
-      FileExists가 항상 False → "달라진 것 없음"으로 판정 → 보존 프롬프트가 정상 재설치
-      경로에서는 아예 뜨지 않았고 사용자가 고친 단어 목록이 매번 사라졌다. }
-    if not WordsJsonUnchanged() then
-      PreserveWordsJson := ShowWordsJsonPreservePrompt();
+    if DesktopOtpHasFiles() then
+    begin
+      case ShowDesktopConflictPrompt() of
+        0: begin { 취소 } Result := False; WizardForm.Close(); Exit; end;
+        1: begin { 덮어쓰기 설치 — [Files]가 같은 이름의 파일만 덮어쓰므로 여기선 할 일이 없다 } end;
+        2: begin { 사용자 지정 경로에 설치 - FinalInstallDir는 ShowDesktopConflictPrompt 안에서 이미 설정됨 } end;
+      end;
+    end;
+
+    { <261005_1> 설치 폴더가 정해진 뒤, 그 폴더의 열린타자+.exe 가 더 높은 버전이면 경고한다. }
+    if not ConfirmDowngrade() then
+    begin
+      SilentCancel := True;   { 사용자가 이미 "설치 취소"를 골랐다 — 다시 묻지 않는다 }
+      Result := False;
+      WizardForm.Close();
+      Exit;
+    end;
 
     CheckAppDataIdentity();
     if InstallCancelled then
@@ -919,18 +1194,43 @@ begin
       WizardForm.Close();
       Exit;
     end;
+    RoamingCleanupChosen := PendingRoamingCleanup;
 
-    if DesktopOtpHasFiles() then
-    begin
-      case ShowDesktopConflictPrompt() of
-        0: begin { 취소 } Result := False; WizardForm.Close(); Exit; end;
-        1: begin { 덮어쓰기 설치 — [Files]가 같은 이름의 파일만 덮어쓰므로 여기선 할 일이 없다 } end;
-        2: begin { 사용자 지정 경로에 설치 - FinalInstallDir는 ShowDesktopConflictPrompt 안에서 이미 설정됨 } end;
-      end;
+    { <260831 검토>(4-1-1)/(4-1-2): 이 비교를 어떤 삭제보다도 먼저 한다(삭제는 설치가 확정된 뒤에 한다).
+      예전엔 (3-1)의 DelTree가 라이브 words.json을 먼저 지운 뒤에야 비교가 돌아서,
+      FileExists가 항상 False → "달라진 것 없음"으로 판정 → 계속 사용 여부 창이 정상 재설치
+      경로에서는 아예 뜨지 않았고 사용자가 고친 단어 목록이 매번 사라졌다. }
+    case WordsJsonDecision() of
+      1: case ShowWordsJsonKeepPrompt() of
+           1: KeepChosen := True;
+           2: KeepChosen := False;
+         else
+           begin
+             { <261003_1.1>(7.3.1) 창 닫기(X)·[Esc] = 설치 취소 }
+             MsgBox(CancelMessage, mbInformation, MB_OK);
+             SilentCancel := True;
+             Result := False;
+             WizardForm.Close();
+             Exit;
+           end;
+         end;
+      2: { <261003_1>(7.5): 단계 구성이 바뀌어 고친 목록을 그대로 쓸 수 없다 — '계속 사용(유지)'를 주지 않는다.
+           사본을 만들고 안내하는 일은 [설치]를 누른 직후(PrepareToInstall)에 한다(<261003_1.1>(7.5.1.6)). }
+         StageVersionMismatch := True;
     end;
+    KeepWordsJson := KeepChosen;
 
     WizardForm.DirEdit.Text := FinalInstallDir;
   end;
+end;
+
+{ <261003_1.1>(7.3.1)·<261005_1>: 사용자가 이미 취소를 고른 뒤 WizardForm.Close()로 끝낼 때는 Inno 기본
+  "설치를 종료하시겠습니까?"를 다시 묻지 않는다. 그 밖의 경우(사용자가 설치 창의 [취소]·X를 누름, 예전부터
+  있던 (3)(4) 창의 취소)는 지금처럼 묻는다. }
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if SilentCancel then
+    Confirm := False;
 end;
 
 { <260901_2>: 완료 페이지의 "Open Typing Plus 실행" 체크박스를 직접 만든다(왜 Inno 자동 생성
@@ -957,12 +1257,442 @@ begin
   end;
 end;
 
+{ ============== <261003_1.1>(7.3.2)(7.5.1) 바탕화면 사본 폴더 ============== }
+
+{ 실제 설치가 시작되기 전에 설치가 취소되면, 이번 설치에서 바탕화면에 만든 사본 폴더(임시 폴더 포함)를 지운다
+  (<261003_1.1>(7.3.2.3)(7.5.1.6.1) — 이때 AppData 의 원래 단어 목록은 그대로 있으므로 사본이 필요 없다).
+  두 변수는 이번 설치에서 만든 폴더일 때만 값이 있으므로, 예전부터 있던 폴더를 지우지 않는다. }
+procedure RemoveDesktopCopiesBeforeInstall();
+begin
+  if (PreservedBackupDir <> '') and DirExists(PreservedBackupDir) then
+    DelTree(PreservedBackupDir, True, True, True);
+  PreservedBackupDir := '';
+  if (StageMismatchBackupDir <> '') and DirExists(StageMismatchBackupDir) then
+    DelTree(StageMismatchBackupDir, True, True, True);
+  StageMismatchBackupDir := '';
+end;
+
+{ <261003_1.1>(7.3.2.1)(7.3.2.1.1) 임시 폴더(PreservedBackupDir)를 남길 때의 안내. FirstLine 이 첫 줄.
+  AppData 에 words.json 이 없으면 고친 목록을 다시 쓰는 법(복사해 넣을 곳)을 알리고, 있으면(프로그램이 고친 목록을
+  그대로 쓰므로) 임시 폴더를 지워도 된다고 알린다. 경로는 이 PC 의 실제 경로로 보인다. }
+function KeptTempCopyMessage(const FirstLine: String): String;
+begin
+  if FileExists(RoamingOtpFolder() + '\wordslist\words.json') then
+    Result := FirstLine + #13#10 + #13#10 +
+              '사본은 아래 폴더에 남겨져 있으며 삭제해도 됩니다:' + #13#10 + PreservedBackupDir
+  else
+    Result := FirstLine + #13#10 + #13#10 +
+              '사본을 아래 폴더에 그대로 남겨 두었습니다:' + #13#10 + PreservedBackupDir + #13#10 + #13#10 +
+              '이 상태로는 Open Typing Plus가 고치신 단어 목록을 쓰지 못합니다.' + #13#10 +
+              '위 폴더의 words.json을 아래 폴더에 복사해 넣어 주세요.' + #13#10 +
+              '만일 아래 경로가 없다면 폴더를 만들어 넣으세요:' + #13#10 + RoamingOtpFolder() + '\wordslist';
+end;
+
+{ <261003_1.1>(7.5.1) (7.5)에서 사본을 만들지 못했을 때의 선택창.
+  반환: 1 = 설치 파일 안의 새 단어 목록 설치하기(기본), 2 = 고친 기존의 단어 목록 계속 사용하기, 0 = 설치 취소(X·[Esc]). }
+function ShowStageCopyFailedPrompt(const AttemptedDir: String): Integer;
+var
+  ConfirmForm: TSetupForm;
+  MsgLabel: TNewStaticText;
+  NewListButton, KeepButton: TNewButton;
+  Bottom: Integer;
+begin
+  ConfirmForm := CreateCustomForm(520, 170, True, True);
+  try
+    ConfirmForm.Caption := 'Open Typing Plus';
+
+    MsgLabel := TNewStaticText.Create(ConfirmForm);
+    MsgLabel.Parent := ConfirmForm;
+    MsgLabel.Left := 16;
+    MsgLabel.Top := 16;
+    MsgLabel.AutoSize := False;
+    MsgLabel.WordWrap := True;
+    MsgLabel.Caption :=
+      '자리연습 단계 구성이 바뀌어 새 단어 목록을 설치해야 하지만,' + #13#10 +
+      '고치신 기존의 단어 목록 사본(보존용)을 바탕화면에 만들지 못했습니다:' + #13#10 +
+      AttemptedDir + #13#10 + #13#10 +
+      '새 단어 목록을 설치하면 고치신 기존의 단어 목록은 사본 없이 사라집니다.' + #13#10 +
+      '고치신 기존의 단어 목록을 계속 쓰면, 바뀐 자리연습 단계와 맞지 않아 일부 단어가 쓰이지 않거나' + #13#10 +
+      '단어 연습이 짧아질 수 있습니다.';
+    EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
+    MsgLabel.Width := ConfirmForm.ClientWidth - 32;
+    MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
+
+    NewListButton := TNewButton.Create(ConfirmForm);
+    NewListButton.Parent := ConfirmForm;
+    NewListButton.Caption := '설치 파일 안의 새 단어 목록 설치하기';
+    NewListButton.Height := WizardForm.CancelButton.Height;
+    NewListButton.Width := TextButtonWidth(NewListButton.Font, NewListButton.Caption, 40, 75);
+    NewListButton.ModalResult := mrNo;
+    NewListButton.Default := True;
+
+    KeepButton := TNewButton.Create(ConfirmForm);
+    KeepButton.Parent := ConfirmForm;
+    KeepButton.Caption := '고친 기존의 단어 목록 계속 사용하기';
+    KeepButton.Height := WizardForm.CancelButton.Height;
+    KeepButton.Width := TextButtonWidth(KeepButton.Font, KeepButton.Caption, 40, 75);
+    KeepButton.ModalResult := mrYes;
+
+    AddEscCancelButton(ConfirmForm);   { [Esc] = 설치 취소 }
+
+    Bottom := LayoutTwoButtons(ConfirmForm, NewListButton, KeepButton, MsgLabel.Top + MsgLabel.Height + 16);
+    ConfirmForm.ClientHeight := Bottom + 10;
+    ConfirmForm.ActiveControl := NewListButton;
+
+    ConfirmForm.Left := WizardForm.Left + (WizardForm.Width - ConfirmForm.Width) div 2;
+    ConfirmForm.Top := WizardForm.Top + (WizardForm.Height - ConfirmForm.Height) div 2;
+
+    case ConfirmForm.ShowModal() of
+      mrNo: Result := 1;
+      mrYes: Result := 2;
+    else
+      Result := 0;
+    end;
+  finally
+    ConfirmForm.Free();
+  end;
+end;
+
+{ ============== <261005_2> 같은 폴더에 다시 설치할 때 프로그램 폴더의 남는 파일 정리 ============== }
+
+{ BaseDir\Rel 아래(하위 폴더 포함)의 파일 중 이번 설치 파일 목록(InstallManifest)에 없는 것을, 설치 폴더 기준
+  상대 경로(예: stages\abc.json)로 List 에 더한다. }
+procedure CollectLeftovers(const BaseDir, Rel: String; List: TStringList);
+var
+  FindRec: TFindRec;
+  Child: String;
+begin
+  if FindFirst(AddBackslash(BaseDir) + Rel + '\*', FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+        begin
+          Child := Rel + '\' + FindRec.Name;
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            CollectLeftovers(BaseDir, Child, List)
+          else if not ManifestHas(InstallManifest, Child) then
+            List.Add(Child);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+{ 설치 폴더(FinalInstallDir)의 stages·layouts·hands 에서 남는 파일 목록을 새로 만든다. 부르는 쪽이 Free 한다. }
+function FindLeftovers(): TStringList;
+begin
+  Result := TStringList.Create;
+  if DirExists(AddBackslash(FinalInstallDir) + 'stages') then CollectLeftovers(FinalInstallDir, 'stages', Result);
+  if DirExists(AddBackslash(FinalInstallDir) + 'layouts') then CollectLeftovers(FinalInstallDir, 'layouts', Result);
+  if DirExists(AddBackslash(FinalInstallDir) + 'hands') then CollectLeftovers(FinalInstallDir, 'hands', Result);
+end;
+
+{ <261005_2>(7) 지울 수 있는 상태인가 — 사용 중이 아니고 읽기 전용 등으로 막혀 있지 않은가. 파일을 바꾸지 않고
+  쓰기 권한·독점으로 잠깐 열어 본다. }
+function CanDeleteFile(const Path: String): Boolean;
+var
+  S: TFileStream;
+begin
+  Result := False;
+  try
+    S := TFileStream.Create(Path, fmOpenReadWrite or fmShareExclusive);
+    S.Free;
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+{ <261005_2>(4) Dir 아래 하위 폴더 중 비어 있는 것을 지운다(안쪽부터). Dir 자체는 지우지 않는다. }
+procedure RemoveEmptySubdirs(const Dir: String);
+var
+  FindRec: TFindRec;
+  Sub: String;
+begin
+  if FindFirst(AddBackslash(Dir) + '*', FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') and
+           ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) then
+        begin
+          Sub := AddBackslash(Dir) + FindRec.Name;
+          RemoveEmptySubdirs(Sub);
+          RemoveDir(Sub);   { 비어 있을 때만 지워진다 }
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+procedure LeftoverOpenFolderClick(Sender: TObject);
+var
+  ErrorCode: Integer;
+begin
+  ShellExecAsOriginalUser('open', FinalInstallDir, '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
+end;
+
+{ <261005_2>(3) 남는 파일 안내. 반환: True = 계속 설치(기본), False = 설치 취소(X·[Esc] 포함). }
+function ShowLeftoverPrompt(Leftovers: TStringList): Boolean;
+var
+  ConfirmForm: TSetupForm;
+  MsgLabel: TNewStaticText;
+  FileListMemo: TNewMemo;
+  OpenButton, ContinueButton, CancelBtn: TNewButton;
+  Y, W: Integer;
+begin
+  ConfirmForm := CreateCustomForm(520, 300, True, True);
+  try
+    ConfirmForm.Caption := 'Open Typing Plus';
+
+    MsgLabel := TNewStaticText.Create(ConfirmForm);
+    MsgLabel.Parent := ConfirmForm;
+    MsgLabel.Left := 16;
+    MsgLabel.Top := 16;
+    MsgLabel.AutoSize := False;
+    MsgLabel.WordWrap := True;
+    MsgLabel.Caption :=
+      '설치 폴더의 stages·layouts·hands 폴더에 이번 설치 파일에 없는 파일이 있습니다.' + #13#10 +
+      '계속 설치하면 아래 파일들은 삭제됩니다.' + #13#10 +
+      '직접 넣으신 파일 중 필요한 것이 있으면, 지금 다른 곳으로 옮긴 뒤 [계속 설치]를 누르세요.' + #13#10 +
+      '(같은 이름의 파일은 새 파일로 바뀝니다.)';
+    EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
+    MsgLabel.Width := ConfirmForm.ClientWidth - 32;
+    MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
+
+    FileListMemo := TNewMemo.Create(ConfirmForm);
+    FileListMemo.Parent := ConfirmForm;
+    FileListMemo.Left := 16;
+    FileListMemo.Top := MsgLabel.Top + MsgLabel.Height + 8;
+    FileListMemo.Width := ConfirmForm.ClientWidth - 32;
+    FileListMemo.Height := 130;
+    FileListMemo.ReadOnly := True;
+    FileListMemo.ScrollBars := ssVertical;
+    FileListMemo.Lines.Text := Leftovers.Text;
+
+    OpenButton := TNewButton.Create(ConfirmForm);
+    OpenButton.Parent := ConfirmForm;
+    OpenButton.Caption := '폴더 열기';
+    OpenButton.Height := WizardForm.CancelButton.Height;
+    OpenButton.Width := TextButtonWidth(OpenButton.Font, OpenButton.Caption, 40, 75);
+    OpenButton.OnClick := @LeftoverOpenFolderClick;   { 창을 닫지 않는다 }
+
+    ContinueButton := TNewButton.Create(ConfirmForm);
+    ContinueButton.Parent := ConfirmForm;
+    ContinueButton.Caption := '계속 설치';
+    ContinueButton.Height := WizardForm.CancelButton.Height;
+    ContinueButton.Width := TextButtonWidth(ContinueButton.Font, ContinueButton.Caption, 40, 75);
+    ContinueButton.ModalResult := mrOk;
+    ContinueButton.Default := True;
+
+    CancelBtn := TNewButton.Create(ConfirmForm);
+    CancelBtn.Parent := ConfirmForm;
+    CancelBtn.Caption := '설치 취소';
+    CancelBtn.Height := WizardForm.CancelButton.Height;
+    CancelBtn.Width := TextButtonWidth(CancelBtn.Font, CancelBtn.Caption, 40, 75);
+    CancelBtn.ModalResult := mrCancel;
+    CancelBtn.Cancel := True;   { 창 닫기(X)·[Esc]도 설치 취소 }
+
+    Y := FileListMemo.Top + FileListMemo.Height + 16;
+    if OpenButton.Width + 8 + ContinueButton.Width + 8 + CancelBtn.Width <= ConfirmForm.ClientWidth - 32 then
+    begin
+      { 한 줄: 왼쪽에 폴더 열기, 오른쪽에 계속 설치·설치 취소 }
+      OpenButton.Left := 16;
+      CancelBtn.Left := ConfirmForm.ClientWidth - 16 - CancelBtn.Width;
+      ContinueButton.Left := CancelBtn.Left - 8 - ContinueButton.Width;
+      OpenButton.Top := Y;
+      ContinueButton.Top := Y;
+      CancelBtn.Top := Y;
+      ConfirmForm.ClientHeight := Y + CancelBtn.Height + 10;
+    end
+    else
+    begin
+      { 창 너비를 넘길 것 같으면 상/하로 }
+      W := OpenButton.Width;
+      if ContinueButton.Width > W then W := ContinueButton.Width;
+      if CancelBtn.Width > W then W := CancelBtn.Width;
+      OpenButton.Width := W;
+      ContinueButton.Width := W;
+      CancelBtn.Width := W;
+      OpenButton.Left := ConfirmForm.ClientWidth - 16 - W;
+      ContinueButton.Left := OpenButton.Left;
+      CancelBtn.Left := OpenButton.Left;
+      OpenButton.Top := Y;
+      ContinueButton.Top := OpenButton.Top + OpenButton.Height + 6;
+      CancelBtn.Top := ContinueButton.Top + ContinueButton.Height + 6;
+      ConfirmForm.ClientHeight := CancelBtn.Top + CancelBtn.Height + 10;
+    end;
+    ConfirmForm.ActiveControl := ContinueButton;
+
+    ConfirmForm.Left := WizardForm.Left + (WizardForm.Width - ConfirmForm.Width) div 2;
+    ConfirmForm.Top := WizardForm.Top + (WizardForm.Height - ConfirmForm.Height) div 2;
+
+    Result := (ConfirmForm.ShowModal() = mrOk);
+  finally
+    ConfirmForm.Free();
+  end;
+end;
+
+{ <261005_2> 남는 파일 확인과 삭제. 반환: '' = 계속 설치, 그 밖 = 설치를 취소하며 보여 줄 문구.
+  묻는 것(안내 창)을 먼저 하고, 되돌릴 수 없는 삭제는 이 함수의 맨 끝에서 한다(<261005_2>(6)). }
+function HandleLeftovers(): String;
+var
+  Leftovers: TStringList;
+  Undeletable: String;
+  I: Integer;
+begin
+  Result := '';
+  Leftovers := FindLeftovers();
+  try
+    if Leftovers.Count = 0 then Exit;   { (8) 남는 파일이 없으면 안내 없이 설치 }
+    if not ShowLeftoverPrompt(Leftovers) then
+    begin
+      Result := CancelMessage;   { (5) }
+      Exit;
+    end;
+  finally
+    Leftovers.Free;
+  end;
+
+  { (4) "계속 설치"를 누른 그 순간의 남는 파일을 다시 확인한다(그 사이 사용자가 옮긴 파일은 이미 없다). }
+  Leftovers := FindLeftovers();
+  try
+    { (7)(7.1) 먼저 모두 지울 수 있는지 확인하고, 하나라도 지울 수 없으면 아무것도 지우지 않고 취소한다. }
+    Undeletable := '';
+    for I := 0 to Leftovers.Count - 1 do
+      if not CanDeleteFile(AddBackslash(FinalInstallDir) + Leftovers[I]) then
+        Undeletable := Undeletable + #13#10 + Leftovers[I];
+    if Undeletable <> '' then
+    begin
+      { 줄 맨 앞이 #13 이면 전처리기가 지시어로 읽으므로 한 줄에 둔다. }
+      Result := '일부 파일을 지울 수 없어 설치를 취소합니다. Open Typing Plus가 실행 중이면 끄고 다시 설치해 주세요.' + #13#10 + Undeletable;
+      Exit;
+    end;
+    { (7.2) 모두 지울 수 있으면 지운다. 도중에 실패한 파일이 있어도 설치는 계속하고, 끝나면 알린다. }
+    LeftoverDeleteFailed := '';
+    for I := 0 to Leftovers.Count - 1 do
+      if not DeleteFile(AddBackslash(FinalInstallDir) + Leftovers[I]) then
+        LeftoverDeleteFailed := LeftoverDeleteFailed + #13#10 + Leftovers[I];
+  finally
+    Leftovers.Free;
+  end;
+  { (4) 비게 된 하위 폴더도 지운다(세 폴더 자체는 지우지 않는다). }
+  if DirExists(AddBackslash(FinalInstallDir) + 'stages') then RemoveEmptySubdirs(AddBackslash(FinalInstallDir) + 'stages');
+  if DirExists(AddBackslash(FinalInstallDir) + 'layouts') then RemoveEmptySubdirs(AddBackslash(FinalInstallDir) + 'layouts');
+  if DirExists(AddBackslash(FinalInstallDir) + 'hands') then RemoveEmptySubdirs(AddBackslash(FinalInstallDir) + 'hands');
+end;
+
+{ ============== 준비 완료 화면에서 [설치]를 누른 직후 — 실제 설치(파일 복사·AppData 정리) 전 ============== }
+{ <261003_1.1>(7.5.1.6)·<261005_2>(6): 단어 목록 사본 만들기와 그에 따른 선택, 남는 파일 안내를 여기서 한다.
+  사용자에게 묻는 것과 사본 만들기를 모두 먼저 하고, 되돌릴 수 없는 남는 파일 삭제는 맨 마지막에 한다.
+  빈 문자열이 아닌 값을 돌려주면 Inno 가 그 문구를 보여 주고 설치를 시작하지 않는다. 그때는 이번에 만든 바탕화면
+  사본 폴더를 지운다(실제 설치 전 취소 — AppData 의 원래 단어 목록은 그대로 있다). }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  LivePath, Attempted, FirstLine, Stamp: String;
+  LiveContent, PackagedContent: AnsiString;
+begin
+  Result := '';
+  { 이 단계가 다시 불려도(뒤로 갔다 다시 [설치]) 앞 화면에서 고른 값에서 다시 시작한다. }
+  RemoveDesktopCopiesBeforeInstall();
+  KeepWordsJson := KeepChosen;
+  PendingRoamingCleanup := RoamingCleanupChosen;
+  PreservedRestoreOk := False;
+  LeftoverDeleteFailed := '';
+  LivePath := RoamingOtpFolder() + '\wordslist\words.json';
+  Stamp := GetDateTimeString('yyyymmddhhnnss', #0, #0);
+
+  { <261003_1.1>(7.3.2) "기존의 단어 목록 계속 사용(유지)"를 골랐으면, AppData 정리 전에 바탕화면 임시 폴더
+    OTP_words_tmp_(날짜시각)에 임시 사본을 만든다. 설치가 끝나면 제자리로 되돌린다(ssPostInstall). }
+  if KeepWordsJson then
+  begin
+    if FileExists(LivePath) then
+    begin
+      PreservedBackupDir := CopyWordsJsonToNewDesktopDir('OTP_words_tmp_' + Stamp, LivePath, Attempted);
+      if PreservedBackupDir = '' then
+      begin
+        { (7.3.2.2) 다시 묻지 않는다. AppData 의 기존 폴더를 지우지 않고(KeepWordsJson 은 True 로 두어 새 목록으로
+          덮어쓰지도 않고) 안내만 한다. 빈 폴더는 위 함수가 이미 지웠다(7.3.2.3). }
+        MsgBox('기존의 단어 목록 사본 파일을 만들기에 실패했습니다.' + #13#10 + #13#10 +
+               '기존의 단어 목록을 유지하기 위해, 이번 설치에서는 AppData 안의 기존 폴더를 지우지 않습니다.',
+               mbError, MB_OK);
+        PendingRoamingCleanup := False;
+      end;
+    end
+    else
+      KeepWordsJson := False;   { 유지할 파일이 없으면 기본값을 설치한다 }
+  end;
+
+  { <261003_1>(7.5)·<261003_1.1>(7.5.1) 단계 개정판 번호가 달라 유지할 수 없을 때: 바탕화면 OTP_words_보존_(날짜시각)
+    폴더에 사본을 남기고 새 목록을 설치한다. 사본을 만들지 못하면 선택창을 띄운다. }
+  if StageVersionMismatch and FileExists(LivePath) then
+  begin
+    StageMismatchBackupDir := CopyWordsJsonToNewDesktopDir('OTP_words_보존_' + Stamp, LivePath, Attempted);
+    if StageMismatchBackupDir <> '' then
+    begin
+      { 사본을 만든 뒤 성공했을 때 안내한다. 새 목록의 단계 개정판 번호가 더 낮으면(낮은 버전 설치) 첫 줄을 바꾼다. }
+      FirstLine := '자리연습 단계 구성이 바뀌어 PC에 있는 기존의 단어 목록을 그대로 쓸 수 없습니다.';
+      if LoadStringFromFile(LivePath, LiveContent) and
+         LoadStringFromFile(ExpandConstant('{tmp}\words.json'), PackagedContent) and
+         PackagedStageVersionIsLower(LiveContent, PackagedContent) then
+        FirstLine := '설치하려는 버전의 자리연습 단계 구성이 PC에 있는 것보다 예전 것이라, PC에 있는 기존의 단어 목록을 그대로 쓸 수 없습니다.';
+      { 문단 안에는 줄바꿈을 넣지 않는다 — 안내 창이 스스로 줄을 바꾸므로, 직접 넣은 줄바꿈과 겹쳐 줄이 어색하게
+        끊긴다(2026-10-05 썰렁이 시험 3에서 "…폴더에 / 사본으로…"로 확인). }
+      MsgBox(FirstLine + #13#10 + #13#10 +
+             '새 단어 목록을 설치하고, 고치신 기존의 단어 목록은 바탕화면의 "OTP_words_보존_(날짜시각)" 폴더에 ' +
+             '사본으로 남겨 둡니다. 필요한 단어는 이 사본에서 새 단어 목록으로 직접 옮겨 넣으세요.',
+             mbInformation, MB_OK);
+    end
+    else
+    begin
+      case ShowStageCopyFailedPrompt(Attempted) of
+        1: ;   { 새 단어 목록을 설치한다 — 고친 목록은 사라진다 }
+        2: begin
+             { 새 단어 목록을 설치하지 않고 기존의 단어 목록을 그대로 둔다(AppData 의 그 폴더도 지우지 않는다). }
+             KeepWordsJson := True;
+             PendingRoamingCleanup := False;
+           end;
+      else
+        begin
+          RemoveDesktopCopiesBeforeInstall();
+          Result := CancelMessage;   { (7.5.1.5) }
+          Exit;
+        end;
+      end;
+    end;
+  end;
+
+  { <261005_2> 남는 파일 안내와 삭제(맨 마지막). }
+  Result := HandleLeftovers();
+  if Result <> '' then
+    RemoveDesktopCopiesBeforeInstall();
+end;
+
 { 체크박스가 있던 폼은 이미 닫힌 뒤라 컨트롤이 아니라 LaunchAfterFinish 변수를 읽는다.
-  Inno 공식 예제(DeinitializeSetup + Exec)와 같은 패턴이다. }
+  Inno 공식 예제(DeinitializeSetup + Exec)와 같은 패턴이다.
+  <261003_1.1>: 실제 설치가 시작되기 전에 끝났으면 이번에 만든 바탕화면 사본 폴더를 지우고(7.3.2.3)(7.5.1.6.1),
+  실제 설치가 시작된 뒤 중간에 끝나 임시 폴더를 남기게 되면 그 위치와 다시 쓰는 법을 알린다(7.3.2.1.1). }
 procedure DeinitializeSetup();
 var
   ResultCode: Integer;
 begin
+  if not InstallStarted then
+    RemoveDesktopCopiesBeforeInstall()
+  else if (not PostInstallReached) and (PreservedBackupDir <> '') and DirExists(PreservedBackupDir) then
+    MsgBox(KeptTempCopyMessage('설치가 끝까지 진행되지 못했습니다.'), mbError, MB_OK);
+
+  { 설치가 중간에 끝나 ssDone 에 못 갔으면, ssInstall 에서 unins000 으로 되돌려 둔 예전 삭제 프로그램의 이름을
+    다시 설치삭제로 돌려놓는다(그래야 사용자가 늘 쓰던 설치삭제.exe 로 지울 수 있다). }
+  if UninstallerRestoredForAppend and not UninstallerNameDone then
+    RenameUninstallerPair(
+      ExpandConstant('{app}\설치삭제\unins000.exe'), ExpandConstant('{app}\설치삭제\unins000.dat'),
+      ExpandConstant('{app}\설치삭제\설치삭제.exe'), ExpandConstant('{app}\설치삭제\설치삭제.dat'));
+
   if LaunchAfterFinish then
     Exec(ExpandConstant('{app}\{#MyAppExeName}'), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
@@ -982,41 +1712,19 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   PackagedContent: AnsiString;
-  LivePath, PreservedPath: String;
+  PreservedPath: String;
 begin
   if CurStep = ssInstall then
   begin
+    InstallStarted := True;
+    PrepareUninstallerForAppend();
     if NeedsDotNetRuntime() then
       ExtractTemporaryFile('{#DotNetInstallerFileName}');
 
     // <260831 검토>: 예약해 둔 삭제를 여기서 — 설치가 확정된 뒤에 — 실행한다.
-    // "보존"을 골랐으면 삭제 전에 라이브 words.json을 바탕화면 보존 폴더로 복사해 두었다가
-    // ssPostInstall에서 제자리로 되돌린다(삭제 대상 폴더 안에 있어 그냥 두면 같이 지워진다).
-    // 백업을 Inno 임시 폴더가 아니라 바탕화면에 두는 이유는 위 PreservedBackupDir 주석 참고.
-    if PreserveWordsJson then
-    begin
-      LivePath := RoamingOtpFolder() + '\wordslist\words.json';
-      if FileExists(LivePath) then
-      begin
-        PreservedBackupDir := ExpandConstant('{userdesktop}\OTP_words_보존_') +
-                              GetDateTimeString('yyyymmddhhnnss', #0, #0);
-        PreservedPath := PreservedBackupDir + '\words.json';
-        if (not ForceDirectories(PreservedBackupDir)) or (not FileCopy(LivePath, PreservedPath, False)) then
-        begin
-          { 백업을 못 뜨면 보존 약속을 지킬 수 없다. 그렇다고 원본을 지우고 기본값을 깔면
-            사용자 데이터가 사라지므로, 아예 삭제를 하지 않는 쪽으로 물러선다. }
-          MsgBox('기존 단어 목록의 사본을 만들지 못했습니다:' + #13#10 + PreservedBackupDir + #13#10 + #13#10 +
-                 '기존 단어 목록이 사라지지 않도록, 이번 설치에서는 AppData의 기존 폴더를 지우지 않고' + #13#10 +
-                 '단어 목록도 그대로 둡니다.', mbError, MB_OK);
-          PreservedBackupDir := '';
-          PendingRoamingCleanup := False;   { 원본을 지우지 않는다 — PreserveWordsJson은 True로 두어 }
-                                            { [Files]가 기본값으로 덮어쓰지도 않게 한다 }
-        end;
-      end
-      else
-        PreserveWordsJson := False; { 보존할 파일이 없으면 기본값을 설치한다 }
-    end;
-
+    // "기존의 단어 목록 계속 사용(유지)"를 골랐으면 [설치]를 누른 직후(PrepareToInstall)에 이미 바탕화면 임시
+    // 폴더에 사본을 만들어 두었고(<261003_1.1>(7.3.2)), ssPostInstall에서 제자리로 되돌린다(삭제 대상 폴더 안에
+    // 있어 그냥 두면 같이 지워진다). 사본을 만들지 못했으면 PrepareToInstall 이 PendingRoamingCleanup 을 껐다.
     if PendingRoamingCleanup and DirExists(RoamingOtpFolder()) then
       DelTree(RoamingOtpFolder(), True, True, True);
     if PendingLocalCleanup and DirExists(LocalOtpFolder()) then
@@ -1027,9 +1735,10 @@ begin
 
   if CurStep = ssPostInstall then
   begin
-    { 보존을 골랐으면 [Files]가 words.json을 안 깔았으므로(Check: ShouldInstallWordsJson),
-      위에서 임시 보관해 둔 사용자의 파일을 제자리에 돌려놓는다. }
-    if PreserveWordsJson and (PreservedBackupDir <> '') then
+    PostInstallReached := True;
+    { "기존의 단어 목록 계속 사용(유지)"를 골랐으면 [Files]가 words.json을 안 깔았으므로
+      (Check: ShouldInstallWordsJson), 바탕화면 임시 폴더에 만들어 둔 사본을 제자리에 되돌려 놓는다. }
+    if KeepWordsJson and (PreservedBackupDir <> '') then
     begin
       PreservedPath := PreservedBackupDir + '\words.json';
       if FileExists(PreservedPath) then
@@ -1038,19 +1747,28 @@ begin
            FileCopy(PreservedPath, RoamingOtpFolder() + '\wordslist\words.json', False) then
           PreservedRestoreOk := True
         else
-          { 사본이 남아 있는 바탕화면 폴더를 알려 준다 — 이 폴더는 설치가 끝나도 지워지지 않는다. }
-          MsgBox('기존 단어 목록을 제자리에 되돌려 놓지 못했습니다.' + #13#10 + #13#10 +
-                 '사본을 아래 폴더에 그대로 남겨 두었습니다:' + #13#10 + PreservedBackupDir,
-                 mbError, MB_OK);
+          { <261003_1.1>(7.3.2.1) 임시 폴더를 지우지 않고 그 위치를 알린다(설치가 끝나도 지워지지 않는다). }
+          MsgBox(KeptTempCopyMessage('기존의 단어 목록 사본을 제자리에 되돌려 놓지 못했습니다.'), mbError, MB_OK);
       end;
     end;
+
+    { <261003_1>(7.5): 단계 구성이 바뀌어 새 목록을 깐 경우, 고친 목록의 사본이 있는 곳을 알려 준다
+      (이 폴더는 설치가 끝나도 지우지 않는다). }
+    if StageMismatchBackupDir <> '' then
+      MsgBox('고치신 기존의 단어 목록 사본을 아래 폴더에 남겨 두었습니다:' + #13#10 + StageMismatchBackupDir,
+             mbInformation, MB_OK);
+
+    { <261005_2>(7.2) 남는 파일 중 지우는 도중에 지우지 못한 파일이 있었으면 알린다. }
+    if LeftoverDeleteFailed <> '' then
+      MsgBox('다음 파일은 지우지 못했습니다. 프로그램이 함께 읽을 수 있으니 직접 지워 주세요.' + #13#10 +
+             AddBackslash(FinalInstallDir) + #13#10 + LeftoverDeleteFailed, mbError, MB_OK);
 
     { <260830_2-3>: 신원 마커를 이번 설치가 끝나면서 로밍/로컬 둘 다에 새로 씀
       (예전 버전 설치본이었어도 이번 설치로 신원이 채워짐). }
     WriteOtpMarker(RoamingOtpFolder());
     WriteOtpMarker(LocalOtpFolder());
     // <260830_2-4>(5): 삭제 프로그램이 나중에 비교할 원본 사본을 Local에 별도 저장.
-    // "보존"을 골라 실제 words.json은 안 새로 깔렸어도, 이번 패키지의 기본값은
+    // "기존의 단어 목록 계속 사용(유지)"를 골라 실제 words.json은 안 새로 깔렸어도, 이번 패키지의 기본값은
     // tmp 폴더에 항상 있으므로 그걸 그대로 옮겨 적는다.
     ForceDirectories(LocalOtpFolder() + '\wordslist');
     if LoadStringFromFile(ExpandConstant('{tmp}\words.json'), PackagedContent) then
@@ -1060,8 +1778,8 @@ begin
   if CurStep = ssDone then
   begin
     RenameUninstaller();
-    { 복원까지 확실히 끝났으면 바탕화면 임시 사본을 치운다. 실패했다면 위 안내가 가리키는
-      그 폴더이므로 절대 지우지 않는다. }
+    { <261003_1.1>(7.3.2.1) 되돌리기까지 확실히 끝났으면 바탕화면 임시 폴더를 지운다. 실패했다면 위 안내가
+      가리키는 그 폴더이므로 절대 지우지 않는다. }
     if PreservedRestoreOk and (PreservedBackupDir <> '') then
       DelTree(PreservedBackupDir, True, True, True);
   end;
@@ -1071,12 +1789,12 @@ end;
 function InitializeUninstall(): Boolean;
 var
   LiveContent, OriginalContent: AnsiString;
-  LivePath, OriginalPath, PreserveDir: String;
+  LivePath, OriginalPath, PreserveDir, AttemptedDir: String;
   Preserve: Boolean;
   ConfirmForm: TSetupForm;
   MsgLabel: TNewStaticText;
-  KeepButton, DiscardButton: TNewButton;
-  NeededHeight: Integer;
+  PreserveButton, DiscardButton: TNewButton;
+  Bottom: Integer;
 begin
   Result := True;
   LivePath := ExpandConstant('{userappdata}\OTP\OpenTypingPlus\wordslist\words.json');
@@ -1101,37 +1819,34 @@ begin
     MsgLabel.AutoSize := False;
     MsgLabel.WordWrap := True;
     MsgLabel.Caption :=
-      '기존 설치된 것 중 산성비 오락의 단어 목록이 변경되어 있습니다.' + #13#10 +
-      '기존의 단어 목록이 설치하려는 단어 목록보다 최신일 수도 있습니다.';
+      '기존 설치된 것 중에서 자리연습·산성비 오락의 단어 목록이 변경되어 있습니다.';
     EnsureFormWideEnoughForLabel(ConfirmForm, MsgLabel.Font, MsgLabel.Caption, 32);
     MsgLabel.Width := ConfirmForm.ClientWidth - 32;
     MsgLabel.Height := TextLineCount(MsgLabel.Caption) * TextLineHeight(MsgLabel.Font) + 6;
 
+    PreserveButton := TNewButton.Create(ConfirmForm);
+    PreserveButton.Parent := ConfirmForm;
+    PreserveButton.Caption := '고친 단어 목록 보존하기';
+    { 설치 때 창들(WizardForm.CancelButton.Height)과 같이 화면 배율에 맞춘다. 예전 고정값 28은 배율이 큰 화면에서
+      글자가 위아래 테두리에 닿았다(2026-10-05 썰렁이 시험 7에서 확인). 설치삭제 때는 WizardForm 이 없어
+      Inno 기본 버튼 높이 23을 ScaleY 로 늘려 쓴다. }
+    PreserveButton.Height := ScaleY(23);
+    PreserveButton.Width := TextButtonWidth(PreserveButton.Font, PreserveButton.Caption, 40, 75);
+    PreserveButton.ModalResult := mrYes;
+    PreserveButton.Default := True;   { <261003_1.1> 설치삭제일 때는 보존하기가 기본 버튼 }
+    PreserveButton.Cancel := True;    { Esc도 보존(안전) 쪽으로 }
+
     DiscardButton := TNewButton.Create(ConfirmForm);
     DiscardButton.Parent := ConfirmForm;
-    DiscardButton.Caption := '기존 단어 목록 보존하지 않기';
-    DiscardButton.Height := 28;
+    DiscardButton.Caption := '고친 단어 목록 보존하지 않기';
+    DiscardButton.Height := ScaleY(23);
     DiscardButton.Width := TextButtonWidth(DiscardButton.Font, DiscardButton.Caption, 40, 75);
-    { 라벨의 실측 높이가 원래 여유 공간보다 클 수 있으니, 버튼 행과 겹치지 않게 폼 높이를
-      필요하면 늘린다. 버튼은 ClientHeight 기준 상대 좌표라 자동으로 같이 밀려난다. }
-    NeededHeight := MsgLabel.Top + MsgLabel.Height + 16 + DiscardButton.Height + 10;
-    if NeededHeight > ConfirmForm.ClientHeight then
-      ConfirmForm.ClientHeight := NeededHeight;
-    DiscardButton.Top := ConfirmForm.ClientHeight - DiscardButton.Height - 10;
-    DiscardButton.Left := ConfirmForm.ClientWidth - DiscardButton.Width - 16;
     DiscardButton.ModalResult := mrNo;
 
-    KeepButton := TNewButton.Create(ConfirmForm);
-    KeepButton.Parent := ConfirmForm;
-    KeepButton.Caption := '기존 단어 목록 보존하기';
-    KeepButton.Height := 28;
-    KeepButton.Width := TextButtonWidth(KeepButton.Font, KeepButton.Caption, 40, 75);
-    KeepButton.Top := DiscardButton.Top;
-    KeepButton.Left := DiscardButton.Left - KeepButton.Width - 8;
-    KeepButton.ModalResult := mrYes;
-    KeepButton.Default := True;
-    KeepButton.Cancel := True;   { Esc도 보존(안전) 쪽으로 }
-    ConfirmForm.ActiveControl := KeepButton;
+    { 라벨의 실측 높이에 맞춰 버튼을 놓고, 창 너비를 넘길 것 같으면 상/하로 둔다. }
+    Bottom := LayoutTwoButtons(ConfirmForm, PreserveButton, DiscardButton, MsgLabel.Top + MsgLabel.Height + 16);
+    ConfirmForm.ClientHeight := Bottom + 10;
+    ConfirmForm.ActiveControl := PreserveButton;
 
     ConfirmForm.Position := poScreenCenter;
 
@@ -1142,22 +1857,27 @@ begin
 
   if Preserve then
   begin
-    { words.json과 그걸 담은 wordslist 폴더만 삭제 대상에서 벗어나게, 삭제 전에 임시로 옮겨 둔다.
+    { 프로그램을 지우면서 고친 words.json 을 바탕화면 OTP_words_보존_(날짜시각) 폴더에 사본으로 남긴다(AppData 의
+      원본은 [UninstallDelete]가 폴더째 지운다). <261003_1.1>(7.7): 같은 이름의 폴더나 파일이 이미 있으면 ' (2)'부터
+      번호를 붙이고, 폴더를 만들었지만 복사에 실패해 비어 있으면 삭제를 중단하기 전에 그 빈 폴더를 지운다.
       <260831 검토>: 예전엔 두 호출의 실패를 무시해서, 바탕화면에 쓰지 못하면(디스크 부족,
       "제어된 폴더 액세스" 차단 등) 보존을 골랐는데도 아무 경고 없이 원본이 삭제됐다. 사본을
       확실히 만들지 못하면 삭제 자체를 중단한다. }
-    PreserveDir := ExpandConstant('{userdesktop}\OTP_words_보존_') + GetDateTimeString('yyyymmddhhnnss', #0, #0);
-    if not ForceDirectories(PreserveDir) then
+    PreserveDir := CreateUniqueDesktopDir('OTP_words_보존_' + GetDateTimeString('yyyymmddhhnnss', #0, #0), AttemptedDir);
+    if PreserveDir = '' then
     begin
-      MsgBox('단어 목록을 보존할 폴더를 만들지 못했습니다:' + #13#10 + PreserveDir + #13#10 + #13#10 +
-             '기존 단어 목록이 삭제되지 않도록 삭제를 중단합니다.', mbError, MB_OK);
+      MsgBox('기존의 단어 목록을 보존할 폴더를 만들지 못했습니다:' + #13#10 + AttemptedDir + #13#10 + #13#10 +
+             '기존의 단어 목록이 삭제되지 않도록 삭제를 중단합니다.', mbError, MB_OK);
       Result := False;
       Exit;
     end;
     if not FileCopy(LivePath, PreserveDir + '\words.json', False) then
     begin
-      MsgBox('단어 목록 사본을 만들지 못했습니다:' + #13#10 + PreserveDir + '\words.json' + #13#10 + #13#10 +
-             '기존 단어 목록이 삭제되지 않도록 삭제를 중단합니다.', mbError, MB_OK);
+      { 이번에 새로 만든 폴더라 그 안에는 복사하다 만 사본 말고는 없다. }
+      DeleteFile(PreserveDir + '\words.json');
+      RemoveDir(PreserveDir);
+      MsgBox('기존의 단어 목록 사본을 만들지 못했습니다:' + #13#10 + PreserveDir + '\words.json' + #13#10 + #13#10 +
+             '기존의 단어 목록이 삭제되지 않도록 삭제를 중단합니다.', mbError, MB_OK);
       Result := False;
       Exit;
     end;

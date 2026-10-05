@@ -37,6 +37,7 @@ namespace OpenTyping
             public string FilePath;
             public Store Data;
             public int? CheatUpTo;   // null = 치트 꺼짐, 0 = 켜짐이되 한 단계도 통과하지 않은 것으로
+            public bool PendingSave; // 디스크의 기록을 못 읽어 저장을 건너뛴 기록이 메모리에 남아 있다(다음에 다시 시도)
         }
 
         private static readonly Dictionary<string, Book> Books = new Dictionary<string, Book>();
@@ -82,7 +83,7 @@ namespace OpenTyping
 
         /// <summary>
         /// 단계를 통과(최고 기록 ≥ 목표 타수)한 적이 있는지. 치트가 걸려 있으면 실제 기록을 보지 않고
-        /// **치트가 정한 단계까지만** 통과로 친다 (<260812_10->).
+        /// **치트가 정한 단계까지만** 통과로 친다 (<260812_10-1>).
         /// </summary>
         public static bool IsPassed(int stageNumber)
         {
@@ -104,10 +105,25 @@ namespace OpenTyping
         /// </summary>
         public static void Record(int stageNumber, int ta)
         {
-            if (ta <= BestTa(stageNumber)) return;
             Book b = Current;
+            if (ta <= BestTa(stageNumber))
+            {
+                // 새 최고 기록은 아니어도, 앞서 디스크를 못 읽어 건너뛴 저장이 남아 있으면 이번 기회에 다시 시도한다.
+                if (b.PendingSave && !b.CheatUpTo.HasValue) Save(b);
+                return;
+            }
             b.Data.Records[stageNumber] = ta;
             if (!b.CheatUpTo.HasValue) Save(b);
+        }
+
+        /// <summary>
+        /// 프로그램을 닫을 때 부른다: 디스크를 못 읽어 건너뛴 저장이 남아 있으면 마지막으로 한 번 더 시도한다
+        /// (새 최고 기록이 없으면 <see cref="Record"/>가 다시 불리지 않아 영영 못 저장되는 것을 막는다).
+        /// </summary>
+        public static void FlushPending()
+        {
+            foreach (Book b in Books.Values)
+                if (b.PendingSave && !b.CheatUpTo.HasValue) Save(b);
         }
 
         /// <summary>지금 자판에 치트가 걸려 있는지.</summary>
@@ -140,8 +156,13 @@ namespace OpenTyping
         /// <summary>설정에서 자판이 바뀌었을 때 부른다 — 치트 표시(테마)를 새 자판 기준으로 맞춘다.</summary>
         public static void NotifyLayoutChanged() => CheatChanged?.Invoke();
 
-        private static Store Load(string path)
+        private static Store Load(string path) => Load(path, out _);
+
+        /// <param name="unreadable">파일은 있는데 일시적으로 못 읽었으면(다른 프로그램이 잡고 있는 경우 등) true.
+        /// 손상된 JSON 은 해당하지 않는다(그건 빈 기록으로 시작하되 .bad 사본을 남긴다).</param>
+        private static Store Load(string path, out bool unreadable)
         {
+            unreadable = false;
             try
             {
                 if (File.Exists(path))
@@ -154,7 +175,9 @@ namespace OpenTyping
                     }
                 }
             }
-            catch { /* 손상 시 빈 기록으로 시작 */ }
+            catch (JsonException) { AtomicFile.BackUpCorrupt(path); /* 손상 시 빈 기록으로 시작 */ }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { unreadable = true; }
+            catch { /* 그 밖의 손상 시에도 빈 기록으로 시작 */ }
             return new Store();
         }
 
@@ -166,15 +189,23 @@ namespace OpenTyping
                 // 저장하는 쪽이 먼저 저장된 기록을 지울 수 있다. 저장 직전 디스크의 최신 기록과
                 // 병합한다(더 높은 타만 반영). 치트 중엔 Record()가 Save()를 부르지 않으므로 이 병합은
                 // 항상 진짜 진행도끼리만 일어난다.
-                Store onDisk = Load(b.FilePath);
+                Store onDisk = Load(b.FilePath, out bool unreadable);
+                // 디스크의 기록을 못 읽었으면 덮어쓰지 않는다 — 안 그러면 읽지 못한 단계 기록이 모두 지워진다.
+                // 이번 기록은 메모리에 남아 있고, 다음 기록 때 다시 저장을 시도한다.
+                if (unreadable)
+                {
+                    b.PendingSave = true;
+                    return;
+                }
                 foreach (KeyValuePair<int, int> kv in onDisk.Records)
                 {
                     if (!b.Data.Records.TryGetValue(kv.Key, out int mine) || kv.Value > mine)
                         b.Data.Records[kv.Key] = kv.Value;
                 }
                 AtomicFile.WriteText(b.FilePath, JsonConvert.SerializeObject(b.Data));
+                b.PendingSave = false;
             }
-            catch { /* 저장 실패는 조용히 무시 */ }
+            catch { b.PendingSave = true; /* 저장 실패는 조용히 무시하되 다음 기회에 다시 시도한다 */ }
         }
     }
 }

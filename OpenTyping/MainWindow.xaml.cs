@@ -298,6 +298,7 @@ namespace OpenTyping
 
         private static void MainWindow_Closed(object sender, EventArgs e)
         {
+            StageRecords.FlushPending();   // 디스크를 못 읽어 건너뛴 단계 기록 저장이 남아 있으면 마지막으로 한 번 더
             if (!KeyLayout.TrySaveKeyLayout(CurrentKeyLayout, out string error))
             {
                 MessageBox.Show("연습 통계를 저장하지 못했습니다.\n" + error,
@@ -307,15 +308,11 @@ namespace OpenTyping
             }
             // <260831 코드 검토>: 바로 위 통계 저장과 달리 이건 예외를 그대로 던지는 방침이라
             // (UserSettingsStore.Save 참고), 파일이 잠겼거나 디스크가 가득 차면 종료 도중 예외가
-            // 전역 처리기까지 올라가 엉뚱한 오류창이 떴다. 통계 저장과 같은 방식으로 알리기만 한다.
-            try
+            // 전역 처리기까지 올라가 엉뚱한 오류창이 떴다. 통계 저장과 같은 방식으로 알리기만 한다
+            // (TrySave — 설정 창·손 모양 창을 닫을 때의 저장도 같은 것을 쓴다).
+            if (!UserSettingsStore.TrySave(out string settingsError))
             {
-                UserSettingsStore.Save();
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
-                                       ex is System.Security.SecurityException)
-            {
-                MessageBox.Show("설정을 저장하지 못했습니다.\n" + ex.Message,
+                MessageBox.Show("설정을 저장하지 못했습니다.\n" + settingsError,
                                 "열린타자+",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Warning);
