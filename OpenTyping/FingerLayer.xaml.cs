@@ -83,7 +83,9 @@ namespace OpenTyping
             try
             {
                 string path = Path.Combine(AppContext.BaseDirectory, "hands", fileName);
-                if (File.Exists(path))
+                // 2026-10-06 /qksqhr: 실행 파일 옆 파일이라 누가 아주 큰 파일로 바꿔 놓으면 키를 누를 때 멈출 수 있으므로,
+                // 손 그림 SVG(보통 수 KB)로 볼 수 없을 만큼 큰 파일(2MB 초과)은 읽지 않고 기본 자리 그림으로 대신한다.
+                if (File.Exists(path) && new FileInfo(path).Length <= 2 * 1024 * 1024)
                 {
                     string svg = File.ReadAllText(path);
                     Match m = Regex.Match(svg, "<path d=\"([^\"]*)\"");

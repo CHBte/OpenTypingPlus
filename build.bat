@@ -58,8 +58,9 @@ rem     Checks every entry of the filter file (OpenTyping\Resources\<filter>.txt
 rem     and removes its "existing word" entries (2+ letters) from the bundled
 rem     word lists (wordslist\words.json, Resources\words_fallback.json), so the
 rem     word list that gets built and shipped is already filtered. One-syllable
-rem     entries are applied by the app at run time (the filter file is embedded
-rem     in the exe). Any problem (non-UTF-8 file, broken or non-Hangul/Latin
+rem     entries are applied by the app at run time (only those one-syllable
+rem     entries are embedded in the exe; dotnet build also runs this tool via
+rem     the ApplyWordFilter target in OpenTyping.csproj). Any problem (non-UTF-8 file, broken or non-Hangul/Latin
 rem     characters) makes the tool exit 1 and stops the build right here, so an
 rem     unfiltered list or a broken filter file can never be shipped.
 rem     build-exe.bat calls this script, so installers get the same step.

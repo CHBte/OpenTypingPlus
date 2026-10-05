@@ -1355,6 +1355,46 @@ end;
 
 { ============== <261005_2> 같은 폴더에 다시 설치할 때 프로그램 폴더의 남는 파일 정리 ============== }
 
+{ 2026-10-06 /qksqhr: 정션·심볼릭 링크(재분석 지점)는 따라 들어가지 않는다 — 따라가면 링크가 가리키는 설치 폴더 밖의
+  파일까지 '남는 파일'로 지우게 되고, 서로 가리키는 링크면 끝없이 돈다. }
+const
+  FILE_ATTRIBUTE_READONLY_ = $1;
+  FILE_ATTRIBUTE_REPARSE_POINT_ = $400;
+  INVALID_FILE_ATTRIBUTES_ = $FFFFFFFF;
+  MaxListedFiles = 20;
+
+function GetFileAttributesW(lpFileName: String): Cardinal; external 'GetFileAttributesW@kernel32.dll stdcall';
+function SetFileAttributesW(lpFileName: String; dwFileAttributes: Cardinal): Boolean; external 'SetFileAttributesW@kernel32.dll stdcall';
+
+function IsReparsePoint(const Path: String): Boolean;
+var
+  A: Cardinal;
+begin
+  A := GetFileAttributesW(Path);
+  Result := (A <> INVALID_FILE_ATTRIBUTES_) and ((A and FILE_ATTRIBUTE_REPARSE_POINT_) <> 0);
+end;
+
+{ 읽기 전용이면 그 속성을 걷어 낸다(지우기 직전·지울 수 있는지 볼 때). 원래 속성을 돌려준다(없으면 INVALID). }
+function ClearReadOnly(const Path: String): Cardinal;
+begin
+  Result := GetFileAttributesW(Path);
+  if (Result <> INVALID_FILE_ATTRIBUTES_) and ((Result and FILE_ATTRIBUTE_READONLY_) <> 0) then
+    SetFileAttributesW(Path, Result and not FILE_ATTRIBUTE_READONLY_);
+end;
+
+{ 파일 목록 문자열(앞에 줄바꿈을 붙여 이어 쓴 것)이 너무 길면 앞의 MaxListedFiles 개만 보이고 나머지는 개수로 줄인다. }
+function ListForDisplay(List: TStringList): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to List.Count - 1 do
+    if I < MaxListedFiles then
+      Result := Result + #13#10 + List[I];
+  if List.Count > MaxListedFiles then
+    Result := Result + #13#10 + '… 외 ' + IntToStr(List.Count - MaxListedFiles) + '개';
+end;
+
 { BaseDir\Rel 아래(하위 폴더 포함)의 파일 중 이번 설치 파일 목록(InstallManifest)에 없는 것을, 설치 폴더 기준
   상대 경로(예: stages\abc.json)로 List 에 더한다. }
 procedure CollectLeftovers(const BaseDir, Rel: String; List: TStringList);
@@ -1370,8 +1410,12 @@ begin
         begin
           Child := Rel + '\' + FindRec.Name;
           if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
-            CollectLeftovers(BaseDir, Child, List)
-          else if not ManifestHas(InstallManifest, Child) then
+          begin
+            if (FindRec.Attributes and FILE_ATTRIBUTE_REPARSE_POINT_) = 0 then   { 링크된 폴더는 건너뛴다 }
+              CollectLeftovers(BaseDir, Child, List);
+          end
+          else if ((FindRec.Attributes and FILE_ATTRIBUTE_REPARSE_POINT_) = 0) and
+                  not ManifestHas(InstallManifest, Child) then   { 파일 링크도 건드리지 않는다(가리키는 파일이 밖에 있을 수 있다) }
             List.Add(Child);
         end;
       until not FindNext(FindRec);
@@ -1385,9 +1429,14 @@ end;
 function FindLeftovers(): TStringList;
 begin
   Result := TStringList.Create;
-  if DirExists(AddBackslash(FinalInstallDir) + 'stages') then CollectLeftovers(FinalInstallDir, 'stages', Result);
-  if DirExists(AddBackslash(FinalInstallDir) + 'layouts') then CollectLeftovers(FinalInstallDir, 'layouts', Result);
-  if DirExists(AddBackslash(FinalInstallDir) + 'hands') then CollectLeftovers(FinalInstallDir, 'hands', Result);
+  if FinalInstallDir = '' then Exit;   { 설치 폴더가 정해지지 않았으면 현재 폴더를 훑지 않도록 아무것도 찾지 않는다 }
+  { 세 폴더 자체가 링크(정션)면 손대지 않는다. }
+  if DirExists(AddBackslash(FinalInstallDir) + 'stages') and not IsReparsePoint(AddBackslash(FinalInstallDir) + 'stages') then
+    CollectLeftovers(FinalInstallDir, 'stages', Result);
+  if DirExists(AddBackslash(FinalInstallDir) + 'layouts') and not IsReparsePoint(AddBackslash(FinalInstallDir) + 'layouts') then
+    CollectLeftovers(FinalInstallDir, 'layouts', Result);
+  if DirExists(AddBackslash(FinalInstallDir) + 'hands') and not IsReparsePoint(AddBackslash(FinalInstallDir) + 'hands') then
+    CollectLeftovers(FinalInstallDir, 'hands', Result);
 end;
 
 { <261005_2>(7) 지울 수 있는 상태인가 — 사용 중이 아니고 읽기 전용 등으로 막혀 있지 않은가. 파일을 바꾸지 않고
@@ -1395,8 +1444,12 @@ end;
 function CanDeleteFile(const Path: String): Boolean;
 var
   S: TFileStream;
+  Attr: Cardinal;
 begin
   Result := False;
+  { 읽기 전용 파일은 쓰기로 열리지 않아 늘 '지울 수 없음'이 되므로, 잠깐 속성을 걷어 내고 본 뒤 되돌린다
+    (실제로 지울 때도 걷어 낸다 — HandleLeftovers). }
+  Attr := ClearReadOnly(Path);
   try
     S := TFileStream.Create(Path, fmOpenReadWrite or fmShareExclusive);
     S.Free;
@@ -1404,6 +1457,8 @@ begin
   except
     Result := False;
   end;
+  if (Attr <> INVALID_FILE_ATTRIBUTES_) and ((Attr and FILE_ATTRIBUTE_READONLY_) <> 0) then
+    SetFileAttributesW(Path, Attr);
 end;
 
 { <261005_2>(4) Dir 아래 하위 폴더 중 비어 있는 것을 지운다(안쪽부터). Dir 자체는 지우지 않는다. }
@@ -1417,7 +1472,8 @@ begin
     try
       repeat
         if (FindRec.Name <> '.') and (FindRec.Name <> '..') and
-           ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) then
+           ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) and
+           ((FindRec.Attributes and FILE_ATTRIBUTE_REPARSE_POINT_) = 0) then
         begin
           Sub := AddBackslash(Dir) + FindRec.Name;
           RemoveEmptySubdirs(Sub);
@@ -1542,9 +1598,10 @@ end;
   묻는 것(안내 창)을 먼저 하고, 되돌릴 수 없는 삭제는 이 함수의 맨 끝에서 한다(<261005_2>(6)). }
 function HandleLeftovers(): String;
 var
-  Leftovers: TStringList;
-  Undeletable: String;
+  Leftovers, Undeletable, Failed: TStringList;
   I: Integer;
+  P: String;
+  Attr: Cardinal;
 begin
   Result := '';
   Leftovers := FindLeftovers();
@@ -1563,21 +1620,39 @@ begin
   Leftovers := FindLeftovers();
   try
     { (7)(7.1) 먼저 모두 지울 수 있는지 확인하고, 하나라도 지울 수 없으면 아무것도 지우지 않고 취소한다. }
-    Undeletable := '';
-    for I := 0 to Leftovers.Count - 1 do
-      if not CanDeleteFile(AddBackslash(FinalInstallDir) + Leftovers[I]) then
-        Undeletable := Undeletable + #13#10 + Leftovers[I];
-    if Undeletable <> '' then
-    begin
-      { 줄 맨 앞이 #13 이면 전처리기가 지시어로 읽으므로 한 줄에 둔다. }
-      Result := '일부 파일을 지울 수 없어 설치를 취소합니다. Open Typing Plus가 실행 중이면 끄고 다시 설치해 주세요.' + #13#10 + Undeletable;
-      Exit;
+    Undeletable := TStringList.Create;
+    try
+      for I := 0 to Leftovers.Count - 1 do
+        if not CanDeleteFile(AddBackslash(FinalInstallDir) + Leftovers[I]) then
+          Undeletable.Add(Leftovers[I]);
+      if Undeletable.Count > 0 then
+      begin
+        { 줄 맨 앞이 #13 이면 전처리기가 지시어로 읽으므로 한 줄에 둔다. 목록이 길면 앞의 몇 개만 보인다. }
+        Result := '일부 파일을 지울 수 없어 설치를 취소합니다. Open Typing Plus가 실행 중이면 끄고 다시 설치해 주세요.' + #13#10 + ListForDisplay(Undeletable);
+        Exit;
+      end;
+    finally
+      Undeletable.Free;
     end;
     { (7.2) 모두 지울 수 있으면 지운다. 도중에 실패한 파일이 있어도 설치는 계속하고, 끝나면 알린다. }
-    LeftoverDeleteFailed := '';
-    for I := 0 to Leftovers.Count - 1 do
-      if not DeleteFile(AddBackslash(FinalInstallDir) + Leftovers[I]) then
-        LeftoverDeleteFailed := LeftoverDeleteFailed + #13#10 + Leftovers[I];
+    Failed := TStringList.Create;
+    try
+      for I := 0 to Leftovers.Count - 1 do
+      begin
+        P := AddBackslash(FinalInstallDir) + Leftovers[I];
+        Attr := ClearReadOnly(P);
+        { 그사이 이미 없어진 파일은 실패로 치지 않는다. 지우지 못했으면 읽기 전용 속성을 되돌린다. }
+        if not DeleteFile(P) and FileExists(P) then
+        begin
+          if (Attr <> INVALID_FILE_ATTRIBUTES_) and ((Attr and FILE_ATTRIBUTE_READONLY_) <> 0) then
+            SetFileAttributesW(P, Attr);
+          Failed.Add(Leftovers[I]);
+        end;
+      end;
+      LeftoverDeleteFailed := ListForDisplay(Failed);
+    finally
+      Failed.Free;
+    end;
   finally
     Leftovers.Free;
   end;

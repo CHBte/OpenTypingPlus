@@ -19,7 +19,8 @@ public static class WordListEditor
         public List<Node> Items = new List<Node>();
         public Node Get(string key)
         {
-            for (int i = 0; i < Keys.Count; i++) if (Keys[i] == key) return Items[i];
+            // 같은 키가 두 번 있으면 마지막 것을 쓴다 — 프로그램(Newtonsoft JObject)이 마지막 값을 읽으므로 같은 배열을 고친다.
+            for (int i = Keys.Count - 1; i >= 0; i--) if (Keys[i] == key) return Items[i];
             return null;
         }
     }
@@ -163,7 +164,7 @@ public static class WordListEditor
             var gone = new List<string>();
             foreach (Node it in arr.Items)
             {
-                if (it.Kind == 's' && keys.Contains(OpenTyping.FilterWords.WordKey(it.Str))) gone.Add(it.Str);
+                if (it.Kind == 's' && keys.Contains(OpenTyping.FilterWords.WordKey(it.Str.Trim()))) gone.Add(it.Str);
                 else kept.Add(it);
             }
             if (gone.Count == 0) continue;
@@ -213,7 +214,7 @@ public static class WordListEditor
         var left = new List<string>();
         foreach (WordArray wa in FindWordArrays(new P(text).Root()))
             foreach (Node it in wa.Array.Items)
-                if (it.Kind == 's' && keys.Contains(OpenTyping.FilterWords.WordKey(it.Str))) left.Add(wa.Where + " " + it.Str);
+                if (it.Kind == 's' && keys.Contains(OpenTyping.FilterWords.WordKey(it.Str.Trim()))) left.Add(wa.Where + " " + it.Str);
         return left;
     }
 }
