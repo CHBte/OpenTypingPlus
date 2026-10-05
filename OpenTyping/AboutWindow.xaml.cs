@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Navigation;
 using MahApps.Metro.Controls;
 
 namespace OpenTyping
@@ -31,6 +33,26 @@ namespace OpenTyping
             return Assembly.GetExecutingAssembly()
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
                 .FirstOrDefault(a => a.Key == key)?.Value;
+        }
+
+        /// <summary>
+        /// 제작자 줄의 링크(<261005_3>)를 클릭하면 그 주소를 기본 브라우저로 연다. 주소는 XAML에 적은 고정 값이며,
+        /// 그래도 http(s) 주소만 연다. 브라우저를 못 열어도 이 창은 그대로 둔다.
+        /// </summary>
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            e.Handled = true;
+            Uri uri = e.Uri;
+            if (uri == null || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+                return;
+            try
+            {
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception)
+            {
+                // 기본 브라우저가 없거나 실행이 막힌 경우 — 정보 창은 그대로 둔다.
+            }
         }
 
         private void LicenseButton_Click(object sender, RoutedEventArgs e)

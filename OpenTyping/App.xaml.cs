@@ -34,12 +34,15 @@ namespace OpenTyping
         /// </summary>
         private static bool anyWindowShown;
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("user32.dll")]
         private static extern bool IsIconic(IntPtr hWnd);
 
@@ -49,6 +52,7 @@ namespace OpenTyping
         // 알림창이 오히려 뒤로 가는 경우가 실제로 있었다(<260828_2-1> 검증 중 발견). 그래서 원시
         // Win32 MessageBox를 owner 지정과 함께 직접 호출한다 — owner가 있는 창은 항상 그 owner보다
         // 위(topmost 관계)에 있도록 OS가 강제하므로, 타이밍에 좌우되지 않고 항상 보장된다.
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
@@ -81,9 +85,15 @@ namespace OpenTyping
             StageRecords.CheatChanged += UpdateCheatTheme;
             UpdateCheatTheme();
 
+            // 개발용 진단 스위치(아래 열두 가지: -stagetest, -edgetest 등)는 환경변수 OTP_DIAG=1 일 때만 동작한다. 배포된
+            // exe 가 명령줄 인자 하나로 아무 경로의 파일을 덮어쓰거나(-posesources "문서.docx"), 사용자의 실제 기록 파일을
+            // 건드리는(-cheattest·-edgetest) 일이 없게 하려는 것이다. 개발 도구(update-hands.ps1 의 -posesources, 진단 실행
+            // 스크립트)는 실행 전에 이 변수를 설정한다. 켜지 않고 스위치를 주면 평소 실행으로 취급한다.
+            bool diag = Environment.GetEnvironmentVariable("OTP_DIAG") == "1";
+
             // 헤드리스 자체 검증: "-stagetest <출력경로>"로 실행하면 창을 띄우지 않고 단계 생성 결과를
             // 파일로 쓰고 즉시 종료한다(개발용, 배포에는 영향 없음). (<260723_4> 검증)
-            if (e.Args != null && e.Args.Length > 0 && e.Args[0] == "-stagetest")
+            if (diag && e.Args != null && e.Args.Length > 0 && e.Args[0] == "-stagetest")
             {
                 string outPath = e.Args.Length > 1 ? e.Args[1]
                     : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -97,9 +107,9 @@ namespace OpenTyping
             // (<260811_26>(2-1), hands\home-left/right.svg 이식이 실제로 화면에 반영되는지 확인하는
             // 개발용 도구 — 배포에는 영향 없음).
             // 헤드리스 진단: "-posesources <출력txt>" — 모든 물리 키(기본/윗글쇠)에 대해 SetPose 를 태워
-            // **실제로 읽은 hands\ 파일 이름**을 한 줄씩 남긴다 (<260811_31-2>). 설치·배선이 어긋났는지를
+            // **실제로 읽은 hands\ 파일 이름**을 한 줄씩 남긴다. 설치·배선이 어긋났는지를
             // 그림 비교 없이 값싸게 확인하는 용도 — update-hands.ps1 의 마지막 단계가 이 값을 대조한다.
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-posesources")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-posesources")
             {
                 try { RunPoseSources(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -109,7 +119,7 @@ namespace OpenTyping
             // 헤드리스 진단: "-posedump <row> <col> <shift 0|1> <출력png>" — FingerLayer 를 실제로 만들어
             // SetPose(KeyPos, isShift) 를 그대로 태운 뒤 렌더링한다 (<260811_31>, 키별 hands\*.svg 이식이
             // 실제 화면 경로에 반영되는지 확인하는 개발용 도구 — 배포에는 영향 없음).
-            if (e.Args != null && e.Args.Length >= 5 && e.Args[0] == "-posedump")
+            if (diag && e.Args != null && e.Args.Length >= 5 && e.Args[0] == "-posedump")
             {
                 try
                 {
@@ -120,7 +130,7 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-typowarntest <출력txt>" — 오타 경고 문구 (<260812_15>)
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-typowarntest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-typowarntest")
             {
                 try { RunTypoWarnTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -129,7 +139,7 @@ namespace OpenTyping
 
             // 헤드리스 진단: "-englishtest <출력txt>" — 한글·영문 자리연습 화면 타일(그림) + 영문 단계 창의
             // Caps Lock 처리 (<260927_3>(2), <260927_5>, <260927_6>). 그림은 출력txt 옆에 남긴다.
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-englishtest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-englishtest")
             {
                 try { RunEnglishTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); Environment.Exit(0); }
@@ -137,7 +147,7 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-layouttest <출력txt>" — 자판 파일에서 만든 '글자 → 키 입력' 규칙(KeyboardMap) 검사.
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-layouttest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-layouttest")
             {
                 try { RunLayoutTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -145,7 +155,7 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-syllabletest <출력txt>" — 음절연습 2음절 오타 처리 (<260812_13>)
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-syllabletest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-syllabletest")
             {
                 try { RunSyllableTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -153,7 +163,7 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-typedtest <출력txt>" — 입력 진행 상자의 조합 결과 (<260812_2>)
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-typedtest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-typedtest")
             {
                 try { RunTypedTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -163,7 +173,7 @@ namespace OpenTyping
             // 헤드리스 진단: "-cheattest <출력txt>" — 치트 토글이 켜고 끄기 모두 되는지 확인한다.
             // 실제 기록 파일(%APPDATA%\OTP\OpenTypingPlus\stage_records_<자판 키>.json)을 쓰므로, 원래 내용을
             // 반드시 그대로 되돌려 놓는다.
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-cheattest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-cheattest")
             {
                 try { RunCheatTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -174,7 +184,7 @@ namespace OpenTyping
             // 실제로 고쳐졌는지 (반올림/서로게이트/NaN 사고/받아쓰기 칸 상한/빈 음절 가드/자판 오류
             // 메시지·null 행/치트 값 보존/완료창 활성화 판정/산성비 지구효과 제외·치트 주머니 즉시반영).
             // 실제 기록 파일을 건드리므로 원래 내용을 반드시 그대로 되돌려 놓는다.
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-edgetest")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-edgetest")
             {
                 try { RunEdgeTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
@@ -182,14 +192,14 @@ namespace OpenTyping
             }
 
             // 헤드리스 진단: "-classicdump <출력txt>" (<260811_33>)
-            if (e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-classicdump")
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-classicdump")
             {
                 try { RunClassicDump(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); }
                 Environment.Exit(0);
             }
 
-            if (e.Args != null && e.Args.Length >= 1 && e.Args[0] == "-homedump")
+            if (diag && e.Args != null && e.Args.Length >= 1 && e.Args[0] == "-homedump")
             {
                 string outPng = e.Args.Length > 1 ? e.Args[1]
                     : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -203,7 +213,12 @@ namespace OpenTyping
             // 끝나므로(이미 떠 있는 인스턴스와 무관하게 동작해야 함), 여기에 이르는 실행은 인자가 무엇이든
             // (파일을 끌어다 놓은 경로, 잘못 친 스위치 등) 평소 실행과 똑같이 막는다 — 안 그러면 두
             // 인스턴스가 떠서 설정·기록을 서로 덮어쓸 수 있다.
-            singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
+            // 먼저 실행된 인스턴스가 관리자 권한이면 그 뮤텍스의 접근 권한이 일반 권한 프로세스를 막아 Mutex 생성이
+            // UnauthorizedAccessException 을 던진다 — 처리하지 않으면 시작 도중 .NET 오류창으로 죽는다. 이미 실행 중인
+            // 것으로 보고 아래 알림 경로를 탄다.
+            bool createdNew;
+            try { singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out createdNew); }
+            catch (UnauthorizedAccessException) { createdNew = false; }
             if (!createdNew)
             {
                 // <260828_2-1>: 기존 창을 활성화(+ 최소화였다면 복원)한 뒤, 그 창을 owner로 지정해
@@ -430,7 +445,7 @@ namespace OpenTyping
         // 를 그대로 호출) 777x260 로 레이아웃한 뒤 png 로 굽는다. FingerLayer.xaml 의 Path 요소를
         // 그대로 렌더링하므로, hands\*.svg 이식이 실제 화면과 100% 같은 경로로 반영되는지 확인할 수 있다.
         /// <summary>
-        /// <260811_31-2> 모든 키(기본/윗글쇠)에 SetPose 를 적용하고, 손가락 레이어가 실제로 읽은
+        /// 모든 키(기본/윗글쇠)에 SetPose 를 적용하고, 손가락 레이어가 실제로 읽은
         /// hands\ 파일 이름을 표로 남긴다. 형식: "행-열 base|shift left=… right=…"
         /// </summary>
         private static void RunPoseSources(string outPath)
@@ -455,7 +470,7 @@ namespace OpenTyping
         /// <summary>
         /// <260811_33> 클래식 '자리연습' 창(두벌식 표준 외 자판에서 "연습 시작"으로 여는 창)이 단계 창과
         /// 같은 구성으로 만들어졌는지 확인한다 — "손 모양" 버튼·손가락 레이어가 켜지는지, 창 세로 보정이
-        /// 단계 창과 같은지, 그리고 배정 없는 `⧵`(1,12) 키에서 두 손이 기본자세로 가만히 있는지.
+        /// 단계 창과 같은지, 그리고 `⧵`(1,12) 키에서 오른손이 그 키의 손 모양(<261005_5>, 1-12-right.svg)을 쓰는지.
         /// 연습 자체(StartPractice)는 손가락 레이어 인트로가 끝난 뒤라 여기서는 실행되지 않는다
         /// (자판 데이터를 읽는 MainWindow 없이 돌리기 위함).
         /// </summary>
@@ -486,7 +501,7 @@ namespace OpenTyping
                     sb.AppendLine($"  자판: \"{kl.Name}\" ({kl.Character})");
             }
             catch (Exception ex) { sb.AppendLine("  자판 목록 읽기 실패: " + ex.Message); }
-            // <260812_20>(2) '최고 기록' 항목과 그 창
+            // <산성비 타자 오락 260812_20>(2) '최고 기록' 항목과 그 창
             var recWin = new BestRecordWindow
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
@@ -539,7 +554,7 @@ namespace OpenTyping
             sb.AppendLine($"tpm={win.SpeedTile.Visibility}");
             win.FingerLayer.SetPose(new KeyPos(2, 3), false);
             sb.AppendLine($"pose 2-3  left={win.FingerLayer.LastLeftSource} right={win.FingerLayer.LastRightSource}");
-            win.FingerLayer.SetPose(new KeyPos(1, 12), false);   // `⧵` — 담당 손가락 없음
+            win.FingerLayer.SetPose(new KeyPos(1, 12), false);   // `⧵` — 오른손 소지(<261005_5>)
             sb.AppendLine($"pose 1-12 left={win.FingerLayer.LastLeftSource} right={win.FingerLayer.LastRightSource}");
             Flush();
 
@@ -810,7 +825,7 @@ namespace OpenTyping
                     fw.Close();
                 }
 
-            // <260812_19> 산성비 특수(파란) 단어가 '처치한 단어 수'로 나오는지 — 단계별 간격 표본
+            // 산성비 특수(파란) 단어가 '처치한 단어 수'로 나오는지 — 단계별 간격 표본
             sb.AppendLine();
             // <260927_4> 단계 구성이 자판마다 달라져, 간격은 '그 자판 오락 단계 중 몇 번째인가'로 고른다
             // (마지막 '연습한 키 전체' 단계는 가장 잦은 값). 기대값도 단계 정의에서 계산한다.
@@ -833,7 +848,7 @@ namespace OpenTyping
             }
             sb.AppendLine("SPECIAL-GAP: " + (gapFail == 0 ? "PASS" : $"FAIL ({gapFail}건)"));
 
-            // <260812_23> 날갯짓 여러 각도를 한 줄로 그려 파인 틈이 생기는지 눈으로 본다.
+            // 날갯짓 여러 각도를 한 줄로 그려 파인 틈이 생기는지 눈으로 본다.
             try
             {
                 var strip = new System.Windows.Controls.Canvas { Width = 5 * 70, Height = 190, Background = Brushes.White };
@@ -845,7 +860,7 @@ namespace OpenTyping
                     System.Windows.Controls.Canvas.SetTop(child, 22);
                     strip.Children.Add(child);
                 }
-                // 아래 줄에는 메뚜기 (<260812_26> 다리 셋 확인). 크기를 키워 자세히 보이게 한다.
+                // 아래 줄에는 메뚜기 (다리 셋 확인). 크기를 키워 자세히 보이게 한다.
                 for (int i = 0; i < 3; i++)
                 {
                     System.Windows.Controls.Canvas hopper = arcade.BuildGrasshopperSpriteForTest();
@@ -885,7 +900,7 @@ namespace OpenTyping
             }
             catch (Exception ex) { sb.AppendLine("날개 그림 실패: " + ex.Message); }
 
-            // <260812_24-1>, <260812_28> 폭죽·큰 불꽃
+            // <산성비 타자 오락 260812_24-1>, <산성비 타자 오락 260812_28> 폭죽·큰 불꽃
             {
                 arcade.WindowStartupLocation = WindowStartupLocation.Manual;
                 arcade.Left = -20000; arcade.Top = -20000;
@@ -906,7 +921,8 @@ namespace OpenTyping
                               $"{(earthOk ? "PASS" : "FAIL")}");
                 if (!earthOk) fail++;
 
-                // <260812_28.1.1.2> 이벤트 중간(progress=0.5, 2.4초 중 1.2초)의 불꽃 그림 크기·프레임 번호가
+                // <산성비 타자 오락 260812_28.1.1.1> 후속(태그 없는 지시 "불꽃이 커지는 속도는 좀 더 높여 줘.")
+                // 이벤트 중간(progress=0.5, 2.4초 중 1.2초)의 불꽃 그림 크기·프레임 번호가
                 // 정한 공식대로인지. 크기는 커지는 속도를 높이려고 progress 의 제곱근을 쓰므로
                 // 16 + sqrt(0.5)*(90-16) ≈ 68.3px. 프레임은 진행도 그대로라 기존과 같이 30.
                 arcade.EarthFireworkFrameForTest(1.2);
@@ -968,7 +984,7 @@ namespace OpenTyping
                 arcade.Hide();
             }
 
-            // <260812_26> 안내 배너가 산성비 글자보다 뒤에 있는지(겹침 차례)
+            // <산성비 타자 오락 260812_26> 안내 배너가 산성비 글자보다 뒤에 있는지(겹침 차례)
             {
                 (int normalZ, int frontZ, int rainZ) = arcade.BannerZTest();
                 bool zOk = normalZ < rainZ && frontZ > rainZ;
@@ -977,7 +993,7 @@ namespace OpenTyping
                 if (!zOk) fail++;
             }
 
-            // <260812_31> 메뚜기 세 발끝 '변의 중심점'이 같은 높이인지 — 그림에서 직접 잰다.
+            // 메뚜기 세 발끝 '변의 중심점'이 같은 높이인지 — 그림에서 직접 잰다.
             {
                 System.Windows.Controls.Canvas hopper = arcade.BuildGrasshopperSpriteForTest();
                 var feet = new List<double>();
@@ -997,7 +1013,7 @@ namespace OpenTyping
                     }
                 }
                 feet.Sort();
-                // <260812_32> 가운뎃·뒷다리는 같은 높이, 앞다리만 그보다 살짝 위(0.1~1.0)여야 한다.
+                // 가운뎃·뒷다리는 같은 높이, 앞다리만 그보다 살짝 위(0.1~1.0)여야 한다.
                 bool level = feet.Count == 3
                              && Math.Abs(feet[2] - feet[1]) < 0.05
                              && feet[1] - feet[0] > 0.1 && feet[1] - feet[0] <= 1.0;
@@ -1007,12 +1023,12 @@ namespace OpenTyping
                 if (!level) fail++;
             }
 
-            // <260812_22> 새 날개에 회전 변환이 달렸는지(퍼덕임의 전제)
+            // 새 날개에 회전 변환이 달렸는지(퍼덕임의 전제)
             bool wingOk = arcade.BirdHasWingTransform();
             sb.AppendLine($"새 날개 회전 변환={(wingOk ? "있음" : "없음")}");
             if (!wingOk) fail++;
 
-            // <260812_15> 치트 창: 효과 목록과 '고루 분포' 확인
+            // <산성비 타자 오락 260812_15> 치트 창: 효과 목록과 '고루 분포' 확인
             var cheat = new AcidCheatWindow(arcade)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
@@ -1105,7 +1121,7 @@ namespace OpenTyping
             }
 
             var cwItems = cw.StageCombo.Items.OfType<System.Windows.Controls.ComboBoxItem>().ToList();
-            // <260812_27> '전부 체크 / 전부 해제'가 실제로 15개를 한 번에 다루는지
+            // <산성비 타자 오락 260812_27> '전부 체크 / 전부 해제'가 실제로 15개를 한 번에 다루는지
             int before = arcade.CheatEffects.Count;
             cheat.CheckAllForTest();
             int afterAll = arcade.CheatEffects.Count;
@@ -1181,7 +1197,7 @@ namespace OpenTyping
                 sb.AppendLine($"치트 켜짐 테마 : {cheatThemeName} (기대 Light.Cyan) {(cheatThemeOk ? "PASS" : "FAIL")}");
                 ok &= cheatThemeOk;
 
-                // <260812_10-> 이미 통과한 단계보다 낮게 지정하면 그만큼 도로 잠겨야 한다.
+                // <260812_10-1> 이미 통과한 단계보다 낮게 지정하면 그만큼 도로 잠겨야 한다.
                 // 실제 기록으로 2단계를 통과시켜 놓고 '1단계까지'로 낮춘다.
                 StageRecords.SetCheatUpTo(null);
                 StageRecords.Record(2, StageRecords.TargetTa(2));
@@ -1458,6 +1474,207 @@ namespace OpenTyping
                 bool atomicOk = atomicThrew && noLeftover;
                 sb.AppendLine($"원자적 쓰기 실패 시 .tmp 남지 않음: 예외={atomicThrew} 남은tmp없음={noLeftover} {(atomicOk ? "PASS" : "FAIL")}");
                 if (!atomicOk) fail++;
+
+                // 15. 영문 오락: 대문자가 든 단어(DJ·DVD 등)는 그대로 내려오되(빼지 않는다), 판정은 대소문자를 구분해
+                //     대문자로 정확히 쳐야 정답이고 소문자로 치면 오답인지 (썰렁이 지시, 2026-10-02).
+                IStageSet qwertyEn = StageSets.QwertyEnglish;
+                IReadOnlyList<GameStage> enGames = qwertyEn == null ? new List<GameStage>() : GameStages.For(qwertyEn);
+                int upperInGame = enGames.Sum(g => g.Main.Concat(g.Rare).Count(w => w.Any(char.IsUpper)));
+                bool matchRule = AcidRainWindow.MatchesTyped("DJ", "DJ") && !AcidRainWindow.MatchesTyped("DJ", "dj")
+                                 && AcidRainWindow.MatchesTyped("DVD", "DVD") && !AcidRainWindow.MatchesTyped("DVD", "dvd")
+                                 && AcidRainWindow.MatchesTyped("sea", "sea")
+                                 && !AcidRainWindow.MatchesTyped("sea", "SEA");
+                bool upperOk = enGames.Count > 0 && upperInGame > 0 && matchRule;
+                sb.AppendLine($"영문 오락 대문자 단어 포함·대소문자 구분 판정: 오락 단계 {enGames.Count}개, 대문자 단어 {upperInGame}개, 판정 규칙={matchRule} {(upperOk ? "PASS" : "FAIL")}");
+                if (!upperOk) fail++;
+
+                // 16. 연습 데이터(문장·긴글): 줄을 완성형(NFC)으로 맞추고 null·빈 줄은 버리며, 쓸 줄이 하나도 없으면 원인을 알 수 있는
+                //     예외로 막는지(안 그러면 NFD 줄은 정확도 0, null 줄은 키마다 NullReferenceException).
+                string nfdLine = "나라".Normalize(System.Text.NormalizationForm.FormD);
+                PracticeData pdParsed = PracticeData.Parse(
+                    "{\"Name\":\"t\",\"Character\":\"한글\",\"TextData\":[\"" + nfdLine + "\",null,\"  \"]}");
+                bool pdOk = pdParsed.TextData.Count == 1 && pdParsed.TextData[0] == "나라";
+                bool allNullThrows = false;
+                try { PracticeData.Parse("{\"Name\":\"t\",\"Character\":\"한글\",\"TextData\":[null]}"); }
+                catch (InvalidPracticeDataException) { allNullThrows = true; }
+                bool pdAll = pdOk && allNullThrows;
+                sb.AppendLine($"연습 데이터 NFC·null 줄 정리={pdOk} 쓸 줄 없으면 예외={allNullThrows} {(pdAll ? "PASS" : "FAIL")}");
+                if (!pdAll) fail++;
+
+                // 17. 자판 데이터: null 키 칸은 빈 키로 채우고, 음수 통계는 0 으로 되돌리며, 통계 평균 합산이 넘쳐도 예외가 없는지.
+                bool layoutOk = false, statsOk = false;
+                try
+                {
+                    string layoutPath17 = Path.Combine(AppContext.BaseDirectory, "layouts", "DubeolsikStandard.json");
+                    var jl = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(layoutPath17));
+                    ((Newtonsoft.Json.Linq.JArray)((Newtonsoft.Json.Linq.JArray)jl["KeyLayoutData"])[1])[3] =
+                        Newtonsoft.Json.Linq.JValue.CreateNull();
+                    jl["Stats"] = Newtonsoft.Json.Linq.JObject.Parse("{\"SentencePracticeCount\":-5,\"AverageTypingSpeed\":-3}");
+                    KeyLayout parsed17 = KeyLayout.Parse(jl.ToString());
+                    layoutOk = parsed17.KeyLayoutData[1][3] != null
+                               && parsed17.Stats.SentencePracticeCount == 0 && parsed17.Stats.AverageTypingSpeed == 0;
+                }
+                catch (Exception) { layoutOk = false; }
+                try
+                {
+                    var big = new KeyLayoutStats { SentencePracticeCount = int.MaxValue, AverageTypingSpeed = 2 };
+                    big.AddStats(new KeyLayoutStats { SentencePracticeCount = 1, AverageTypingSpeed = 3 });
+                    statsOk = big.AverageTypingSpeed >= 2 && big.AverageTypingSpeed <= 3;
+                }
+                catch (Exception) { statsOk = false; }
+                bool layoutAll = layoutOk && statsOk;
+                sb.AppendLine($"자판 null 키 칸·음수 통계 정리={layoutOk} 통계 합산 넘침 없음={statsOk} {(layoutAll ? "PASS" : "FAIL")}");
+                if (!layoutAll) fail++;
+
+                // 18. 원자적 쓰기가 저장 폴더가 사라진 뒤에도(폴더를 다시 만들어) 성공하는지.
+                string gonePath = Path.Combine(Path.GetTempPath(), "otp_edgetest_gone_" + Guid.NewGuid().ToString("N"), "sub", "f.json");
+                bool goneOk = false;
+                try
+                {
+                    AtomicFile.WriteText(gonePath, "{\"a\":1}");
+                    goneOk = File.Exists(gonePath) && File.ReadAllText(gonePath) == "{\"a\":1}";
+                }
+                catch (Exception) { goneOk = false; }
+                finally { try { Directory.Delete(Path.GetDirectoryName(Path.GetDirectoryName(gonePath)), true); } catch { /* 무시 */ } }
+                sb.AppendLine($"원자적 쓰기: 없어진 폴더 다시 만들기={goneOk} {(goneOk ? "PASS" : "FAIL")}");
+                if (!goneOk) fail++;
+
+                // 19. 단계 정의 파일의 키 목록 길이 상한(수십만 글자 목록이 연습 창을 여는 순간 멈추게 하지 않도록).
+                int tokenCount = StageDefinitionLoader.Tokens(new Newtonsoft.Json.Linq.JValue(new string('a', 100000))).Count;
+                bool tokensOk = tokenCount > 0 && tokenCount <= 1000;
+                sb.AppendLine($"단계 정의 키 목록 길이 상한: 10만 글자 → {tokenCount}개 {(tokensOk ? "PASS" : "FAIL")}");
+                if (!tokensOk) fail++;
+
+                // 20. 설정 파일의 NaN 값이 손 모양 창을 못 열게 하지 않는지(UserSettingsStore.Sanitize, 비공개라 리플렉션으로).
+                bool sanitizeOk = false;
+                try
+                {
+                    var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance;
+                    Type storeType = typeof(UserSettingsStore).GetNestedType("Store", System.Reflection.BindingFlags.NonPublic);
+                    object store = Activator.CreateInstance(storeType);
+                    storeType.GetProperty("FingerLayerThickness").SetValue(store, double.NaN);
+                    storeType.GetProperty("FingerLayerOpacity").SetValue(store, 99.0);
+                    storeType.GetProperty("TpmMethod").SetValue(store, null);
+                    typeof(UserSettingsStore).GetMethod("Sanitize", flags).Invoke(null, new[] { store });
+                    sanitizeOk = (double)storeType.GetProperty("FingerLayerThickness").GetValue(store) == 3.5
+                                 && (double)storeType.GetProperty("FingerLayerOpacity").GetValue(store) == 1.0
+                                 && (string)storeType.GetProperty("TpmMethod").GetValue(store) == "simple";
+                }
+                catch (Exception) { sanitizeOk = false; }
+                sb.AppendLine($"설정 파일 NaN·범위 밖 값 정리={sanitizeOk} {(sanitizeOk ? "PASS" : "FAIL")}");
+                if (!sanitizeOk) fail++;
+
+                // 21. 문장연습 '무작위 섞기'가 메뉴가 든 연습 데이터를 직접 바꾸지 않고 사본을 섞는지.
+                var shared = new PracticeData { Name = "t", Character = "한글", TextData = new List<string> { "가", "가", "나" } };
+                var swin = new SentencePracticeWindow(shared, true);
+                bool sharedIntact = shared.TextData.Count == 3 && shared.TextData[0] == "가" && shared.TextData[1] == "가" && shared.TextData[2] == "나";
+                swin.Close();
+                sb.AppendLine($"문장연습 섞기가 원본 연습 데이터를 건드리지 않음={sharedIntact} {(sharedIntact ? "PASS" : "FAIL")}");
+                if (!sharedIntact) fail++;
+
+                // 22. CLAUDE.md '영문 오락의 대문자 단어'에 적은 전제 — 영문의 대문자는 소문자와 같은 알파벳(대소문자 변환)이지만,
+                //     한글 레벨2([Shift]로 내는 ㅃ 등)는 다른 자소라 별개의 알파벳이고 한글 자판에는 대소문자 글쇠가 없다.
+                KeyboardMap enMap = StageSets.QwertyEnglish?.Keyboard;
+                KeyboardMap koMap = StageSets.DubeolsikStandard?.Keyboard;
+                HashSet<string> enAlpha = enMap?.AlphabetsOf("DJ");
+                HashSet<string> koAlpha = koMap?.AlphabetsOf("뿌");   // ㅃ(윗글쇠) + ㅜ
+                bool enCaseOk = enMap != null && enMap.HasCaseLetters && enAlpha != null && enAlpha.SetEquals(new[] { "d", "j" });
+                bool koSeparateOk = koMap != null && !koMap.HasCaseLetters && koAlpha != null
+                                    && koAlpha.Contains("ㅃ") && !koAlpha.Contains("ㅂ");
+                bool premiseOk = enCaseOk && koSeparateOk;
+                sb.AppendLine($"영문 대소문자=같은 알파벳({enCaseOk}), 한글 레벨2=별개 알파벳·대소문자 글쇠 없음({koSeparateOk}) {(premiseOk ? "PASS" : "FAIL")}");
+                if (!premiseOk) fail++;
+
+                // 23. <261003_1>(2) 필터링 파일 형식: 쉼표·전각 쉼표·CR+LF/LF/CR·빈칸·빈 항목·'#' 주석·NFD·BOM.
+                string nfdDdong = "똥".Normalize(System.Text.NormalizationForm.FormD);
+                List<FilterWords.Entry> parsed = FilterWords.Parse(
+                    "﻿# 주석, 무시\r\n삥, 나라 ，어 망\n\t다리  # 메모\r뿡,,\r\n" + nfdDdong + ",\r\n,");
+                string parsedText = string.Join("|", parsed.Select(x => x.Text + "@" + x.Line + (x.Problem == null ? "" : "!")));
+                bool formatOk = parsedText == "삥@2|나라@2|어망@2|다리@3|뿡@4|똥@5";
+                List<FilterWords.Entry> bad = FilterWords.Parse("가1, ㄱ, a�b, 나-라, 좋아, Abc");
+                string badFlags = string.Join("", bad.Select(x => x.Problem == null ? "o" : "x"));
+                bool badOk = badFlags == "xxxxoo";
+                sb.AppendLine($"필터링 파일 형식 읽기={formatOk} ({parsedText}), 문제 항목 판정={badOk} ({badFlags}) {(formatOk && badOk ? "PASS" : "FAIL")}");
+                if (!(formatOk && badOk)) fail++;
+
+                // 24. <261003_1>(3)(5) 한 음절 필터링 단어: 실행 파일에 포함된 필터링 파일의 한 음절이 syllable_blacklist 와 합쳐져
+                //     '조합이 가능한 한 음절'에서 빠지고, 그 음절이 든 기존 단어는 남으며, 기존 단어 필터링 단어는 실행 중 적용되지 않는지.
+                WordCatalog.UseJsonForTest("{\"syllable_blacklist\":\"갉\",\"hangul\":{\"stages\":[{\"stage\":1,\"levels\":[{\"level\":1,\"words\":[\"삥땅\",\"나라\"]}]}]}}");
+                string blacklist = WordCatalog.SyllableBlacklist(WordCatalog.Hangul);
+                bool unionOk = blacklist.Contains('갉') && blacklist.Contains('삥')
+                               && "년놈뒈똥뽕섹술썅씹엿젖졷좃좆좇죽총칼".All(blacklist.Contains);
+                bool wordKept = WordCatalog.RawLevelWords(WordCatalog.Hangul, 1, 1).Contains("삥땅");
+                WordCatalog.UseJsonForTest(null);
+                KeyboardMap koMap24 = StageSets.DubeolsikStandard?.Keyboard;
+                var bbiKeys = new HashSet<string> { "ㅃ", "ㅣ", "ㅇ" };
+                bool singleOk = koMap24 != null
+                    && StageWords.ComputeSingles(koMap24, bbiKeys, null, "").Contains("삥")          // 거르지 않으면 나온다
+                    && !StageWords.ComputeSingles(koMap24, bbiKeys, null, blacklist).Contains("삥"); // 거르면 빠진다
+                bool runtimeWordsIgnored = FilterWords.SyllablesOf(FilterWords.Parse("삥, 삥땅, ab, x")) == "삥";
+                // 실제 두벌식 단계들의 '조합이 가능한 한 음절'에 필터링 음절이 하나도 없어야 한다.
+                string realBlacklist = WordCatalog.SyllableBlacklist(WordCatalog.Hangul);
+                IStageSet koSet = StageSets.DubeolsikStandard;
+                int leaked = koSet == null ? -1 : koSet.Stages.Sum(st => st.Words.Singles.Count(s => realBlacklist.Contains(s[0])));
+                int singlesTotal = koSet == null ? 0 : koSet.Stages.Sum(st => st.Words.Singles.Count);
+                bool realOk = leaked == 0 && singlesTotal > 0 && realBlacklist.Contains('삥');
+                bool filterAll = unionOk && wordKept && singleOk && runtimeWordsIgnored && realOk;
+                sb.AppendLine($"한 음절 필터: 합치기={unionOk} 한 음절에서 빠짐={singleOk} 그 음절이 든 기존 단어 남음={wordKept} " +
+                              $"실행 중 기존 단어 필터 미적용={runtimeWordsIgnored} 실제 단계 한 음절 {singlesTotal}개 중 필터링 음절 {leaked}개 " +
+                              $"{(filterAll ? "PASS" : "FAIL")}");
+                if (!filterAll) fail++;
+
+                // 25. <261003_1.1>(5.1.1) 실행 파일 안에는 한 음절 필터링 단어만 있다 — 기존 단어 필터링 단어(두 글자 이상)와
+                //     '#' 주석은 들어 있지 않고, 예전 이름(필터링 파일 전체)의 리소스도 없어야 한다.
+                string embedded;
+                using (Stream rs = typeof(WordCatalog).Assembly.GetManifestResourceStream(FilterWords.ResourceName))
+                using (var rr = rs == null ? null : new StreamReader(rs, System.Text.Encoding.UTF8))
+                    embedded = rr?.ReadToEnd();
+                List<FilterWords.Entry> embeddedEntries = FilterWords.Parse(embedded ?? "");
+                bool embeddedOnlySyllables = embedded != null && embeddedEntries.Count > 0
+                    && embeddedEntries.All(x => x.Problem == null && x.IsSyllable) && !embedded.Contains('#');
+                bool oldResourceGone = typeof(WordCatalog).Assembly.GetManifestResourceStream("OpenTyping.FilterWords.txt") == null;
+                bool embedAll = embeddedOnlySyllables && oldResourceGone;
+                sb.AppendLine($"실행 파일 포함 내용: 한 음절만={embeddedOnlySyllables} ({embeddedEntries.Count}개: " +
+                              $"{string.Concat(embeddedEntries.Select(x => x.Text))}) 예전 전체 리소스 없음={oldResourceGone} " +
+                              $"{(embedAll ? "PASS" : "FAIL")}");
+                if (!embedAll) fail++;
+
+                // 26. <261005_4> 영문 산성비에서 [Caps Lock]이 켜져 있으면 땅 영역의 두 조작 안내('일시정지 [Esc]'와
+                //     '단어 입력 후 [Enter]/[Space]') 사이 가운데에 빨간 경고 문구가 뜨고, 꺼지면 사라진다.
+                //     한글 산성비는 Caps Lock과 무관하므로 켜져 있어도 뜨지 않는다.
+                try
+                {
+                    var capsEn = new AcidRainWindow(StageSets.QwertyEnglish, 0);
+                    var capsKo = new AcidRainWindow(StageSets.DubeolsikStandard, 0);
+                    AcidRainWindow.CapsLockOverrideForTest = false;
+                    capsEn.RefreshCapsLockWarning();
+                    capsKo.RefreshCapsLockWarning();
+                    bool capsOffHidden = capsEn.CapsLockWarningText.Visibility != Visibility.Visible
+                                         && capsKo.CapsLockWarningText.Visibility != Visibility.Visible;
+                    AcidRainWindow.CapsLockOverrideForTest = true;
+                    capsEn.RefreshCapsLockWarning();
+                    capsKo.RefreshCapsLockWarning();
+                    System.Windows.Controls.TextBlock capsWarn = capsEn.CapsLockWarningText;
+                    var capsGrid = capsWarn.Parent as System.Windows.Controls.Grid;
+                    bool capsOnShown = capsWarn.Visibility == Visibility.Visible
+                        && capsWarn.Text == "Caps Lock이 켜져 있습니다."
+                        && capsWarn.HorizontalAlignment == HorizontalAlignment.Center
+                        && (capsWarn.Foreground as SolidColorBrush)?.Color == Color.FromRgb(0xf0, 0x3e, 0x3e)
+                        && capsGrid != null
+                        && capsGrid.Children.OfType<System.Windows.Controls.TextBlock>().Any(tb =>
+                               tb.Text == "일시정지 [Esc]" && tb.HorizontalAlignment == HorizontalAlignment.Left)
+                        && capsGrid.Children.OfType<System.Windows.Controls.TextBlock>().Any(tb =>
+                               tb.Text == "단어 입력 후 [Enter]/[Space]" && tb.HorizontalAlignment == HorizontalAlignment.Right);
+                    bool capsKoreanHidden = capsKo.CapsLockWarningText.Visibility != Visibility.Visible;
+                    AcidRainWindow.CapsLockOverrideForTest = false;
+                    capsEn.RefreshCapsLockWarning();
+                    bool capsBackHidden = capsEn.CapsLockWarningText.Visibility != Visibility.Visible;
+                    bool capsAll = capsOffHidden && capsOnShown && capsKoreanHidden && capsBackHidden;
+                    sb.AppendLine($"영문 산성비 Caps Lock 경고: 꺼짐=안 보임 {capsOffHidden} 켜짐=가운데 빨간 문구 {capsOnShown} " +
+                                  $"한글은 켜져도 안 보임 {capsKoreanHidden} 다시 끔=사라짐 {capsBackHidden} {(capsAll ? "PASS" : "FAIL")}");
+                    if (!capsAll) fail++;
+                }
+                finally { AcidRainWindow.CapsLockOverrideForTest = null; }
 
                 sb.AppendLine();
                 sb.AppendLine("EDGETEST: " + (fail == 0 ? "PASS" : $"FAIL ({fail}건)"));
@@ -1893,6 +2110,8 @@ namespace OpenTyping
             bool ok = true;
             var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             int phase = 0;
+            AcidRainWindow acidWin = null;   // <261005_4> 영문 산성비 창의 Caps Lock 경고 확인용(phase 3·4)
+            bool acidOk = true;
             timer.Tick += (s, e) =>
             {
                 try
@@ -1932,9 +2151,39 @@ namespace OpenTyping
                         sb.AppendLine($"Caps Lock 끔: 문구={after} 깜빡임={blink} 맞는 자리=정답={countedRight}");
                         ok &= after == "(없음)" && !blink && countedRight;
                         SavePng(win, Path.Combine(dir, "english_stage1.png"));
-                        timer.Stop();
                         sb.AppendLine("ENGLISH-CAPS: " + (ok ? "PASS" : "FAIL"));
                         KeyPracticeWindow.CapsLockOverrideForTest = null;
+                        // <261005_4> 이어서 영문 산성비 창(감시 타이머 경로)에서 Caps Lock 경고가 뜨는지 확인한다.
+                        AcidRainWindow.CapsLockOverrideForTest = true;
+                        acidWin = new AcidRainWindow(StageSets.QwertyEnglish, 0)
+                        {
+                            WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000,
+                        };
+                        acidWin.Show();
+                        timer.Interval = TimeSpan.FromSeconds(0.6);   // 감시 타이머(150ms)가 알아차릴 시간
+                        phase = 3;
+                        return;
+                    }
+                    if (phase == 3)
+                    {
+                        bool shown = acidWin.CapsLockWarningText.Visibility == Visibility.Visible;
+                        sb.AppendLine($"영문 산성비 Caps Lock 켬: 경고 문구 보임={shown} \"{acidWin.CapsLockWarningText.Text}\"");
+                        acidOk &= shown;
+                        acidWin.StartOverlay.Visibility = Visibility.Collapsed;   // 시작 화면에 가려지지 않은, 게임 중의 땅 띠 모습을 그림으로 남긴다
+                        SavePng(acidWin, Path.Combine(dir, "english_acid_capslock.png"));
+                        AcidRainWindow.CapsLockOverrideForTest = false;
+                        phase = 4;
+                        return;
+                    }
+                    if (phase == 4)
+                    {
+                        bool hidden = acidWin.CapsLockWarningText.Visibility != Visibility.Visible;
+                        sb.AppendLine($"영문 산성비 Caps Lock 끔: 경고 문구 사라짐={hidden}");
+                        acidOk &= hidden;
+                        SavePng(acidWin, Path.Combine(dir, "english_acid_nocaps.png"));
+                        timer.Stop();
+                        sb.AppendLine("ENGLISH-ACID-CAPS: " + (acidOk ? "PASS" : "FAIL"));
+                        AcidRainWindow.CapsLockOverrideForTest = null;
                         OpenTyping.MainWindow.SetCurrentKeyLayoutForTest(original);
                         File.WriteAllText(outPath, sb.ToString(), Encoding.UTF8);
                         Environment.Exit(0);

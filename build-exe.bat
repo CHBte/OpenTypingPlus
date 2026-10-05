@@ -69,6 +69,25 @@ if exist "%DOTNET_INSTALLER_CACHE%" (
     echo [OK] Downloaded and cached.
 )
 
+rem --- Step 2.5: supply-chain guard - the cached/downloaded runtime installer is embedded
+rem     in the SFX and RUN on end-user PCs, so it must carry a valid Microsoft
+rem     Authenticode signature. A poisoned cache or a TLS-intercepting proxy must not
+rem     be able to slip an unsigned or foreign file in.
+powershell -NoProfile -Command ^
+    "$s=Get-AuthenticodeSignature -LiteralPath '%DOTNET_INSTALLER_CACHE%'; if($s.Status -eq 'HashMismatch' -or $s.Status -eq 'NotSigned'){Write-Host ('[GUARD] runtime installer is tampered or unsigned: '+$s.Status); exit 2}; if($s.Status -ne 'Valid'){Write-Host ('[GUARD] could not verify the runtime installer signature: '+$s.Status); exit 1}; if($s.SignerCertificate.Subject -notlike '*O=Microsoft Corporation*'){Write-Host ('[GUARD] runtime installer is not signed by Microsoft: '+$s.SignerCertificate.Subject); exit 2}; exit 0"
+rem     exit 2 = definitely bad (tampered / unsigned / foreign signer): drop the cached file.
+rem     exit 1 = could not verify (offline revocation check, missing root...): keep the file, just stop.
+if errorlevel 2 (
+    echo [FAILED] The .NET runtime installer is tampered, unsigned or not signed by Microsoft; removing the cached file.
+    del /f /q "%DOTNET_INSTALLER_CACHE%"
+    exit /b 1
+)
+if errorlevel 1 (
+    echo [FAILED] Could not verify the .NET runtime installer signature ^(offline or untrusted root?^). The cached file was kept; fix the problem and retry.
+    exit /b 1
+)
+echo [OK] .NET runtime installer signature verified.
+
 rem --- Step 3: read AssemblyVersion from OpenTyping.csproj so the installer's
 rem     AppVersion always matches the app, without manual syncing (<2600912_5-2>:
 rem     four-digit .NET-style version, same value shown in the app's own title

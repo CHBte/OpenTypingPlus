@@ -256,7 +256,7 @@ namespace OpenTyping
             MinHeight += topGapAdjust;
             Height += topGapAdjust;
 
-            // 타속 타일은 클래식 창(두벌식 표준 외 자판)에서도 보여 준다 (<260812_21-1>).
+            // 타속 타일은 클래식 창(두벌식 표준 외 자판)에서도 보여 준다.
             // 단계 모드에서만 보이던 <260723_3>의 제한을 이것이 대체한다.
 
             PreviewKeyDown += KeyPracticeWindow_PreviewKeyDown;
@@ -266,7 +266,8 @@ namespace OpenTyping
             // 손가락 레이어 인트로가 끝난 뒤에야 연습 값이 제시된다 (<260717_29-2>).
             // <260811_33> 클래식 창(단계 정의가 없는 자판)도 단계 창과 똑같이 손가락 레이어·"손 모양"
             // 버튼·안내 문구를 쓴다. 손 모양 벡터는 물리 키 위치(행·열) 기준이라 자판이 달라도 그대로
-            // 재활용된다. 배정이 없는 키(`⧵` 등)는 SetPose 가 기본자세로 되돌리므로 손이 가만히 있는다.
+            // 재활용된다. 배정이 없는 키는 SetPose 가 기본자세로 되돌리므로 손이 가만히 있는다(`⧵`는 <261005_5>로
+            // 오른손 소지에 배정되어 그 키의 손 모양(hands-12-right.svg)을 쓴다).
             Loaded += (sender, e) => RunFingerLayerIntro();
             Loaded += (sender, e) => StartCapsLockWatch();   // <260927_3>(2) 영문 단계 창만
 
@@ -796,6 +797,11 @@ namespace OpenTyping
             if (win.Action == StageFinishWindow.Choice.Retry)
             {
                 RestartStage();   // 같은 창에서 이 단계를 처음부터 다시
+                // 방금 띄운 "축하합니다! … 오락이 열렸습니다" 문구가 다시 연습하는 내내 남지 않게 거둔다(1단계는 상시 안내문이
+                // 접힌 채로 남기도 했다). RestartStage 안에 두지 않는 건, '의도적 오타' 경고가 그 직후 이 함수를 불러
+                // 자기 문구를 지키기 때문이다.
+                HideNotice();
+                RefreshCapsLockWarning();   // 그사이 Caps Lock 이 켜져 있으면 그 경고는 다시 보인다
                 return;
             }
 
@@ -1044,10 +1050,17 @@ namespace OpenTyping
             bool wasRunning = practiceClock.IsRunning;
             if (wasRunning) practiceClock.Stop();
 
-            var handSettingsWindow = new HandSettingsWindow(FingerLayer) { Owner = this };
-            handSettingsWindow.ShowDialog();
-
-            if (wasRunning) practiceClock.Start();
+            // 설정 창을 못 열어도(생성자 예외) 시계는 반드시 다시 돌린다 — 멈춘 채 두면 다음 키 입력이 시계를 0에서
+            // 다시 시작(Restart)해 지난 경과 시간이 사라지고 타속이 부풀려진다.
+            try
+            {
+                var handSettingsWindow = new HandSettingsWindow(FingerLayer) { Owner = this };
+                handSettingsWindow.ShowDialog();
+            }
+            finally
+            {
+                if (wasRunning) practiceClock.Start();
+            }
         }
 
         private void KeyPracticeWindow_Closed(object sender, EventArgs e)

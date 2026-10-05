@@ -154,14 +154,14 @@ namespace OpenTyping
                 }
             }
 
-            // <260812_20>(2) 목록 맨 아래의 '최고 기록'. 단계가 아니므로 Tag 로 구분한다.
+            // <산성비 타자 오락 260812_20>(2) 목록 맨 아래의 '최고 기록'. 단계가 아니므로 Tag 로 구분한다.
             GameStageCombo.Items.Add(new ComboBoxItem { Content = "최고 기록", Tag = BestRecordTag });
 
             GameStageCombo.SelectedIndex = 0;
             suppressGameComboEvent = false;
         }
 
-        /// <summary>'최고 기록' 항목 표시용(단계 id 와 겹치지 않는 값) (<260812_20>(2)).</summary>
+        /// <summary>'최고 기록' 항목 표시용(단계 id 와 겹치지 않는 값) (<산성비 타자 오락 260812_20>(2)).</summary>
         private const string BestRecordTag = "bestrecord";
 
         private void GameStageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

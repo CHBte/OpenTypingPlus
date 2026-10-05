@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using MahApps.Metro.Controls;
@@ -141,6 +142,18 @@ namespace OpenTyping
                     {
                         // IO 예외: 파일이 잠겨 있거나 읽기 권한이 없는 경우 (대화 상자의 존재 검사는 통과했어도 읽기는 실패할 수 있음)
                         MessageBox.Show(ex.Message, "열린타자+", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Focus();
+                        return;
+                    }
+
+                    // 파일 이름만 다르고 자판 이름(Name)이 같으면 다음 실행 때 자판 목록을 읽다가 '이름 중복'으로 실패해,
+                    // 프로그램이 자판 폴더를 번들 폴더로 되돌려 버린다(추가한 자판들이 있는 폴더를 버림). 복사 전에 막는다.
+                    if (KeyLayouts.Any(k => k.Name == keyLayout.Name))
+                    {
+                        MessageBox.Show("같은 이름(\"" + keyLayout.Name + "\")의 자판이 이미 있습니다.",
+                                        "열린타자+",
+                                        MessageBoxButton.OK,
+                                        MessageBoxImage.Error);
                         Focus();
                         return;
                     }
@@ -290,6 +303,19 @@ namespace OpenTyping
                         return;
                     }
 
+                    // 파일 이름만 다르고 연습 데이터 이름(Name)이 같으면 다음에 연습 데이터 목록을 읽을 때 '이름 중복'으로
+                    // 실패해, 그 목록을 읽어야 열리는 이 설정 창이 다시는 열리지 않게 된다(파일을 손으로 지워야 한다).
+                    // 복사 전에 막는다(자판 추가와 같은 이유).
+                    if (PracticeDataList.Any(p => p.Name == practiceData.Name))
+                    {
+                        MessageBox.Show("같은 이름(\"" + practiceData.Name + "\")의 연습 데이터가 이미 있습니다.",
+                                        "열린타자+",
+                                        MessageBoxButton.OK,
+                                        MessageBoxImage.Error);
+                        Focus();
+                        return;
+                    }
+
                     if (!TryFileOperation(() => File.Copy(dataFileLocation, destLocation),
                                           "연습 데이터 파일을 복사하지 못했습니다."))
                     {
@@ -393,7 +419,13 @@ namespace OpenTyping
 
             UserSettingsStore.Set(MainWindow.PracticeDataDirStr, PracticeDataDir);
 
-            UserSettingsStore.Save();
+            if (!UserSettingsStore.TrySave(out string saveError))
+            {
+                MessageBox.Show(this, "설정을 저장하지 못했습니다.\n" + saveError,
+                                "열린타자+",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

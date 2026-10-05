@@ -40,7 +40,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260811_31-2> 마지막으로 적용한 손 그림의 출처(hands\ 파일 이름, 아무 SVG도 없으면 "(없음)").
+        /// 마지막으로 적용한 손 그림의 출처(hands\ 파일 이름, 아무 SVG도 없으면 "(없음)").
         /// 설치·배선이 어긋나지 않았는지 밖에서 확인하기 위한 것으로, 화면 동작에는 영향이 없다.
         /// </summary>
         public string LastLeftSource { get; private set; } = "(none)";

@@ -69,7 +69,7 @@ namespace OpenTyping
             public double Wave;    // 날갯짓·뜀뛰기 흔들림용 누적 시간
             public double DrawY;   // 흔들림을 반영한 실제 표시 y
             public readonly List<FallingWord> Caught = new List<FallingWord>(); // 데려가는 단어들
-            public bool CatchAll;  // true 면 지나가며 만나는 단어를 모두 데려간다 (<260812_22>)
+            public bool CatchAll;  // true 면 지나가며 만나는 단어를 모두 데려간다 (<산성비 타자 오락 260812_22>)
             public double Scale = 1; // 1보다 크면 '조금 더 큰' 새·메뚜기
             public RotateTransform Wing; // 새의 날개(퍼덕임). 메뚜기는 null
         }
@@ -97,7 +97,7 @@ namespace OpenTyping
         // 예전에는 '경과 시간'으로 셌는데(1단계 360초·마지막 120초), 한 판이 그만큼 이어지는 일이
         // 거의 없어 파란 단어를 볼 수 없었다. 그래서 **처치한 단어 수**로 센다 — 판이 짧아도
         // 일정 개수를 잡으면 반드시 나온다.
-        // 출현 간격(처치 개수 최소~최대)은 <260812_13>(1)에서 정한 값을 그대로 쓰되, <260927_4>로
+        // 출현 간격(처치 개수 최소~최대)은 <산성비 타자 오락 260812_13>(1)에서 정한 값을 그대로 쓰되, <260927_4>로
         // 단계 구성이 자판마다 달라졌으므로 단계 id 가 아니라 '그 자판 오락 단계 중 몇 번째인가'로
         // 고른다. 마지막 단계('연습한 키 전체')는 늘 가장 잦은 마지막 값을 쓴다.
         internal static readonly (int Min, int Max)[] SpecialCatchRanges =
@@ -106,28 +106,29 @@ namespace OpenTyping
         };
 
         /// <summary>
-        /// 파란 글씨 산성비의 효과 가짓수(0 ~ EffectCount-1). <260812_22>로 9 → 15가 되었다.
+        /// 파란 글씨 산성비의 효과 가짓수(0 ~ EffectCount-1). <산성비 타자 오락 260812_22>로 9 → 15가 되었다.
         /// 치트 창의 목록(AcidCheatWindow.Effects)과 개수가 같아야 한다.
         /// </summary>
         internal const int EffectCount = 16;
 
-        /// <summary>'지구 환경을 지켜라' 큰 불꽃 효과의 번호 (<260812_28>).</summary>
+        /// <summary>'지구 환경을 지켜라' 큰 불꽃 효과의 번호 (<산성비 타자 오락 260812_28>).</summary>
         internal const int EarthEffectType = 15;
 
-        // 효과 지속 시간 (<260812_13>(2), 가림은 <260812_18>로 3초).
+        // 효과 지속 시간 (<산성비 타자 오락 260812_13>(2), 가림은 <산성비 타자 오락 260812_18>로 3초).
         private const double SpeedEffectDuration = 10;   // s (가속·감속)
         private const double MaskDuration = 3;           // s (■ 가림)
         private const double ShakeDuration = 10;         // s (화면 흔들림)
 
         private readonly DispatcherTimer frameTimer = new DispatcherTimer();
         private readonly DispatcherTimer groundFlashTimer = new DispatcherTimer();
+        private readonly DispatcherTimer capsLockTimer = new DispatcherTimer();   // <261005_4> 영문일 때만 돌린다
         private readonly Stopwatch clock = new Stopwatch();
         private readonly Random random = new Random();
         private readonly List<FallingWord> active = new List<FallingWord>();
         private readonly List<Critter> critters = new List<Critter>();
         private readonly TranslateTransform shakeShift = new TranslateTransform();
 
-        // <260812_21> 산성비가 땅에 닿을 때의 한 번짜리 상하 흔들림. 특수 이벤트의 '화면 흔들림'과
+        // <산성비 타자 오락 260812_21> 산성비가 땅에 닿을 때의 한 번짜리 상하 흔들림. 특수 이벤트의 '화면 흔들림'과
         // 겹쳐도 서로 방해하지 않도록 변환을 따로 두고 묶어서 건다(그쪽은 매 프레임 값을 직접 넣고,
         // 이쪽은 애니메이션이라 같은 속성을 나눠 쓰면 충돌한다).
         private readonly TranslateTransform groundBump = new TranslateTransform();
@@ -155,7 +156,7 @@ namespace OpenTyping
         private int combo;
         private int maxCombo;
 
-        // ── 치트 (<260812_15>) ──
+        // ── 치트 (<산성비 타자 오락 260812_15>) ──
         // "효범미남"/"gyqjaalska"/"GYQJAALSKA"를 치면 치트 창이 뜬다. 자리연습 치트와 같은 감지기.
         private readonly CheatCodeDetector cheatDetector = new CheatCodeDetector();
 
@@ -174,7 +175,7 @@ namespace OpenTyping
         private double maskTimer;         // 남은 단어 가림 시간
         private double shakeTimer;        // 남은 화면 흔들림 시간
 
-        // ── '지구 환경을 지켜라' 큰 불꽃 (<260812_28>) ──
+        // ── '지구 환경을 지켜라' 큰 불꽃 (<산성비 타자 오락 260812_28>) ──
         private const double EarthDuration = 2.4;      // s 불꽃이 퍼지는 시간
         private const int EarthStreams = 5;            // 줄기 수
         private const double EarthSpin = 2.2;          // rad/s 원운동
@@ -184,9 +185,9 @@ namespace OpenTyping
         private const int EarthScoreGapMax = 350;      // 점수 간격(최대)
         private const int EarthFromLevel = 9;          // 이 레벨부터 나온다
 
-        // <260812_28.1> 불꽃 그림 자체를 스프라이트시트 애니메이션으로 교체. 그림은
+        // <산성비 타자 오락 260812_28.1> 불꽃 그림 자체를 스프라이트시트 애니메이션으로 교체. 그림은
         // Resources\earth_fire_spritesheet.png(8열 격자, 100px 칸)에 있는 61장이다.
-        // <260812_28.1.1.1> 61장을 한 장씩 건너뛰어(0, 2, 4, …, 60번째 31장) 드문드문 바꾼다 —
+        // <산성비 타자 오락 260812_28.1.1.1> 61장을 한 장씩 건너뛰어(0, 2, 4, …, 60번째 31장) 드문드문 바꾼다 —
         // 이웃한 그림끼리는 차이가 작아 차례로 다 쓰면 불꽃 자체의 움직임이 잘 느껴지지 않았다.
         // 또 줄기마다 매 틱 그림을 남기므로, 그림 크기·개수를 작게 잡아 겹쳐 그리는 양을 줄였다
         // (예전엔 끝 무렵 300px 그림이 약 250장 겹쳐 렌더링이 버벅였다).
@@ -260,12 +261,16 @@ namespace OpenTyping
                 GroundStrip.Background = GroundNormalBrush;
             };
 
+            // <261005_4> 영문 산성비의 Caps Lock 경고: 창 밖에서 Caps Lock을 바꾸고 돌아오는 경우도 놓치지 않도록 짧게 살핀다.
+            capsLockTimer.Interval = TimeSpan.FromMilliseconds(150);
+            capsLockTimer.Tick += (s, e) => RefreshCapsLockWarning();
+
             PreviewKeyDown += Window_PreviewKeyDown;
             Loaded += AcidRainWindow_Loaded;
             // 게임 도중 창을 닫아도 33ms 루프가 계속 돌지 않도록 타이머를 멈춘다(누수·예외 방지).
             // QuitToStart()/GameOver()와 같은 이유로, 창을 어떻게 닫든(제목표시줄 X, Alt+F4 포함)
             // 그때까지의 점수가 최고 기록이면 남기고 닫는다.
-            Closed += (s, e) => { TryRecordScore(); running = false; frameTimer.Stop(); groundFlashTimer.Stop(); };
+            Closed += (s, e) => { TryRecordScore(); running = false; frameTimer.Stop(); groundFlashTimer.Stop(); capsLockTimer.Stop(); };
 
             // 게임 중에는 입력창이 포커스를 잃지 않게 유지한다(화면 클릭 등으로 타이핑이 무시되는 것 방지).
             InputBox.LostFocus += (s, e) =>
@@ -276,6 +281,13 @@ namespace OpenTyping
 
         private void AcidRainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            // <261005_4> 영문이면 Caps Lock 경고를 살피기 시작한다(아래 LoadStages 가 경고창에서 멈춰 있어도 먼저 시작).
+            if (isEnglish)
+            {
+                capsLockTimer.Start();
+                RefreshCapsLockWarning();
+            }
+
             LoadStages();
             LoadProgress();
             StageCombo.DisplayMemberPath = "Name";
@@ -341,7 +353,9 @@ namespace OpenTyping
                 // StageRecords.Save()와 같은 이유: 두 인스턴스(또는 창)가 동시에 저장하면 나중에
                 // 쓰는 쪽이 먼저 저장된 다른 단계의 최고 기록을 지울 수 있다. 저장 직전 디스크의
                 // 최신 기록과 병합한다(더 높은 점수만 반영 — TryRecordScore()와 같은 정책).
-                MergeBestRecordsFromDisk();
+                // 디스크의 기록을 일시적으로 못 읽었으면(다른 프로그램이 잡고 있는 경우 등) 덮어쓰지 않는다 —
+                // 안 그러면 읽지 못한 다른 단계의 최고 기록이 지워진다. 다음 저장 때 다시 시도한다.
+                if (!MergeBestRecordsFromDisk()) return;
 
                 var data = new ProgressData { BestRecords = bestRecords };
                 AtomicFile.WriteText(ProgressPath, JsonSerializer.Serialize(data));
@@ -352,21 +366,33 @@ namespace OpenTyping
             }
         }
 
-        private void MergeBestRecordsFromDisk()
+        /// <summary>저장 직전 디스크의 기록을 메모리에 병합한다. 파일이 일시적으로 읽히지 않아 병합하지 못했으면
+        /// false(저장하면 읽지 못한 기록을 지우므로 호출부가 저장을 건너뛴다). 파일이 없거나 손상돼 병합할 것이
+        /// 없으면 true — 손상 파일은 덮어쓰기 전에 .bad 사본을 남긴다.</summary>
+        private bool MergeBestRecordsFromDisk()
         {
-            if (!File.Exists(ProgressPath)) return;
+            if (!File.Exists(ProgressPath)) return true;
             try
             {
                 ProgressData onDisk = JsonSerializer.Deserialize<ProgressData>(File.ReadAllText(ProgressPath));
-                if (onDisk?.BestRecords == null) return;
+                if (onDisk?.BestRecords == null) return true;
                 foreach (KeyValuePair<int, BestRecord> kv in onDisk.BestRecords)
                 {
                     if (kv.Value == null) continue;
                     if (!bestRecords.TryGetValue(kv.Key, out BestRecord mine) || kv.Value.Score > mine.Score)
                         bestRecords[kv.Key] = kv.Value;
                 }
+                return true;
             }
-            catch { /* 병합 실패 시 메모리 값 그대로 저장 */ }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch
+            {
+                AtomicFile.BackUpCorrupt(ProgressPath);   // 손상: 메모리 값 그대로 저장하되 사본을 남긴다
+                return true;
+            }
         }
 
         // 이번 판 점수가 이 단계의 최고 기록이면 갱신(단계마다 기록은 하나만 유지). 갱신했으면 true.
@@ -382,21 +408,21 @@ namespace OpenTyping
             bestRecords[currentStageId] = new BestRecord
             {
                 Score = score,
-                When = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                When = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             };
             if (!StageRecords.CheatOn) SaveProgress();
             return true;
         }
 
         /// <summary>
-        /// <260812_20> 최고 기록 한 줄. "최고 기록 1234점. 2026년 8월 12일 오후 04:20" 꼴.
+        /// <산성비 타자 오락 260812_20> 최고 기록 한 줄. "최고 기록 1234점. 2026년 8월 12일 오후 04:20" 꼴.
         /// 게임 화면과 자리연습 화면이 같은 문구를 쓰도록 여기 한 곳에 둔다.
         /// </summary>
         internal static string FormatBestRecord(int score, string when) =>
             "최고 기록 " + score + "점. " + FormatWhen(when);
 
         /// <summary>
-        /// 저장된 단계별 최고 기록을 (단계 id, 점수, 시각) 목록으로 읽는다 (<260812_20>(2)).
+        /// 저장된 단계별 최고 기록을 (단계 id, 점수, 시각) 목록으로 읽는다 (<산성비 타자 오락 260812_20>(2)).
         /// 게임 창을 열지 않고도 볼 수 있도록 static 으로 둔다.
         /// </summary>
         internal static List<(int StageId, int Score, string When)> LoadBestRecords(IStageSet set)
@@ -423,7 +449,7 @@ namespace OpenTyping
         {
             if (bestRecords.TryGetValue(stageId, out BestRecord r))
             {
-                BestRecordText.Text = FormatBestRecord(r.Score, r.When);   // <260812_20>(1)
+                BestRecordText.Text = FormatBestRecord(r.Score, r.When);   // <산성비 타자 오락 260812_20>(1)
             }
             else
             {
@@ -438,8 +464,12 @@ namespace OpenTyping
             // 아무 단계도 해금 안 됐으면(예: 기록 없음) 목록상 첫 단계는 보여 준다(방어적 대비).
             if (available.Count == 0) available = stages.Take(1).ToList();
 
+            // '다시 하기'·'처음으로' 뒤에는 방금 고른(친) 단계를 그대로 선택해 둔다. 처음 열 때(고른 단계 없음)만
+            // 가장 최근에 해금된 단계를 기본 선택한다.
+            int keepId = (StageCombo.SelectedItem as GameStage)?.Id ?? -1;
             StageCombo.ItemsSource = available;
-            StageCombo.SelectedIndex = available.Count - 1; // 가장 최근에 해금된 단계를 기본 선택
+            int keepIndex = available.FindIndex(s => s.Id == keepId);
+            StageCombo.SelectedIndex = keepIndex >= 0 ? keepIndex : available.Count - 1;
 
             // 같은 항목이 다시 선택되면 SelectionChanged가 안 오므로 여기서도 직접 갱신한다.
             if (StageCombo.SelectedItem is GameStage sel)
@@ -524,14 +554,14 @@ namespace OpenTyping
             frameTimer.Start();
             InputBox.Clear();
             InputBox.Focus();
-            SwitchInputLanguage();   // <260812_16>(1) 시작하자마자 그 자판 글자로 칠 수 있게
+            SwitchInputLanguage();   // <산성비 타자 오락 260812_16>(1) 시작하자마자 그 자판 글자로 칠 수 있게
         }
 
         private void RetryButton_Click(object sender, RoutedEventArgs e)
         {
             ClearWords(); // 종료 화면 뒤에 비쳐 보이던 이전 게임 단어를 지운다
             GameOverOverlay.Visibility = Visibility.Collapsed;
-            RefreshStageCombo(); // 방금 새로 해금된 단계·갱신된 기록을 목록에 반영
+            RefreshStageCombo(); // 갱신된 기록을 목록에 반영(고른 단계는 그대로)
             StartOverlay.Visibility = Visibility.Visible; // 단계 재선택 가능
         }
 
@@ -576,7 +606,7 @@ namespace OpenTyping
                 "점수  " + score + "\n" +
                 "잡은 단어  " + caught + "개 · 놓친 단어  " + missed + "개\n" +
                 "최대 연속 성공  x" + maxCombo + "\n" +
-                "입력 정확도  " + accuracy.ToString("0.#") + "%  (입력 " + attempts + "회)";
+                "입력 정확도  " + accuracy.ToString("0.#", CultureInfo.InvariantCulture) + "%  (입력 " + attempts + "회)";
             NewRecordText.Visibility = newRecord ? Visibility.Visible : Visibility.Collapsed;
             GameOverOverlay.Visibility = Visibility.Visible;
         }
@@ -606,7 +636,7 @@ namespace OpenTyping
             EventBanner.BeginAnimation(UIElement.OpacityProperty, null);
             EventBanner.Opacity = 0;
 
-            // <260812_28> 큰 불꽃도 함께 정리한다(다음 판은 레벨 9에 닿아야 다시 예약된다).
+            // <산성비 타자 오락 260812_28> 큰 불꽃도 함께 정리한다(다음 판은 레벨 9에 닿아야 다시 예약된다).
             earthTimer = 0;
             earthNextScore = int.MaxValue;
             FireworkLayer.Children.Clear();
@@ -870,7 +900,7 @@ namespace OpenTyping
                     GroundStrip.Background = GroundHitBrush;
                     groundFlashTimer.Stop();
                     groundFlashTimer.Start();
-                    ShakeOnGroundHit();   // <260812_21>
+                    ShakeOnGroundHit();   // <산성비 타자 오락 260812_21>
                     UpdateHud();
                     UpdateSky();
                     if (lives <= 0)
@@ -917,7 +947,7 @@ namespace OpenTyping
 
         private void UpdateEffectTimers(double dt)
         {
-            UpdateEarthFirework(dt);   // <260812_28>
+            UpdateEarthFirework(dt);   // <산성비 타자 오락 260812_28>
 
             if (speedEffectTimer > 0) speedEffectTimer -= dt;
 
@@ -989,7 +1019,7 @@ namespace OpenTyping
                     Banner("단어 3개가 튕겨 오른다!");
                     break;
                 case 6:
-                    // <260812_13>(2) 속도의 크기는 그대로 두고 방향만 대각선으로 꺾는다. 그래서 세로
+                    // <산성비 타자 오락 260812_13>(2) 속도의 크기는 그대로 두고 방향만 대각선으로 꺾는다. 그래서 세로
                     // 성분이 줄어(cos) 곧장 떨어질 때보다 땅에 닿기까지 시간이 늘어난다.
                     foreach (FallingWord w in LowestWords(4))
                     {
@@ -1008,7 +1038,7 @@ namespace OpenTyping
                     Banner("메뚜기가 단어 하나를 데려간다!");
                     break;
 
-                // ── <260812_22> 큰 개체(만나는 단어를 모두)·양쪽에서 두 마리 ──
+                // ── <산성비 타자 오락 260812_22> 큰 개체(만나는 단어를 모두)·양쪽에서 두 마리 ──
                 case 9:
                     SpawnCritter(true, big: true, catchAll: true);
                     Banner("큰 새가 만나는 단어를 모두 물어 간다!");
@@ -1038,14 +1068,14 @@ namespace OpenTyping
                     Banner("큰 메뚜기 두 마리가 양쪽에서 온다!");
                     break;
 
-                case EarthEffectType:   // <260812_28> 큰 불꽃(문구는 StartEarthFirework 안에서 깜빡인다)
+                case EarthEffectType:   // <산성비 타자 오락 260812_28> 큰 불꽃(문구는 StartEarthFirework 안에서 깜빡인다)
                     StartEarthFirework();
                     break;
             }
         }
 
         /// <summary>
-        /// <260812_21> 산성비가 땅에 닿을 때 화면을 상하로 한 번 약하게 흔든다.
+        /// <산성비 타자 오락 260812_21> 산성비가 땅에 닿을 때 화면을 상하로 한 번 약하게 흔든다.
         /// 내려갔다 올라와 제자리로 돌아오는 짧은 한 번짜리 움직임이다.
         /// </summary>
         private void ShakeOnGroundHit()
@@ -1061,14 +1091,14 @@ namespace OpenTyping
             groundBump.BeginAnimation(TranslateTransform.YProperty, bump);
         }
 
-        // ── 폭죽·불꽃 (<260812_24-1>, <260812_28>) ──
+        // ── 폭죽·불꽃 (<산성비 타자 오락 260812_24-1>, <산성비 타자 오락 260812_28>) ──
 
         private static readonly Color SparkColor = Color.FromRgb(0xff, 0xd4, 0x3b);   // 노랑
         private static readonly Color SparkColorDeep = Color.FromRgb(0xfa, 0xb0, 0x05);
 
         /// <summary>
         /// 불꽃 알갱이 하나를 <see cref="FireworkLayer"/>에 놓고, 스스로 사라지게 한다.
-        /// 매 프레임 새 알갱이를 남기면 그것들이 곧 궤적으로 보인다 (<260812_28>).
+        /// 매 프레임 새 알갱이를 남기면 그것들이 곧 궤적으로 보인다 (<산성비 타자 오락 260812_28>).
         /// </summary>
         private void Spark(double x, double y, double size, double life, double vx = 0, double vy = 0, bool deep = false)
         {
@@ -1101,7 +1131,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_24-1> 레벨업 문구 뒤 양쪽에서 터지는 노란 폭죽. 문구·폭죽 모두 산성비보다 앞이다.
+        /// <산성비 타자 오락 260812_24-1> 레벨업 문구 뒤 양쪽에서 터지는 노란 폭죽. 문구·폭죽 모두 산성비보다 앞이다.
         /// </summary>
         private void LevelUpFireworks()
         {
@@ -1135,7 +1165,7 @@ namespace OpenTyping
             }
         }
 
-        /// <summary><260812_28> 화면 가운데에서 큰 불꽃을 터뜨린다.</summary>
+        /// <summary><산성비 타자 오락 260812_28> 화면 가운데에서 큰 불꽃을 터뜨린다.</summary>
         private void StartEarthFirework()
         {
             double w = GameCanvas.ActualWidth, h = GameCanvas.ActualHeight;
@@ -1157,8 +1187,8 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 큰 불꽃을 한 프레임 진행시킨다 (<260812_28.1>). 가운데 중심점에서 다섯 줄기가 원운동하며
-        /// 사방으로 퍼져 나가고(<260812_28>과 같은 물리), 줄기마다 지금 이 순간 자리에 스프라이트시트
+        /// 큰 불꽃을 한 프레임 진행시킨다 (<산성비 타자 오락 260812_28.1>). 가운데 중심점에서 다섯 줄기가 원운동하며
+        /// 사방으로 퍼져 나가고(<산성비 타자 오락 260812_28>과 같은 물리), 줄기마다 지금 이 순간 자리에 스프라이트시트
         /// 불꽃 그림(점점 커짐 + 프레임이 차례로 바뀌어 그 자체가 애니메이션)을 남겨 궤적이 보이게 한다.
         /// 이 그림에 닿은 산성비는 사라진다.
         /// </summary>
@@ -1197,7 +1227,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_28.1> 다섯 줄기가 지나는 자리에 스프라이트시트 불꽃 그림 한 장을 놓고, 서서히
+        /// <산성비 타자 오락 260812_28.1> 다섯 줄기가 지나는 자리에 스프라이트시트 불꽃 그림 한 장을 놓고, 서서히
         /// 옅어지다 스스로 없어지게 한다(<see cref="Spark"/>와 같은 방식이되 그림이 다르다). 여러 장이
         /// 매 틱 새로 남으므로 줄기의 궤적이 눈에 보인다.
         /// </summary>
@@ -1221,7 +1251,7 @@ namespace OpenTyping
             img.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
-        /// <summary>불꽃에 닿은 산성비를 없앤다 (<260812_28>). 점수·생명에는 영향이 없다.</summary>
+        /// <summary>불꽃에 닿은 산성비를 없앤다 (<산성비 타자 오락 260812_28>). 점수·생명에는 영향이 없다.</summary>
         private void BurnWordsNear(double x, double y)
         {
             for (int i = active.Count - 1; i >= 0; i--)
@@ -1244,7 +1274,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_28> 문구를 주어진 횟수만큼 깜빡인다. 문구와 불꽃은 산성비보다 앞에 둔다.
+        /// <산성비 타자 오락 260812_28> 문구를 주어진 횟수만큼 깜빡인다. 문구와 불꽃은 산성비보다 앞에 둔다.
         /// </summary>
         private void BannerBlink(string text, int times)
         {
@@ -1274,7 +1304,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 동물 한 마리를 내보낸다 (<260812_22>로 크기·욕심·방향을 고를 수 있게 넓혔다).
+        /// 동물 한 마리를 내보낸다 (<산성비 타자 오락 260812_22>로 크기·욕심·방향을 고를 수 있게 넓혔다).
         /// </summary>
         /// <param name="bird">새면 true, 메뚜기면 false.</param>
         /// <param name="fromLeft">왼쪽에서 들어오면 true. null 이면 무작위.</param>
@@ -1327,7 +1357,7 @@ namespace OpenTyping
                     ? c.Y + Math.Sin(c.Wave * 6) * 6                  // 새: 몸이 위아래로 일렁임
                     : c.Y - Math.Abs(Math.Sin(c.Wave * 5)) * 14;      // 메뚜기: 뜀뛰기
 
-                // <260812_22> 새의 날개 퍼덕임. 몸의 일렁임보다 두 배 빠르게 오르내리고, 위로 크게
+                // 새의 날개 퍼덕임. 몸의 일렁임보다 두 배 빠르게 오르내리고, 위로 크게
                 // 접었다가(-55°) 아래로 조금 펴는(+25°) 비대칭이라 실제 날갯짓처럼 보인다.
                 if (c.Wing != null)
                 {
@@ -1337,7 +1367,7 @@ namespace OpenTyping
                 Canvas.SetLeft(c.Sprite, c.X - c.Sprite.Width / 2);
                 Canvas.SetTop(c.Sprite, c.DrawY - c.Sprite.Height / 2);
 
-                // 지나가다 만나는 일반 낙하 단어를 데려간다 (<260812_22>: 욕심쟁이는 만나는 대로 전부).
+                // 지나가다 만나는 일반 낙하 단어를 데려간다 (<산성비 타자 오락 260812_22>: 욕심쟁이는 만나는 대로 전부).
                 if (c.CatchAll || c.Caught.Count == 0)
                 {
                     double rx = 18 * c.Scale, ry = 12 * c.Scale;
@@ -1378,7 +1408,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 눈 하나를 그린다 (<260812_25>, <260812_27>): 흰자 + 앞쪽·아래쪽으로 조금 치우친 검은
+        /// 눈 하나를 그린다: 흰자 + 앞쪽·아래쪽으로 조금 치우친 검은
         /// 눈동자 + 윗눈꺼풀 선. 흰자만 있으면 표정이 없어 무섭게 보인다. 새와 메뚜기가 함께 쓴다.
         /// </summary>
         /// <param name="rotationDegrees">흰자+눈동자+눈꺼풀 셋을 한 그룹으로 묶어 <paramref name="cx"/>,
@@ -1395,7 +1425,7 @@ namespace OpenTyping
             Canvas.SetTop(white, cy - r);
             group.Children.Add(white);
 
-            // 눈동자: 중심보다 앞(부리 쪽)으로 0.4r, 아래로 0.35r (<260812_27>로 조금 더 내렸다)
+            // 눈동자: 중심보다 앞(부리 쪽)으로 0.4r, 아래로 0.35r (조금 더 내렸다)
             double pupilR = r * 0.37;
             var pupil = new Ellipse { Width = pupilR * 2, Height = pupilR * 2, Fill = Brushes.Black };
             Canvas.SetLeft(pupil, cx + r * 0.40 - pupilR);
@@ -1420,7 +1450,7 @@ namespace OpenTyping
             canvas.Children.Add(group);
         }
 
-        /// <summary>새 그림에서 날개의 회전 변환을 찾는다(몸통 다음, 두 번째 자식) (<260812_22>).</summary>
+        /// <summary>새 그림에서 날개의 회전 변환을 찾는다(몸통 다음, 두 번째 자식).</summary>
         private static RotateTransform WingOf(Canvas sprite) =>
             (sprite != null && sprite.Children.Count > 1 ? sprite.Children[1] as Polygon : null)
                 ?.RenderTransform as RotateTransform;
@@ -1438,7 +1468,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 검사용 (<260812_28>): 가운데 둘레에 단어를 늘어놓고 큰 불꽃을 끝까지 돌린 뒤,
+        /// 검사용 (<산성비 타자 오락 260812_28>): 가운데 둘레에 단어를 늘어놓고 큰 불꽃을 끝까지 돌린 뒤,
         /// (처음 개수, 남은 개수, 남은 불티 수, 문구)를 돌려준다. 불꽃이 산성비를 지우는지 확인한다.
         /// </summary>
         internal (int Before, int After, int Sparks, string Banner) EarthFireworkTest()
@@ -1476,7 +1506,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// 검사용 (<260812_26>): 보통 문구와 '앞으로 내보낸' 문구의 겹침 차례, 그리고 산성비의 차례.
+        /// 검사용 (<산성비 타자 오락 260812_26>): 보통 문구와 '앞으로 내보낸' 문구의 겹침 차례, 그리고 산성비의 차례.
         /// </summary>
         internal (int Normal, int Front, int Rain) BannerZTest()
         {
@@ -1492,7 +1522,7 @@ namespace OpenTyping
         internal FrameworkElement GameAreaForTest => GameArea;
 
         /// <summary>
-        /// 검사용 (<260812_28>): 큰 불꽃을 주어진 시점까지만 진행시켜 그 순간의 화면을 볼 수 있게 한다.
+        /// 검사용 (<산성비 타자 오락 260812_28>): 큰 불꽃을 주어진 시점까지만 진행시켜 그 순간의 화면을 볼 수 있게 한다.
         /// 알갱이가 스스로 사라지는 애니메이션은 시간이 흘러야 도는데, 검사에서는 시간이 흐르지 않으므로
         /// 뿌린 알갱이가 그대로 남아 '궤적'이 한눈에 보인다.
         /// </summary>
@@ -1528,7 +1558,7 @@ namespace OpenTyping
         /// 틀은 메뚜기를 그대로 따른다 — 머리는 몸통 앞쪽의 작은 원, 눈은 공용 AddEye(흰자+눈동자+
         /// 눈꺼풀로 표정을 준다), 더듬이는 왼쪽 위 모서리를 축으로 돌린 가는 막대. 나비만의 특징은
         /// 더듬이 끝의 곤봉과 무늬 있는 넓은 날개다. 오른쪽이 머리이며 좌우 뒤집기는 다른 동물과
-        /// 같은 규칙을 쓴다 (<260812_22>).
+        /// 같은 규칙을 쓴다 (<산성비 타자 오락 260812_22>).
         /// </summary>
         private Canvas BuildButterflySprite(bool facingRight, double scale)
         {
@@ -1639,7 +1669,7 @@ namespace OpenTyping
             // 각 53도) 하려면 반시계 방향(음수) 53도를 준다.
             const double bodyTilt = -53;
 
-            // 방향(좌우 뒤집기)과 크기, 몸통 기울기를 한 번에 건다 — 다른 동물과 같은 규칙(<260812_22>)에
+            // 방향(좌우 뒤집기)과 크기, 몸통 기울기를 한 번에 건다 — 다른 동물과 같은 규칙(<산성비 타자 오락 260812_22>)에
             // 기울기를 더했다.
             canvas.RenderTransformOrigin = new Point(0.5, 0.5);
             var transforms = new TransformGroup();
@@ -1661,7 +1691,7 @@ namespace OpenTyping
                 Canvas.SetTop(body, 8);
                 canvas.Children.Add(body);
 
-                // 날개 (<260812_22>, 모양은 <260812_23>).
+                // 날개.
                 // 밑변을 몸통 속 깊숙이(y=15) 넣은 큰 삼각형으로 만들고, 몸통 한가운데(19,14)를 축으로
                 // 돌린다. 어느 각도에서도 밑변 두 점이 몸통 타원 안에 머물러 날개와 몸통 사이에 파인
                 // 틈이 생기지 않는다. 색도 몸통과 같게 두어, 몸 밖으로 나온 부분만 날개로 보인다.
@@ -1674,7 +1704,7 @@ namespace OpenTyping
                 };
                 canvas.Children.Add(wing);
 
-                // 부리 (<260812_25>): 밑변의 두 꼭짓점이 몸통 타원 위에 놓이도록 뒤로 당겼다.
+                // 부리: 밑변의 두 꼭짓점이 몸통 타원 위에 놓이도록 뒤로 당겼다.
                 // 타원은 중심 (20,14.5)·반지름 (12,6.5)이므로 y=12·17에서 가장자리 x ≈ 31.1이다.
                 var beak = new Polygon
                 {
@@ -1683,7 +1713,7 @@ namespace OpenTyping
                 };
                 canvas.Children.Add(beak);
 
-                AddEye(canvas, 28.5, 11.5, 1.5);   // <260812_25>, <260812_27>
+                AddEye(canvas, 28.5, 11.5, 1.5);
             }
             else
             {
@@ -1700,7 +1730,7 @@ namespace OpenTyping
                 Canvas.SetTop(head, 8);
                 canvas.Children.Add(head);
 
-                // 다리 셋 (<260812_26>): 메뚜기는 한쪽에 앞·가운데·뒷다리가 하나씩 있다.
+                // 다리 셋: 메뚜기는 한쪽에 앞·가운데·뒷다리가 하나씩 있다.
                 // 뒷다리는 도약용이라 굵고 길며 뒤로 크게 젖혀진다.
                 void Leg(double left, double top, double w, double h, double angle)
                 {
@@ -1716,20 +1746,20 @@ namespace OpenTyping
                     canvas.Children.Add(leg);
                 }
 
-                // <260812_31> 세 발끝 '변의 중심점'을 같은 높이(y=22, 뒷다리 발끝)에 맞춘다.
+                // 세 발끝 '변의 중심점'을 같은 높이(y=22, 뒷다리 발끝)에 맞춘다.
                 // 사각형은 왼쪽 위 모서리를 축으로 도므로, 발끝 변의 중심(가로/2, 세로)은
                 //   y = top + (가로/2)·sin θ + 세로·cos θ.
                 //   앞다리(-30°):  1·sin(-30) + 8·cos(-30) = 6.43 → top = 22 − 6.43 = 15.57
                 //   가운뎃다리(-5°): 1·sin(-5) + 8·cos(-5) = 7.88 → top = 22 − 7.88 = 14.12
-                // 앞다리만 <260812_32>로 0.4 올렸다(발끝 중심 21.6). 눈으로 볼 때 살짝 들린 모습.
+                // 앞다리만 0.4 올렸다(발끝 중심 21.6). 눈으로 볼 때 살짝 들린 모습.
                 Leg(21, 15.17, 2, 8, -30);   // 앞다리(머리 쪽)
                 Leg(16, 14.12, 2, 8, -5);    // 가운뎃다리
 
-                // 뒷다리(도약용)는 '＾' 모양으로 꺾인다 (<260812_27>): 몸통에서 위로 뻗어 무릎이
+                // 뒷다리(도약용)는 '＾' 모양으로 꺾인다: 몸통에서 위로 뻗어 무릎이
                 // 몸통보다 높이 솟았다가, 거기서 뒤아래로 내려와 발끝이 몸통보다 아래에 놓인다.
-                // 위치는 <260812_28>로 앞으로 2.5 옮겼다(붙는 자리 14.5 < 가운뎃다리 16).
+                // 뒷다리 전체를 앞으로 2.5 옮겼다(붙는 자리 14.5 < 가운뎃다리 16).
                 //
-                // 두 마디를 선 두 개가 아니라 꺾인 선 하나로 그린다 (<260812_30>): 무릎은 이어진 채로
+                // 두 마디를 선 두 개가 아니라 꺾인 선 하나로 그린다: 무릎은 이어진 채로
                 // 두고, 양 끝은 다른 다리(직사각형)처럼 **평평하게** 끊는다.
                 canvas.Children.Add(new Polyline
                 {
@@ -1751,10 +1781,10 @@ namespace OpenTyping
                 Canvas.SetTop(antenna, 2);
                 canvas.Children.Add(antenna);
 
-                AddEye(canvas, 31, 11.5, 1.5);   // <260812_27> 새와 같은 눈
+                AddEye(canvas, 31, 11.5, 1.5);   // 새와 같은 눈
             }
 
-            // 방향(좌우 뒤집기)과 크기를 한 번에 건다 (<260812_22>). 가운데를 기준으로 하므로
+            // 방향(좌우 뒤집기)과 크기를 한 번에 건다 (<산성비 타자 오락 260812_22>). 가운데를 기준으로 하므로
             // 위치 계산은 원래 크기(40x26) 그대로 두어도 그림의 중심이 그 자리에 온다.
             if (!facingRight || scale != 1)
             {
@@ -1764,7 +1794,7 @@ namespace OpenTyping
             return canvas;
         }
 
-        /// <summary>겹침 차례 (<260812_26>). 배너는 기본으로 산성비(20)보다 뒤(10)에 있다.</summary>
+        /// <summary>겹침 차례 (<산성비 타자 오락 260812_26>). 배너는 기본으로 산성비(20)보다 뒤(10)에 있다.</summary>
         private const int BannerBehindRain = 10;
         private const int BannerInFrontOfRain = 40;
 
@@ -1773,7 +1803,7 @@ namespace OpenTyping
         /// </summary>
         /// <param name="text">보여 줄 문구.</param>
         /// <param name="inFront">
-        /// true 면 산성비 글자보다 **앞**에 놓아 글자를 가린다. 기본은 뒤(<260812_26>) —
+        /// true 면 산성비 글자보다 **앞**에 놓아 글자를 가린다. 기본은 뒤(<산성비 타자 오락 260812_26>) —
         /// 떨어지는 글자를 가리지 않게 하기 위함이며, 꼭 눈에 띄어야 하는 문구에만 true 를 준다.
         /// </param>
         private void Banner(string text, bool inFront = false)
@@ -1795,9 +1825,9 @@ namespace OpenTyping
             string text = feed?.Next(t => active.Any(w => w.Text == t));
             if (text == null) return;
 
-            // 처치 수를 다 채웠으면 이번에 태어나는 단어가 파란 특수 단어다 (<260812_19>).
+            // 처치 수를 다 채웠으면 이번에 태어나는 단어가 파란 특수 단어다.
             // 화면에 이미 특수 단어가 떠 있으면 겹치지 않게 미룬다.
-            // <260812_15> 치트가 켜져 있으면 절반을 파란 글씨로 (여러 개가 함께 떠도 된다).
+            // <산성비 타자 오락 260812_15> 치트가 켜져 있으면 절반을 파란 글씨로 (여러 개가 함께 떠도 된다).
             bool special = CheatHalfSpecial
                 ? random.Next(2) == 0
                 : specialCatchesLeft <= 0 && !active.Any(w => w.IsSpecial);
@@ -1805,7 +1835,7 @@ namespace OpenTyping
             var block = new TextBlock
             {
                 Text = text,
-                FontSize = 23,   // <260812_25>
+                FontSize = 23,   // <산성비 타자 오락 260812_25>
                 FontWeight = FontWeights.Bold,
                 Foreground = special ? WordSpecialBrush : WordNormalBrush,
             };
@@ -1823,7 +1853,7 @@ namespace OpenTyping
                 Width = block.DesiredSize.Width, Height = block.DesiredSize.Height,
                 Speed = speed,
                 IsSpecial = special,
-                // 치트로 고른 효과가 있으면 그 안에서 고루, 아니면 무작위 (<260812_15>).
+                // 치트로 고른 효과가 있으면 그 안에서 고루, 아니면 무작위 (<산성비 타자 오락 260812_15>).
                 EventType = special ? (CheatHalfSpecial ? NextCheatEffect() : PickNormalEventType()) : 0,
             };
             if (special)
@@ -1852,6 +1882,16 @@ namespace OpenTyping
             Submit();
         }
 
+        /// <summary>
+        /// 친 글이 떨어지는 단어와 같은가. **대소문자를 구분한다**(서수 비교) — 영문 오락의 대문자 단어(DJ·DVD 등)는
+        /// [Shift]로 대문자를 정확히 쳐야 정답이고 소문자(dj·dvd)로 치면 오답이다(썰렁이 지시, 2026-10-02).
+        /// 입력 칸에 **결과로 남은 글자**만 비교하므로, [Caps Lock]을 켜고 쳐서 생긴 대문자(DJ·DVD)도 [Shift]로 친 것과
+        /// 똑같이 정답이다(썰렁이 지시, 2026-10-02). 입력 칸은 입력기를 끈 평범한 TextBox 라 Windows 의 글쇠 변환이
+        /// 그대로 글자가 된다 — [Caps Lock] 켜짐 + [Shift]는 소문자가 되는 것도 Windows 규칙 그대로다.
+        /// </summary>
+        internal static bool MatchesTyped(string word, string typed) =>
+            string.Equals(word, typed, StringComparison.Ordinal);
+
         private void Submit()
         {
             string text = InputBox.Text.Trim();
@@ -1861,7 +1901,7 @@ namespace OpenTyping
             attempts++;
 
             // 같은 단어가 여러 개면 땅에 가장 가까운 것부터 제거
-            FallingWord match = active.Where(w => w.Text == text)
+            FallingWord match = active.Where(w => MatchesTyped(w.Text, text))
                                       .OrderByDescending(w => w.Y)
                                       .FirstOrDefault();
             if (match != null)
@@ -1870,7 +1910,7 @@ namespace OpenTyping
                 GameCanvas.Children.Remove(match.Block);
                 caught++;
                 combo++;
-                if (specialCatchesLeft > 0) specialCatchesLeft--;   // <260812_19> 처치 수로 센다
+                if (specialCatchesLeft > 0) specialCatchesLeft--;   // 처치 수로 센다
                 if (combo > maxCombo) maxCombo = combo;
 
                 int gained = 10 + text.Length * 5;
@@ -1882,7 +1922,7 @@ namespace OpenTyping
                 }
                 score += gained;
 
-                // <260812_28> 레벨 9부터, 점수가 250~350점 오를 때마다 큰 불꽃이 터진다.
+                // <산성비 타자 오락 260812_28> 레벨 9부터, 점수가 250~350점 오를 때마다 큰 불꽃이 터진다.
                 // (레벨이 오를수록 점수가 빨리 쌓이므로 자연히 자주 나온다.)
                 if (level >= EarthFromLevel && score >= earthNextScore)
                 {
@@ -1894,11 +1934,11 @@ namespace OpenTyping
                 {
                     level++;
                     // 오락 단계 해금은 자리연습 목표 타수로 일원화했으므로 게임 안에서는 레벨만 올린다 (<260723_4> (1)).
-                    // <260812_24>, <260812_24-1> 문구는 산성비보다 앞에 두고 양쪽에서 폭죽을 터뜨린다.
+                    // <산성비 타자 오락 260812_24>, <산성비 타자 오락 260812_24-1> 문구는 산성비보다 앞에 두고 양쪽에서 폭죽을 터뜨린다.
                     Banner("레벨 " + level + "에 도달하였습니다!", inFront: true);
                     LevelUpFireworks();
 
-                    // <260812_28> 레벨 9에 들어서면 그때부터 점수 간격마다 큰 불꽃이 터진다.
+                    // <산성비 타자 오락 260812_28> 레벨 9에 들어서면 그때부터 점수 간격마다 큰 불꽃이 터진다.
                     if (level == EarthFromLevel && earthNextScore == int.MaxValue)
                         earthNextScore = score + random.Next(EarthScoreGapMin, EarthScoreGapMax + 1);
                 }
@@ -1911,11 +1951,39 @@ namespace OpenTyping
             }
         }
 
+        // ── Caps Lock 경고 (<261005_4>) ──
+
+        /// <summary>검사용: 실제 키보드 대신 이 값을 Caps Lock 상태로 본다(null이면 실제 상태).</summary>
+        internal static bool? CapsLockOverrideForTest;
+
+        /// <summary>영문 산성비에서 지금 Caps Lock이 켜져 있는가(한글 산성비는 늘 false).</summary>
+        private bool CapsLockOn =>
+            isEnglish && (CapsLockOverrideForTest ?? Keyboard.IsKeyToggled(WinKey.CapsLock));
+
+        /// <summary>
+        /// 영문 산성비에서 [Caps Lock]이 켜져 있으면 땅 영역의 두 조작 안내 사이에 빨간 경고 문구를 보이고, 꺼지면
+        /// 감춘다. 사용자가 일부러 켰을 수도 있으므로 경고만 띄운다 — 입력과 정답 판정에는 아무 영향이 없다
+        /// (대문자 단어는 [Caps Lock]을 켜고 쳐도 정답이다, <see cref="MatchesTyped"/>).
+        /// </summary>
+        internal void RefreshCapsLockWarning()
+        {
+            Visibility want = CapsLockOn ? Visibility.Visible : Visibility.Collapsed;
+            if (CapsLockWarningText.Visibility != want) CapsLockWarningText.Visibility = want;
+        }
+
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (TryCheatCode(e)) return;
 
-            if (e.Key != WinKey.Escape || !running) return;
+            // Esc 를 꾹 누르면 KeyDown 이 반복돼 일시정지가 계속 뒤집히므로 반복 입력은 무시한다. 한글 조합 중에는
+            // Esc 가 ImeProcessed 로 오므로 위 치트·제출 입력처럼 원래 키를 꺼내 본다.
+            WinKey escKey = e.Key == WinKey.ImeProcessed ? e.ImeProcessedKey : e.Key;
+            if (escKey != WinKey.Escape || !running) return;
+            if (e.IsRepeat)
+            {
+                e.Handled = true;
+                return;
+            }
 
             paused = !paused;
             PauseOverlay.Visibility = paused ? Visibility.Visible : Visibility.Collapsed;
@@ -1928,7 +1996,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_15> 치트코드를 감지해 치트 창을 연다. 글자 키만 버퍼에 쌓으므로 게임 중 아무 때나
+        /// <산성비 타자 오락 260812_15> 치트코드를 감지해 치트 창을 연다. 글자 키만 버퍼에 쌓으므로 게임 중 아무 때나
         /// 칠 수 있다(입력 칸에 그 글자가 들어가는 것은 평소의 오타와 같아 게임에 영향이 없다).
         /// </summary>
         private bool TryCheatCode(KeyEventArgs e)
@@ -1943,7 +2011,7 @@ namespace OpenTyping
         }
 
         /// <summary>
-        /// <260812_16>(1) 입력 칸의 입력기를 그 자판에 맞춘다. 한글 오락이면 한글 입력기를 켜고(영문
+        /// <산성비 타자 오락 260812_16>(1) 입력 칸의 입력기를 그 자판에 맞춘다. 한글 오락이면 한글 입력기를 켜고(영문
         /// 상태로 시작하면 첫 단어를 칠 수 없다), 영문 오락(<260927_4>(2))이면 입력기를 꺼 영문이 바로
         /// 들어가게 한다. 입력기가 없거나 한글 IME 가 아닌 환경에서는 조용히 넘어간다.
         /// </summary>
@@ -2040,7 +2108,7 @@ namespace OpenTyping
         {
             ScoreText.Text = "점수 " + score;
             LevelText.Text = "  레벨 " + level;
-            // <260812_17> 연속 성공으로 실제로 더 받은 점수(콤보 보너스)를 함께 알려 준다.
+            // <산성비 타자 오락 260812_17> 연속 성공으로 실제로 더 받은 점수(콤보 보너스)를 함께 알려 준다.
             ComboText.Text = combo >= 2
                 ? "연속 성공 ×" + combo + "  보너스 점수 " + (combo * 2) + "점 추가!"
                 : "";

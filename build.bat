@@ -53,6 +53,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem --- <261003_1> Word filter (tools\apply-word-filter.ps1), BEFORE building.
+rem     Checks every entry of the filter file (OpenTyping\Resources\<filter>.txt)
+rem     and removes its "existing word" entries (2+ letters) from the bundled
+rem     word lists (wordslist\words.json, Resources\words_fallback.json), so the
+rem     word list that gets built and shipped is already filtered. One-syllable
+rem     entries are applied by the app at run time (the filter file is embedded
+rem     in the exe). Any problem (non-UTF-8 file, broken or non-Hangul/Latin
+rem     characters) makes the tool exit 1 and stops the build right here, so an
+rem     unfiltered list or a broken filter file can never be shipped.
+rem     build-exe.bat calls this script, so installers get the same step.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\apply-word-filter.ps1"
+if errorlevel 1 (
+    echo [FAILED] Word filter step failed; build stopped.
+    exit /b 1
+)
+
 rem --- Remove stale exes first (build\ and staging) so an old or wrongly-named
 rem     exe can never survive this run and get packaged by build-exe.bat.
 rem     (A stale exe being silently packaged happened for real on 2026-08-31.)
@@ -139,8 +155,8 @@ if errorlevel 8 (
 )
 
 rem  Finger-layer hand-shape vectors (SVG). The app reads "hands\*.svg" next to
-rem  the exe (FingerLayer.TryLoadHandSvg); falls back to the built-in ContourHand
-rem  synthesis if a file is missing. Copy directly from source (same anti-trap
+rem  the exe (FingerLayer.TryLoadHandSvg); falls back to the home-pose SVGs
+rem  (home-left/right.svg) if a file is missing. Copy directly from source (same anti-trap
 rem  rationale as above) (<260811_26>(2-1)).
 robocopy "%~dp0OpenTyping\hands" "%BUILD_DIR%\hands" /MIR /NFL /NDL /NJH /NJS >nul
 if errorlevel 8 (

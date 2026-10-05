@@ -9,7 +9,7 @@
                  Title="프로그램 정보"
                  Style="{StaticResource WindowTitleStyle}"
                  FontFamily="{StaticResource NanumGothic}"
-                 Width="440"
+                 Width="520"
                  Height="340"
                  ResizeMode="NoResize"
                  ShowMinButton="False"
@@ -48,15 +48,24 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- 제작자 -->
-        <TextBlock Grid.Row="1"
-                   Style="{StaticResource NormalTextBlock}"
-                   FontSize="11pt"
-                   Margin="0 18 0 0">
-            <Run Text="원작자: Gear"/>
-            <Run Text="    "/>
-            <Run Text="PLUS 제작자: CHB"/>
-        </TextBlock>
+        <!-- 제작자 (<261005_3>): 링크 주소를 괄호 안에 그대로 보이고, 클릭하면 기본 브라우저로 그 주소를 연다.
+             Hyperlink 앞뒤 Run 사이에 공백이 끼지 않도록 한 줄에 붙여 쓴다. 두 줄이 가장 길 때 약 420px(11pt)라서
+             창 너비를 440에서 520으로 넓혔다. 링크 색은 기본값(평소 검정, 마우스를 올릴 때만 파랑)이 링크로 안 보여 프로젝트의
+             파랑(#1c7ed6)으로 고정했다. -->
+        <StackPanel Grid.Row="1"
+                    Margin="0 18 0 0">
+            <TextBlock Style="{StaticResource NormalTextBlock}"
+                       FontSize="11pt"
+                       TextWrapping="Wrap">
+                <Run Text="원작자: Gear("/><Hyperlink Foreground="#1c7ed6" NavigateUri="https://github.com/suhdonghwi/OpenTyping" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/suhdonghwi/OpenTyping</Hyperlink><Run Text=")"/>
+            </TextBlock>
+            <TextBlock Style="{StaticResource NormalTextBlock}"
+                       FontSize="11pt"
+                       TextWrapping="Wrap"
+                       Margin="0 4 0 0">
+                <Run Text="PLUS 제작자: CHB("/><Hyperlink Foreground="#1c7ed6" NavigateUri="https://github.com/CHBte/OpenTypingPlus" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/CHBte/OpenTypingPlus</Hyperlink><Run Text=")"/>
+            </TextBlock>
+        </StackPanel>
 
         <!-- 빌드 시각 -->
         <TextBlock x:Name="BuildText"

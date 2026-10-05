@@ -70,7 +70,8 @@ namespace OpenTyping
         {
             if (other.KeyIncorrectCount != null)
             {
-                int AddInt(int lhs, int rhs) => lhs + rhs;
+                // 저장 파일에서 읽은 값이 int 끝이어도 넘쳐서 음수가 되지 않게(포화 덧셈).
+                int AddInt(int lhs, int rhs) => (int)Math.Min((long)lhs + rhs, int.MaxValue);
 
                 KeyIncorrectCount = MergeBy(KeyIncorrectCount, other.KeyIncorrectCount, AddInt);
                 RecomputeMostIncorrect();
@@ -78,18 +79,22 @@ namespace OpenTyping
 
             if (other.SentencePracticeCount > 0)
             {
-                int newSpeedSum = (AverageTypingSpeed * SentencePracticeCount) +
-                             (other.AverageTypingSpeed * other.SentencePracticeCount);
-                int newAccuracySum = (AverageAccuracy * SentencePracticeCount) +
-                                     (other.AverageAccuracy * other.SentencePracticeCount);
+                // double 로 더한다 — 저장 파일에서 읽은 값이 크거나 음수여도 int 곱셈이 넘쳐 합이 0 이 되고
+                // (0 으로 나누어 NaN → RoundToInt 예외) 종료 처리에서 예외가 나는 일이 없게.
+                double newSpeedSum = ((double)AverageTypingSpeed * SentencePracticeCount) +
+                                     ((double)other.AverageTypingSpeed * other.SentencePracticeCount);
+                double newAccuracySum = ((double)AverageAccuracy * SentencePracticeCount) +
+                                        ((double)other.AverageAccuracy * other.SentencePracticeCount);
 
-                SentencePracticeCount = SentencePracticeCount + other.SentencePracticeCount;
+                // 횟수도 int 끝에서 넘쳐 음수가 되지 않게 포화시킨다(그 값으로 나누므로 음수·0 이면 평균이 깨진다).
+                long newCount = Math.Min((long)SentencePracticeCount + other.SentencePracticeCount, int.MaxValue);
+                SentencePracticeCount = (int)newCount;
 
                 // 정수 나눗셈(자름)이 아니라 이 프로젝트의 다른 평균 계산과 같은 AwayFromZero
                 // 반올림으로 맞춘다 — 안 그러면 예: 합 21 ÷ 2 가 반올림 시 11이어야 할 값이
                 // 자름으로 10이 되어, 방금 통일한 반올림 규칙과 다시 어긋난다.
-                AverageTypingSpeed = TypingMeasurer.RoundToInt((double)newSpeedSum / SentencePracticeCount);
-                AverageAccuracy = TypingMeasurer.RoundToInt((double)newAccuracySum / SentencePracticeCount);
+                AverageTypingSpeed = TypingMeasurer.RoundToInt(newSpeedSum / newCount);
+                AverageAccuracy = TypingMeasurer.RoundToInt(newAccuracySum / newCount);
             }
         }
 

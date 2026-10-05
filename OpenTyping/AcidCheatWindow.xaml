@@ -13,7 +13,7 @@
                  ShowMinButton="False"
                  ShowMaxRestoreButton="False"
                  Icon="{StaticResource AppIcon}">
-    <!-- <260812_15> 산성비 타자 오락의 치트 창. 파란 글씨 산성비의 비율과 나올 효과를 고른다. -->
+    <!-- <산성비 타자 오락 260812_15> 산성비 타자 오락의 치트 창. 파란 글씨 산성비의 비율과 나올 효과를 고른다. -->
     <StackPanel Orientation="Vertical"
                 Margin="24 16 24 18">
         <TextBlock Style="{StaticResource NormalTextBlock}"
@@ -51,7 +51,7 @@
                    Foreground="#868e96"
                    Text="체크한 효과들이 고루 나옵니다."
                    Margin="0 6 0 0"/>
-        <!-- <260812_27> 한 번에 전부 체크/해제 -->
+        <!-- <산성비 타자 오락 260812_27> 한 번에 전부 체크/해제 -->
         <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
             <Button x:Name="CheckAllButton" Margin="0 0 10 0" Click="CheckAll_Click">
                 <TextBlock Style="{StaticResource ControlButtonText}" Text="전부 체크"/>

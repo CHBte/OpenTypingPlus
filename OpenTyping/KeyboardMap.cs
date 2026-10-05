@@ -62,6 +62,10 @@ namespace OpenTyping
             alphabetOf[(pos.Row, pos.Column, shift)] = Normalize(alphabet);
         }
 
+        // 대소문자 짝(영문 'd'/'D')만 같은 알파벳으로 친다 — 영문에서는 [Shift]·[Caps Lock]으로 대문자를 내는 법을
+        // 사용자가 따로 배울 수 있다고 가정하기 때문이다(썰렁이 설명, 2026-10-02). 한글 자판의 윗글쇠(ㅂ→ㅃ 등)는
+        // 소/대문자 변환이 아니라 아예 다른 자소라 짝이 아니다 — 별개의 알파벳으로 남아, 그 자소를 가르치는
+        // 단계의 알파벳에 들어 있을 때만 제시어에 쓰인다.
         private static bool IsCasePair(string normal, string shift) =>
             normal != null && shift != null && normal.Length == 1 && shift.Length == 1
             && char.IsLetter(normal[0]) && normal != shift

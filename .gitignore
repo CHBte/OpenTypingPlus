@@ -265,3 +265,5 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+# 필터링 파일(욕설·비속어 목록)은 공개 저장소에 올리지 않는다(썰렁이 결정, 2026-10-05). 빌드에는 필요하다.
+/OpenTyping/Resources/필터링_단어.txt

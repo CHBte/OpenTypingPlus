@@ -7,9 +7,9 @@ using MahApps.Metro.Controls;
 namespace OpenTyping
 {
     /// <summary>
-    /// <260812_15> 산성비 타자 오락의 치트 창.
+    /// <산성비 타자 오락 260812_15> 산성비 타자 오락의 치트 창.
     ///  - "파란 글씨 산성비를 50%로": 떨어지는 산성비의 절반을 파란 글씨(특수 단어)로 만든다.
-    ///  - "원래대로": 단계별 처치 개수 기준(<260812_13>(1))으로 되돌린다.
+    ///  - "원래대로": 단계별 처치 개수 기준(<산성비 타자 오락 260812_13>(1))으로 되돌린다.
     ///  - 아래 체크 상자로 그때 나올 효과를 고른다(체크한 것들이 고루 나온다).
     /// 고른 값은 창을 닫을 때가 아니라 누르는 즉시 게임에 반영된다.
     /// </summary>
@@ -81,7 +81,7 @@ namespace OpenTyping
             game.ResetCheatEffectBag();   // 예전 선택으로 채워 둔 주머니가 남아 있으면 곧바로 비워 새로 채우게 한다
         }
 
-        /// <summary><260812_27> 체크 상자를 한 번에 켜고 끈다.</summary>
+        /// <summary><산성비 타자 오락 260812_27> 체크 상자를 한 번에 켜고 끈다.</summary>
         private void SetAll(bool @checked)
         {
             foreach (CheckBox b in boxes) b.IsChecked = @checked;   // 각 상자의 이벤트가 게임 쪽을 갱신한다
@@ -97,7 +97,7 @@ namespace OpenTyping
 
         private void Half_Click(object sender, RoutedEventArgs e)
         {
-            // <260812_23> 체크 상자를 자동으로 켜지 않는다. 하나도 고르지 않았다면 게임 쪽에서
+            // <산성비 타자 오락 260812_23> 체크 상자를 자동으로 켜지 않는다. 하나도 고르지 않았다면 게임 쪽에서
             // 전체를 대상으로 삼는다(AcidRainWindow.NextCheatEffect).
             game.CheatHalfSpecial = true;
             ShowState();

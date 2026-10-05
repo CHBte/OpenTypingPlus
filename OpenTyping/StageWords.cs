@@ -42,7 +42,7 @@ namespace OpenTyping
         /// 단계 정의의 words 항목으로 만든다.
         /// <paramref name="levelParts"/>: 수준별로 '더해지는' 알파벳(키 이름) 목록 — 빈 목록이면 앞 수준과 같음.
         /// <paramref name="fromAll"/>: 제시어 목록의 단계 구분을 무시하고 그 묶음의 모든 단어를 모아, 이 단계의
-        /// 알파벳에 맞는 가장 낮은 수준에 넣는다(다른 자판이 기존 단어 목록을 그대로 쓸 때).
+        /// 알파벳에 맞는 가장 낮은 수준에 넣는다(프로그램이 다른 자판의 단계 제시어를 이미 있는 단어 목록에서 가져와 다시 나눌 때).
         /// <paramref name="earlier"/>: 이미 만든 앞 단계들(번호 → StageWords) — reuse 가 가리킨다.
         /// </summary>
         public static StageWords Build(string section, KeyboardMap map, int stageNumber,

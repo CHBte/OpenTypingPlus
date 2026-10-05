@@ -13,7 +13,7 @@
                  ShowMinButton="False"
                  ShowMaxRestoreButton="False"
                  Icon="{StaticResource AppIcon}">
-    <!-- <260812_20>(2) 자리연습 화면 '오락 열기' 목록의 '최고 기록'을 고르면 뜨는 창. -->
+    <!-- <산성비 타자 오락 260812_20>(2) 자리연습 화면 '오락 열기' 목록의 '최고 기록'을 고르면 뜨는 창. -->
     <StackPanel Orientation="Vertical"
                 Margin="24 16 24 18">
         <TextBlock Style="{StaticResource NormalTextBlock}"

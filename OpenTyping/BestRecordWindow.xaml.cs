@@ -6,7 +6,7 @@ using MahApps.Metro.Controls;
 namespace OpenTyping
 {
     /// <summary>
-    /// <260812_20>(2) 산성비 타자 오락의 단계별 최고 기록을 보여 주는 창.
+    /// <산성비 타자 오락 260812_20>(2) 산성비 타자 오락의 단계별 최고 기록을 보여 주는 창.
     /// 문구는 게임 화면과 같은 <see cref="AcidRainWindow.FormatBestRecord"/>를 쓴다.
     /// </summary>
     public partial class BestRecordWindow : MetroWindow

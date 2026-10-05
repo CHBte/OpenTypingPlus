@@ -141,6 +141,10 @@ namespace OpenTyping
         // 단계 정의 파일의 개수 값이 비정상적으로 크면 연습 창을 여는 순간 멈출 수 있으므로 상한을 둔다
         // (실제 파일에 쓰인 값은 수십 이하).
         private const int MaxRoundSize = 1000;
+        // 'grouped' 의 pattern("001" 꼴, 실제는 열 글자 안팎)과 키 목록 길이의 상한 — 개수(count·times)만 막으면 아주 긴
+        // pattern 이나 수십만 개짜리 키 목록이 times × pattern 길이만큼의 제시어를 만들어 연습 창을 여는 순간 멈출 수 있다.
+        private const int MaxPatternLength = 200;
+        private const int MaxKeyTokens = 1000;
 
         /// <summary>파일(실행 파일 옆) → 내장 리소스 순으로 시도해 단계 목록을 만든다. 실패 시 빈 목록.</summary>
         public static List<PracticeStage> Load(string fileName, string wordSection, string layoutName)
@@ -237,6 +241,7 @@ namespace OpenTyping
             {
                 foreach (JToken x in arr)
                 {
+                    if (list.Count >= MaxKeyTokens) break;
                     string label = KeyboardMap.Normalize(x?.ToString());
                     if (!string.IsNullOrEmpty(label)) list.Add(label);
                 }
@@ -244,7 +249,10 @@ namespace OpenTyping
             else if (t != null && t.Type == JTokenType.String)
             {
                 foreach (char ch in (string)t)
+                {
+                    if (list.Count >= MaxKeyTokens) break;
                     if (!char.IsWhiteSpace(ch)) list.Add(ch.ToString());
+                }
             }
             return list;
         }
@@ -266,8 +274,14 @@ namespace OpenTyping
                 {
                     var groups = new List<IReadOnlyList<PracticeStage.StageItem>>();
                     if (r["groups"] is JArray ga)
-                        foreach (JToken g in ga) groups.Add(KeysOf(map, Tokens(g)));
-                    return PracticeRound.Grouped(groups, (string)r["pattern"], times, noRepeat);
+                        foreach (JToken g in ga)
+                        {
+                            if (groups.Count >= MaxPatternLength) break;   // 그룹 수는 pattern 의 숫자 하나가 가리키는 것이라 이만큼이면 넘친다
+                            groups.Add(KeysOf(map, Tokens(g)));
+                        }
+                    string pattern = (string)r["pattern"];
+                    if (pattern != null && pattern.Length > MaxPatternLength) pattern = pattern.Substring(0, MaxPatternLength);
+                    return PracticeRound.Grouped(groups, pattern, times, noRepeat);
                 }
 
                 case "practiced_keys":

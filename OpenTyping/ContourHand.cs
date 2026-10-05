@@ -21,10 +21,11 @@ namespace OpenTyping
             (false, 0), (false, 0), (false, 1), (false, 2), (false, 3), (false, 3),
             (true, 3), (true, 3), (true, 2), (true, 1), (true, 0), (true, 0), (true, 0),
         };
+        // 1행 열 12(`⧵`)는 <261005_5>로 오른손 소지에 배정했다(그 전에는 배정이 없어 기본 자리 포즈였다).
         private static readonly (bool IsRight, int Finger)[] FingerRow123 =
         {
             (false, 0), (false, 1), (false, 2), (false, 3), (false, 3),
-            (true, 3), (true, 3), (true, 2), (true, 1), (true, 0), (true, 0), (true, 0),
+            (true, 3), (true, 3), (true, 2), (true, 1), (true, 0), (true, 0), (true, 0), (true, 0),
         };
 
         /// <summary>이 물리 키(행·열)를 어느 손의 몇 번째 손가락이 담당하는지. 배정이 없으면 false

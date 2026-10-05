@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -20,11 +21,6 @@ namespace OpenTyping
 
         [JsonIgnore]
         public string Location { get; set; }
-
-        public void RemoveDuplicates()
-        {
-            TextData = TextData.Distinct().ToList();
-        }
 
         public static PracticeData Parse(string data)
         {
@@ -60,7 +56,27 @@ namespace OpenTyping
                 throw new InvalidPracticeDataException(message);
             }
 
+            // 줄마다 완성형(NFC)으로 맞추고 null·빈 줄은 버린다. 자모를 풀어 쓴(NFD) 줄은 입력기가 만드는 완성형과
+            // 영영 안 맞아 그 문장의 정확도·타속이 0이 되고(WordCatalog 와 같은 문제), null 줄은 연습 도중
+            // NullReferenceException 을 키를 칠 때마다 되풀이한다.
+            practiceData.TextData = practiceData.TextData
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Select(ToComposed)
+                .ToList();
+
+            if (practiceData.TextData.Count == 0)
+            {
+                const string message = "연습 데이터의 글자 데이터(TextData 필드)에 쓸 수 있는 문장이 없습니다.";
+                throw new InvalidPracticeDataException(message);
+            }
+
             return practiceData;
+        }
+
+        private static string ToComposed(string line)
+        {
+            try { return line.Normalize(NormalizationForm.FormC); }
+            catch (ArgumentException) { return line; } // 짝 없는 서로게이트 등: 원문 그대로
         }
 
         public static PracticeData Load(string dataFileLocation)

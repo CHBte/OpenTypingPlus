@@ -69,9 +69,18 @@ namespace OpenTyping
                 // 드문 목록: rare_level 고유 수준(0이면 없음).
                 int mainLevel = ps.GameMainLevel > 0 ? ps.GameMainLevel : int.MaxValue;
                 IReadOnlyList<string> main = ps.Words.UpTo(mainLevel);
+                var mainSet = new HashSet<string>(main);
                 IReadOnlyList<string> rare = ps.GameRareLevel > 0
-                    ? ps.Words.Unique(ps.GameRareLevel).Where(w => !main.Contains(w)).ToList()
+                    ? ps.Words.Unique(ps.GameRareLevel).Where(w => !mainSet.Contains(w)).ToList()
                     : null;
+
+                // 영문 오락에서는 대문자가 든 단어(DJ·DVD 등)도 그대로 내려온다. 자리연습과 달리 빼지 않는다 —
+                // 대신 판정은 대소문자를 구분해(AcidRainWindow.MatchesTyped) [Shift]로 대문자를 정확히 쳐야 정답이고,
+                // 소문자로 치면 오답이다(썰렁이 지시, 2026-10-02). [Shift]를 아직 안 가르친 낮은 단계에 이런 단어가
+                // 나와도 잘못이 아니다 — 영문 자판에서 [Shift]·[Caps Lock]으로 대문자를 입력하는 법은 사용자가 따로
+                // 배울 수 있다고 가정한다(썰렁이 설명, 2026-10-02). 그러니 단계의 글쇠 범위로 거르지 않는다.
+                // 이 가정은 **영문 자판에만** 해당한다: 한글 레벨2(ㅃ 등)는 대소문자 변환이 아니라 다른 자소라
+                // 별개의 알파벳이고, StageWords 가 그 자소를 가르치는 단계의 단어만 남긴다(KeyboardMap.IsCasePair 참고).
 
                 var gs = new GameStage(id, ps.Name, main, rare, set.GameRareEvery, set.GameUniqueUnit);
                 if (gs.HasWords) result.Add(gs);

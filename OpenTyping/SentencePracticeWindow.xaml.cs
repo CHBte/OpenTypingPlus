@@ -70,10 +70,17 @@ namespace OpenTyping
 
             if (shuffle)
             {
-                practiceData.RemoveDuplicates();
-
+                // 메뉴가 들고 있는 연습 데이터(설정 창을 닫을 때까지 같은 개체)를 직접 바꾸지 않고 사본을 섞는다.
+                // 직접 바꾸면 '무작위로 섞기'를 끄고 같은 글을 다시 열어도 이미 섞이고 중복이 빠진 채로 남는다.
                 var sentenceIndexRandom = new Random();
-                practiceData.TextData = practiceData.TextData.OrderBy(s => sentenceIndexRandom.Next()).ToList();
+                this.practiceData = new PracticeData
+                {
+                    Name = practiceData.Name,
+                    Author = practiceData.Author,
+                    Character = practiceData.Character,
+                    Location = practiceData.Location,
+                    TextData = practiceData.TextData.Distinct().OrderBy(s => sentenceIndexRandom.Next()).ToList(),
+                };
                 // 학습 데이터 무작위로 섞기
             }
 
