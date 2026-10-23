@@ -133,7 +133,7 @@ namespace OpenTyping
         // 이쪽은 애니메이션이라 같은 속성을 나눠 쓰면 충돌한다).
         private readonly TranslateTransform groundBump = new TranslateTransform();
 
-        // <260927_4> 이 창이 다루는 자판(한글/영문)과 그 자판의 오락 단계. 단계 순서가 곧 배경 장식·
+        // <260927_4> 이 창이 다루는 자판(한글/영문)과 그 자판의 오락 단계. 단계 순서가 곧 지면 클립 아트·
         // 파란 단어 빈도의 진행 순서다. (오락 해금은 자리연습 목표 타수 통과로 StageRecords에서 관리한다.)
         private readonly IStageSet stageSet;
         private readonly bool isEnglish;
@@ -481,7 +481,7 @@ namespace OpenTyping
 
         private void StageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // 시작 화면에서 단계를 고르면 그 단계의 최고 기록과 배경(누적 장식) 미리보기를 보여 준다.
+            // 시작 화면에서 단계를 고르면 그 단계의 최고 기록과 배경(누적된 지면 클립 아트) 미리보기를 보여 준다.
             if (StageCombo.SelectedItem is GameStage sel)
             {
                 UpdateBestRecordText(sel.Id);
@@ -670,14 +670,14 @@ namespace OpenTyping
             SkyBottomStop.Color = SkyBottomBase;
         }
 
-        // ── 땅 위 장식(산·나무·꽃·동물·사람) ──
+        // ── 지면 클립 아트(산·나무·꽃·동물·사람) ──
 
-        // 단계가 오를수록 장식을 하나씩 누적해 추가한다. 1단계는 빈 땅.
+        // 단계가 오를수록 지면 클립 아트를 하나씩 누적해 추가한다. 1단계는 빈 땅.
         private void BuildScenery(int stageId)
         {
             SceneryLayer.Children.Clear();
 
-            // 이 자판 오락 단계 중 몇 번째인가. 마지막('연습한 키 전체') 단계는 장식을 전부 보인다.
+            // 이 자판 오락 단계 중 몇 번째인가. 마지막('연습한 키 전체') 단계는 지면 클립 아트를 전부 보인다.
             int idx = StageOrdinal(stageId);
             if (idx >= stages.Count - 1) idx = 8;
 
@@ -711,7 +711,7 @@ namespace OpenTyping
                 Opacity = 0.6,
             };
             Canvas.SetBottom(tri, 0);
-            Panel.SetZIndex(tri, -1); // 산은 나중에 추가돼도 항상 다른 장식 뒤에 있다
+            Panel.SetZIndex(tri, -1); // 산은 나중에 추가돼도 항상 다른 지면 클립 아트 뒤에 있다
             SceneryLayer.Children.Add(tri);
         }
 

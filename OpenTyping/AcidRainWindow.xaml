@@ -90,9 +90,9 @@
                     <GradientStop x:Name="SkyBottomStop" Color="#f8fbff" Offset="1"/>
                 </LinearGradientBrush>
             </Grid.Background>
-            <!-- 땅 위 배경 장식(산·나무·꽃·동물·사람). 단계가 오를수록 코드에서 누적해 추가한다. -->
+            <!-- 지면 클립 아트(산·나무·꽃·동물·사람). 단계가 오를수록 코드에서 누적해 추가한다. -->
             <!-- 겹치는 차례를 선언 순서가 아니라 ZIndex 로 못박는다 (<산성비 타자 오락 260812_26>).
-                 배경 장식(0) < 안내 배너(10) < 산성비(20) < 땅(30). 배너가 산성비보다 뒤라
+                 지면 클립 아트(0) < 안내 배너(10) < 산성비(20) < 땅(30). 배너가 산성비보다 뒤라
                  떨어지는 글자를 가리지 않는다. 필요할 때만 코드에서 앞으로(40) 올린다. -->
             <Canvas x:Name="SceneryLayer" Height="90" VerticalAlignment="Bottom" IsHitTestVisible="False"
                     Panel.ZIndex="0"/>
