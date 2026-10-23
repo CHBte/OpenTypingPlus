@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- <261017_1> 화면이 필요 없는 로직(필터 규칙, 단계 판정, 파일 읽기 등)의 자동 테스트. `dotnet test`로 돌린다.
+       창·화면을 띄워 확인해야 하는 것은 열린타자+ 실행 파일의 진단 스위치(-edgetest 등)가 맡는다.
+       대상 프레임워크는 OpenTyping.csproj 와 같아야 그 프로젝트(WPF)를 참조할 수 있다. 참조한 프로젝트의
+       Content(layouts·data·stages·wordslist·hands)는 이 프로젝트의 출력 폴더로도 복사된다. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenTyping\OpenTyping.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

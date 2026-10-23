@@ -1266,33 +1266,8 @@ namespace OpenTyping
             int fail = 0;
             try
             {
-                // 1. 반올림: CountLetter 가 이 파일의 다른 반올림(AwayFromZero)과 일치하는지.
-                //    한글 한 음절=2.5타 → 은행원 반올림(옛 Convert.ToInt32)이면 2, AwayFromZero면 3.
-                int letter1 = TypingMeasurer.CountLetter("가");
-                bool roundOk = letter1 == 3;
-                sb.AppendLine($"CountLetter(\"가\")={letter1} (기대 3) {(roundOk ? "PASS" : "FAIL")}");
-                if (!roundOk) fail++;
-
-                // 2. 서로게이트 쌍(이모지 등)이 2타가 아니라 1타로 세지는지.
-                int emoji = TypingMeasurer.CountStrokes("\U0001F600");
-                bool emojiOk = emoji == 1;
-                sb.AppendLine($"CountStrokes(이모지)={emoji} (기대 1) {(emojiOk ? "PASS" : "FAIL")}");
-                if (!emojiOk) fail++;
-
-                // 3. Differ.CalculateAccuracy(빈 diffs) → NaN 아닌 0 (문장연습 크래시 예방).
-                double acc = Differ.CalculateAccuracy(new List<Differ.DiffData>());
-                bool accOk = acc == 0;
-                sb.AppendLine($"CalculateAccuracy(빈 diffs)={acc} (기대 0) {(accOk ? "PASS" : "FAIL")}");
-                if (!accOk) fail++;
-
-                // 4. DictationState.Wrong 이 칸(7글자)을 넘지 않는지.
-                var dictation = new DictationState();
-                dictation.Start("가나다");
-                for (int i = 0; i < 15; i++) dictation.Wrong("x");
-                int totalLen = dictation.Segments().Sum(s => s.Text.Length);
-                bool dictOk = totalLen <= 7;
-                sb.AppendLine($"DictationState.Wrong 15회 후 칸 길이={totalLen} (기대 <=7) {(dictOk ? "PASS" : "FAIL")}");
-                if (!dictOk) fail++;
+                // <261017_1> 화면이 필요 없는 로직 항목(1~4·6·7·12~20·22~24번)은 dotnet test(..\OpenTyping.Tests)로 옮겼다.
+                // 여기에는 창을 띄우거나 실제 AppData·실행 파일 안 리소스를 확인해야 하는 항목만 남긴다(번호는 예전 그대로).
 
                 // 5. SyllablePracticeWindow("") 가 알아보기 힘든 IndexOutOfRangeException 대신
                 //    바로 원인을 알 수 있는 예외로 막는지.
@@ -1301,34 +1276,6 @@ namespace OpenTyping
                 catch (ArgumentException) { threw = true; }
                 sb.AppendLine($"SyllablePracticeWindow(\"\") → ArgumentException={threw} {(threw ? "PASS" : "FAIL")}");
                 if (!threw) fail++;
-
-                // 6. 빈 자판 폴더 오류 메시지가 저장된 설정값이 아니라 실제로 넘긴 경로를 담는지.
-                string emptyDir = Path.Combine(Path.GetTempPath(), "otp_edgetest_empty_" + Guid.NewGuid().ToString("N"));
-                Directory.CreateDirectory(emptyDir);
-                bool pathInMsg = false;
-                try { KeyLayout.LoadFromDirectory(emptyDir); }
-                catch (KeyLayoutLoadFail ex) { pathInMsg = ex.Message.Contains(emptyDir); }
-                finally { try { Directory.Delete(emptyDir); } catch { /* 무시 */ } }
-                sb.AppendLine($"빈 자판 폴더 오류 메시지에 실제 경로 포함={pathInMsg} {(pathInMsg ? "PASS" : "FAIL")}");
-                if (!pathInMsg) fail++;
-
-                // 7. 자판 데이터의 한 행이 null 이면 NullReferenceException 이 아니라
-                //    InvalidKeyLayoutDataException(원인을 알 수 있는 진단)으로 막히는지.
-                bool nullRowOk = false;
-                string nullRowActual = "";
-                try
-                {
-                    string layoutPath = Path.Combine(AppContext.BaseDirectory, "layouts", "DubeolsikStandard.json");
-                    var jobj = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(layoutPath));
-                    ((Newtonsoft.Json.Linq.JArray)jobj["KeyLayoutData"])[0] = Newtonsoft.Json.Linq.JValue.CreateNull();
-                    KeyLayout.Parse(jobj.ToString());
-                }
-                catch (InvalidKeyLayoutDataException) { nullRowOk = true; }
-                catch (Exception ex) { nullRowActual = ex.GetType().Name; }
-                sb.AppendLine($"자판 데이터 첫 행 null → InvalidKeyLayoutDataException={nullRowOk}" +
-                              (nullRowActual.Length > 0 ? $" (실제: {nullRowActual})" : "") +
-                              $" {(nullRowOk ? "PASS" : "FAIL")}");
-                if (!nullRowOk) fail++;
 
                 // 8. 치트 창: 단계 콤보를 안 건드리고 '확인'만 눌러도 원래 값(옛 '전부 열기')이
                 //    지금 단계 수로 조용히 줄어들지 않고 그대로 보존되는지.
@@ -1442,128 +1389,6 @@ namespace OpenTyping
                     catch { /* 무시 */ }
                 }
 
-                // 12. 빈 연습 데이터 폴더 오류 메시지가 저장된 설정값이 아니라 실제로 넘긴 경로를
-                //     담는지 (<260828_2-1>, KeyLayout.LoadFromDirectory와 같은 유형의 버그였음).
-                string emptyPracticeDir = Path.Combine(Path.GetTempPath(), "otp_edgetest_empty_practice_" + Guid.NewGuid().ToString("N"));
-                Directory.CreateDirectory(emptyPracticeDir);
-                bool practicePathInMsg = false;
-                try { PracticeData.LoadFromDirectory(emptyPracticeDir); }
-                catch (PracticeDataLoadFail ex) { practicePathInMsg = ex.Message.Contains(emptyPracticeDir); }
-                finally { try { Directory.Delete(emptyPracticeDir); } catch { /* 무시 */ } }
-                sb.AppendLine($"빈 연습 데이터 폴더 오류 메시지에 실제 경로 포함={practicePathInMsg} {(practicePathInMsg ? "PASS" : "FAIL")}");
-                if (!practicePathInMsg) fail++;
-
-                // 13. 단어 목록이 자모를 풀어 쓴 형식(NFD)으로 저장돼 있어도 완성형으로 맞춰 읽는지.
-                string nfd = "나라".Normalize(System.Text.NormalizationForm.FormD);
-                WordCatalog.UseJsonForTest("{\"hangul\":{\"stages\":[{\"stage\":1,\"levels\":[{\"level\":1,\"words\":[\"" + nfd + "\"]}]}]}}");
-                IReadOnlyList<string> nfcWords = WordCatalog.RawLevelWords(WordCatalog.Hangul, 1, 1);
-                WordCatalog.UseJsonForTest(null);
-                bool nfcOk = nfcWords.Count == 1 && nfcWords[0] == "나라";
-                sb.AppendLine($"NFD 단어 → 완성형으로 읽기={nfcOk} {(nfcOk ? "PASS" : "FAIL")}");
-                if (!nfcOk) fail++;
-
-                // 14. 원자적 쓰기가 교체에 실패해도 .tmp 파일을 남기지 않는지(대상 경로가 폴더라 교체 불가).
-                string atomicDir = Path.Combine(Path.GetTempPath(), "otp_edgetest_atomic_" + Guid.NewGuid().ToString("N"));
-                string blocked = Path.Combine(atomicDir, "target.json");
-                Directory.CreateDirectory(blocked);   // 같은 이름의 폴더가 있어 파일로 옮길 수 없다
-                bool atomicThrew = false;
-                try { AtomicFile.WriteText(blocked, "{}"); }
-                catch (Exception) { atomicThrew = true; }
-                bool noLeftover = Directory.GetFiles(atomicDir, "*.tmp").Length == 0;
-                try { Directory.Delete(atomicDir, true); } catch { /* 무시 */ }
-                bool atomicOk = atomicThrew && noLeftover;
-                sb.AppendLine($"원자적 쓰기 실패 시 .tmp 남지 않음: 예외={atomicThrew} 남은tmp없음={noLeftover} {(atomicOk ? "PASS" : "FAIL")}");
-                if (!atomicOk) fail++;
-
-                // 15. 영문 오락: 대문자가 든 단어(DJ·DVD 등)는 그대로 내려오되(빼지 않는다), 판정은 대소문자를 구분해
-                //     대문자로 정확히 쳐야 정답이고 소문자로 치면 오답인지 (썰렁이 지시, 2026-10-02).
-                IStageSet qwertyEn = StageSets.QwertyEnglish;
-                IReadOnlyList<GameStage> enGames = qwertyEn == null ? new List<GameStage>() : GameStages.For(qwertyEn);
-                int upperInGame = enGames.Sum(g => g.Main.Concat(g.Rare).Count(w => w.Any(char.IsUpper)));
-                bool matchRule = AcidRainWindow.MatchesTyped("DJ", "DJ") && !AcidRainWindow.MatchesTyped("DJ", "dj")
-                                 && AcidRainWindow.MatchesTyped("DVD", "DVD") && !AcidRainWindow.MatchesTyped("DVD", "dvd")
-                                 && AcidRainWindow.MatchesTyped("sea", "sea")
-                                 && !AcidRainWindow.MatchesTyped("sea", "SEA");
-                bool upperOk = enGames.Count > 0 && upperInGame > 0 && matchRule;
-                sb.AppendLine($"영문 오락 대문자 단어 포함·대소문자 구분 판정: 오락 단계 {enGames.Count}개, 대문자 단어 {upperInGame}개, 판정 규칙={matchRule} {(upperOk ? "PASS" : "FAIL")}");
-                if (!upperOk) fail++;
-
-                // 16. 연습 데이터(문장·긴글): 줄을 완성형(NFC)으로 맞추고 null·빈 줄은 버리며, 쓸 줄이 하나도 없으면 원인을 알 수 있는
-                //     예외로 막는지(안 그러면 NFD 줄은 정확도 0, null 줄은 키마다 NullReferenceException).
-                string nfdLine = "나라".Normalize(System.Text.NormalizationForm.FormD);
-                PracticeData pdParsed = PracticeData.Parse(
-                    "{\"Name\":\"t\",\"Character\":\"한글\",\"TextData\":[\"" + nfdLine + "\",null,\"  \"]}");
-                bool pdOk = pdParsed.TextData.Count == 1 && pdParsed.TextData[0] == "나라";
-                bool allNullThrows = false;
-                try { PracticeData.Parse("{\"Name\":\"t\",\"Character\":\"한글\",\"TextData\":[null]}"); }
-                catch (InvalidPracticeDataException) { allNullThrows = true; }
-                bool pdAll = pdOk && allNullThrows;
-                sb.AppendLine($"연습 데이터 NFC·null 줄 정리={pdOk} 쓸 줄 없으면 예외={allNullThrows} {(pdAll ? "PASS" : "FAIL")}");
-                if (!pdAll) fail++;
-
-                // 17. 자판 데이터: null 키 칸은 빈 키로 채우고, 음수 통계는 0 으로 되돌리며, 통계 평균 합산이 넘쳐도 예외가 없는지.
-                bool layoutOk = false, statsOk = false;
-                try
-                {
-                    string layoutPath17 = Path.Combine(AppContext.BaseDirectory, "layouts", "DubeolsikStandard.json");
-                    var jl = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(layoutPath17));
-                    ((Newtonsoft.Json.Linq.JArray)((Newtonsoft.Json.Linq.JArray)jl["KeyLayoutData"])[1])[3] =
-                        Newtonsoft.Json.Linq.JValue.CreateNull();
-                    jl["Stats"] = Newtonsoft.Json.Linq.JObject.Parse("{\"SentencePracticeCount\":-5,\"AverageTypingSpeed\":-3}");
-                    KeyLayout parsed17 = KeyLayout.Parse(jl.ToString());
-                    layoutOk = parsed17.KeyLayoutData[1][3] != null
-                               && parsed17.Stats.SentencePracticeCount == 0 && parsed17.Stats.AverageTypingSpeed == 0;
-                }
-                catch (Exception) { layoutOk = false; }
-                try
-                {
-                    var big = new KeyLayoutStats { SentencePracticeCount = int.MaxValue, AverageTypingSpeed = 2 };
-                    big.AddStats(new KeyLayoutStats { SentencePracticeCount = 1, AverageTypingSpeed = 3 });
-                    statsOk = big.AverageTypingSpeed >= 2 && big.AverageTypingSpeed <= 3;
-                }
-                catch (Exception) { statsOk = false; }
-                bool layoutAll = layoutOk && statsOk;
-                sb.AppendLine($"자판 null 키 칸·음수 통계 정리={layoutOk} 통계 합산 넘침 없음={statsOk} {(layoutAll ? "PASS" : "FAIL")}");
-                if (!layoutAll) fail++;
-
-                // 18. 원자적 쓰기가 저장 폴더가 사라진 뒤에도(폴더를 다시 만들어) 성공하는지.
-                string gonePath = Path.Combine(Path.GetTempPath(), "otp_edgetest_gone_" + Guid.NewGuid().ToString("N"), "sub", "f.json");
-                bool goneOk = false;
-                try
-                {
-                    AtomicFile.WriteText(gonePath, "{\"a\":1}");
-                    goneOk = File.Exists(gonePath) && File.ReadAllText(gonePath) == "{\"a\":1}";
-                }
-                catch (Exception) { goneOk = false; }
-                finally { try { Directory.Delete(Path.GetDirectoryName(Path.GetDirectoryName(gonePath)), true); } catch { /* 무시 */ } }
-                sb.AppendLine($"원자적 쓰기: 없어진 폴더 다시 만들기={goneOk} {(goneOk ? "PASS" : "FAIL")}");
-                if (!goneOk) fail++;
-
-                // 19. 단계 정의 파일의 키 목록 길이 상한(수십만 글자 목록이 연습 창을 여는 순간 멈추게 하지 않도록).
-                int tokenCount = StageDefinitionLoader.Tokens(new Newtonsoft.Json.Linq.JValue(new string('a', 100000))).Count;
-                bool tokensOk = tokenCount > 0 && tokenCount <= 1000;
-                sb.AppendLine($"단계 정의 키 목록 길이 상한: 10만 글자 → {tokenCount}개 {(tokensOk ? "PASS" : "FAIL")}");
-                if (!tokensOk) fail++;
-
-                // 20. 설정 파일의 NaN 값이 손 모양 창을 못 열게 하지 않는지(UserSettingsStore.Sanitize, 비공개라 리플렉션으로).
-                bool sanitizeOk = false;
-                try
-                {
-                    var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance;
-                    Type storeType = typeof(UserSettingsStore).GetNestedType("Store", System.Reflection.BindingFlags.NonPublic);
-                    object store = Activator.CreateInstance(storeType);
-                    storeType.GetProperty("FingerLayerThickness").SetValue(store, double.NaN);
-                    storeType.GetProperty("FingerLayerOpacity").SetValue(store, 99.0);
-                    storeType.GetProperty("TpmMethod").SetValue(store, null);
-                    typeof(UserSettingsStore).GetMethod("Sanitize", flags).Invoke(null, new[] { store });
-                    sanitizeOk = (double)storeType.GetProperty("FingerLayerThickness").GetValue(store) == 3.5
-                                 && (double)storeType.GetProperty("FingerLayerOpacity").GetValue(store) == 1.0
-                                 && (string)storeType.GetProperty("TpmMethod").GetValue(store) == "simple";
-                }
-                catch (Exception) { sanitizeOk = false; }
-                sb.AppendLine($"설정 파일 NaN·범위 밖 값 정리={sanitizeOk} {(sanitizeOk ? "PASS" : "FAIL")}");
-                if (!sanitizeOk) fail++;
-
                 // 21. 문장연습 '무작위 섞기'가 메뉴가 든 연습 데이터를 직접 바꾸지 않고 사본을 섞는지.
                 var shared = new PracticeData { Name = "t", Character = "한글", TextData = new List<string> { "가", "가", "나" } };
                 var swin = new SentencePracticeWindow(shared, true);
@@ -1571,57 +1396,6 @@ namespace OpenTyping
                 swin.Close();
                 sb.AppendLine($"문장연습 섞기가 원본 연습 데이터를 건드리지 않음={sharedIntact} {(sharedIntact ? "PASS" : "FAIL")}");
                 if (!sharedIntact) fail++;
-
-                // 22. CLAUDE.md '영문 오락의 대문자 단어'에 적은 전제 — 영문의 대문자는 소문자와 같은 알파벳(대소문자 변환)이지만,
-                //     한글 레벨2([Shift]로 내는 ㅃ 등)는 다른 자소라 별개의 알파벳이고 한글 자판에는 대소문자 글쇠가 없다.
-                KeyboardMap enMap = StageSets.QwertyEnglish?.Keyboard;
-                KeyboardMap koMap = StageSets.DubeolsikStandard?.Keyboard;
-                HashSet<string> enAlpha = enMap?.AlphabetsOf("DJ");
-                HashSet<string> koAlpha = koMap?.AlphabetsOf("뿌");   // ㅃ(윗글쇠) + ㅜ
-                bool enCaseOk = enMap != null && enMap.HasCaseLetters && enAlpha != null && enAlpha.SetEquals(new[] { "d", "j" });
-                bool koSeparateOk = koMap != null && !koMap.HasCaseLetters && koAlpha != null
-                                    && koAlpha.Contains("ㅃ") && !koAlpha.Contains("ㅂ");
-                bool premiseOk = enCaseOk && koSeparateOk;
-                sb.AppendLine($"영문 대소문자=같은 알파벳({enCaseOk}), 한글 레벨2=별개 알파벳·대소문자 글쇠 없음({koSeparateOk}) {(premiseOk ? "PASS" : "FAIL")}");
-                if (!premiseOk) fail++;
-
-                // 23. <261003_1>(2) 필터링 파일 형식: 쉼표·전각 쉼표·CR+LF/LF/CR·빈칸·빈 항목·'#' 주석·NFD·BOM.
-                string nfdDdong = "똥".Normalize(System.Text.NormalizationForm.FormD);
-                List<FilterWords.Entry> parsed = FilterWords.Parse(
-                    "﻿# 주석, 무시\r\n삥, 나라 ，어 망\n\t다리  # 메모\r뿡,,\r\n" + nfdDdong + ",\r\n,");
-                string parsedText = string.Join("|", parsed.Select(x => x.Text + "@" + x.Line + (x.Problem == null ? "" : "!")));
-                bool formatOk = parsedText == "삥@2|나라@2|어망@2|다리@3|뿡@4|똥@5";
-                List<FilterWords.Entry> bad = FilterWords.Parse("가1, ㄱ, a�b, 나-라, 좋아, Abc");
-                string badFlags = string.Join("", bad.Select(x => x.Problem == null ? "o" : "x"));
-                bool badOk = badFlags == "xxxxoo";
-                sb.AppendLine($"필터링 파일 형식 읽기={formatOk} ({parsedText}), 문제 항목 판정={badOk} ({badFlags}) {(formatOk && badOk ? "PASS" : "FAIL")}");
-                if (!(formatOk && badOk)) fail++;
-
-                // 24. <261003_1>(3)(5) 한 음절 필터링 단어: 실행 파일에 포함된 필터링 파일의 한 음절이 syllable_blacklist 와 합쳐져
-                //     '조합이 가능한 한 음절'에서 빠지고, 그 음절이 든 기존 단어는 남으며, 기존 단어 필터링 단어는 실행 중 적용되지 않는지.
-                WordCatalog.UseJsonForTest("{\"syllable_blacklist\":\"갉\",\"hangul\":{\"stages\":[{\"stage\":1,\"levels\":[{\"level\":1,\"words\":[\"삥땅\",\"나라\"]}]}]}}");
-                string blacklist = WordCatalog.SyllableBlacklist(WordCatalog.Hangul);
-                bool unionOk = blacklist.Contains('갉') && blacklist.Contains('삥')
-                               && "년놈뒈똥뽕섹술썅씹엿젖졷좃좆좇죽총칼".All(blacklist.Contains);
-                bool wordKept = WordCatalog.RawLevelWords(WordCatalog.Hangul, 1, 1).Contains("삥땅");
-                WordCatalog.UseJsonForTest(null);
-                KeyboardMap koMap24 = StageSets.DubeolsikStandard?.Keyboard;
-                var bbiKeys = new HashSet<string> { "ㅃ", "ㅣ", "ㅇ" };
-                bool singleOk = koMap24 != null
-                    && StageWords.ComputeSingles(koMap24, bbiKeys, null, "").Contains("삥")          // 거르지 않으면 나온다
-                    && !StageWords.ComputeSingles(koMap24, bbiKeys, null, blacklist).Contains("삥"); // 거르면 빠진다
-                bool runtimeWordsIgnored = FilterWords.SyllablesOf(FilterWords.Parse("삥, 삥땅, ab, x")) == "삥";
-                // 실제 두벌식 단계들의 '조합이 가능한 한 음절'에 필터링 음절이 하나도 없어야 한다.
-                string realBlacklist = WordCatalog.SyllableBlacklist(WordCatalog.Hangul);
-                IStageSet koSet = StageSets.DubeolsikStandard;
-                int leaked = koSet == null ? -1 : koSet.Stages.Sum(st => st.Words.Singles.Count(s => realBlacklist.Contains(s[0])));
-                int singlesTotal = koSet == null ? 0 : koSet.Stages.Sum(st => st.Words.Singles.Count);
-                bool realOk = leaked == 0 && singlesTotal > 0 && realBlacklist.Contains('삥');
-                bool filterAll = unionOk && wordKept && singleOk && runtimeWordsIgnored && realOk;
-                sb.AppendLine($"한 음절 필터: 합치기={unionOk} 한 음절에서 빠짐={singleOk} 그 음절이 든 기존 단어 남음={wordKept} " +
-                              $"실행 중 기존 단어 필터 미적용={runtimeWordsIgnored} 실제 단계 한 음절 {singlesTotal}개 중 필터링 음절 {leaked}개 " +
-                              $"{(filterAll ? "PASS" : "FAIL")}");
-                if (!filterAll) fail++;
 
                 // 25. <261003_1.1>(5.1.1) 실행 파일 안에는 한 음절 필터링 단어만 있다 — 기존 단어 필터링 단어(두 글자 이상)와
                 //     '#' 주석은 들어 있지 않고, 예전 이름(필터링 파일 전체)의 리소스도 없어야 한다.

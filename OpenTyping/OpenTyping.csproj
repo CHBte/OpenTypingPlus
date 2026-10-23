@@ -47,6 +47,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- <261017_1> 로직 자동 테스트(..\OpenTyping.Tests, dotnet test)가 internal 클래스(AtomicFile·DictationState 등)도 시험할 수 있게 한다. -->
+    <InternalsVisibleTo Include="OpenTyping.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Resources\Fonts\NanumGothic.ttf" />
     <Resource Include="Resources\Fonts\NanumGothicBold.ttf" />
     <Resource Include="Resources\Fonts\NanumGothicExtraBold.ttf" />
