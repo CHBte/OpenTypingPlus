@@ -19,8 +19,8 @@
     <!-- <2600912_5>: 메이저를 0에서 1로 올리는 것만 사용자 지시가 필요했다 — <260927_16>로 1.0.0.0(첫 정식 릴리스)까지
          올려 끝났다. <2600912_5.3>: 이후에는 메이저를 포함한 모든 자리를 push할 때마다, 그리고 push할 때만 Claude가 바뀐 내용에 맞는 자리를
          골라 올린다(지난번과 구분되도록 최소 한 자리는 반드시 올린다). 프로젝트 CLAUDE.md "버전 번호" 참고. -->
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
   </PropertyGroup>
 
   <!-- 빌드 시각을 컴파일 시점 기준으로 어셈블리 메타데이터에 자동 주입한다.
