@@ -63,9 +63,10 @@
     <Resource Include="Resources\logo.png" />
     <!-- <산성비 타자 오락 260812_28.1> '지구 환경을 지켜라' 큰 불꽃 애니메이션 프레임(8열 스프라이트시트, 61장 사용). -->
     <Resource Include="Resources\earth_fire_spritesheet.png" />
-    <!-- 산성비 오락의 구름·지면 클립 아트 그림(캔바 AI로 그린 장면을 조각마다 떼어 낸 투명 PNG, 2026-10-23). 캔바 약관상
-         출처 정보(C2PA)를 지우면 안 되므로 받은 파일을 그대로 넣는다 — 다른 프로그램으로 다시 저장하지 않는다. -->
-    <Resource Include="Resources\AcidRain\*.png" />
+    <!-- 산성비 오락의 구름·지면 클립 아트 그림(캔바 AI로 그린 투명 PNG). `배경 세트`(<261025_3>)마다 폴더 하나
+         (Resources\AcidRain\<배경 세트 Id>\). 캔바 약관상 출처 정보(C2PA)를 지우면 안 되므로 받은 파일을 그대로 넣는다 — 다른
+         프로그램으로 다시 저장하지 않는다. -->
+    <Resource Include="Resources\AcidRain\**\*.png" />
     <Resource Include="icon.ico" />
   </ItemGroup>
 

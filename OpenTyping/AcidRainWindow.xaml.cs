@@ -26,7 +26,7 @@ namespace OpenTyping
     /// 자리연습 화면의 '오락' 드롭다운에서 특정 단계로 바로 진입할 수 있다.
     /// <2600919_5>: 다른 창들과 같은 mah:MetroWindow로 바꿔 파란 테두리·제목표시줄 디자인을 통일했다.
     /// </summary>
-    public partial class AcidRainWindow : MetroWindow
+    public partial class AcidRainWindow : MetroWindow, ISceneCanvas
     {
         // ── 진행도(단계 잠금 해제 + 단계별 최고 기록) ──
         private class BestRecord
@@ -43,7 +43,7 @@ namespace OpenTyping
         // ── 낙하 단어 ──
         private sealed class FallingWord
         {
-            public TextBlock Block;
+            public OutlinedText Block;   // 흰 윤곽선을 두른 글자(짙은 연기·매연 구름 위에서도 읽히게)
             public string Text;
             public double X;
             public double Y;
@@ -244,12 +244,15 @@ namespace OpenTyping
         public AcidRainWindow(IStageSet stageSet, int targetStageId)
         {
             this.stageSet = stageSet ?? StageSets.Current;
+            background = BackgroundSets.For(this.stageSet);   // 자판에 배정된 배경 세트(<261025_3>)
             // 한글을 칠 수 있는 자판이면 한글 입력기를 켜고, 아니면(영문 자판) 끈다.
             isEnglish = !this.stageSet.Keyboard.CanTypeHangul;
             this.targetStageId = targetStageId;
             InitializeComponent();
             // 특수 이벤트 '화면 흔들림'(shakeShift) + 땅에 닿을 때의 한 번 흔들림(groundBump)
             GameArea.RenderTransform = new TransformGroup { Children = { shakeShift, groundBump } };
+            // 구름은 단계마다 모습이 달라 BuildScenery 가 단계에 맞춰 다시 놓지만, 그 전에(예: 단어 목록 경고창이 떠 있는 동안) 하늘이
+            // 비지 않게 먼저 흰 구름을 놓아 둔다.
             BuildClouds();
 
             frameTimer.Interval = TimeSpan.FromMilliseconds(33);
@@ -271,7 +274,7 @@ namespace OpenTyping
             // 게임 도중 창을 닫아도 33ms 루프가 계속 돌지 않도록 타이머를 멈춘다(누수·예외 방지).
             // QuitToStart()/GameOver()와 같은 이유로, 창을 어떻게 닫든(제목표시줄 X, Alt+F4 포함)
             // 그때까지의 점수가 최고 기록이면 남기고 닫는다.
-            Closed += (s, e) => { TryRecordScore(); running = false; frameTimer.Stop(); groundFlashTimer.Stop(); capsLockTimer.Stop(); };
+            Closed += (s, e) => { TryRecordScore(); running = false; frameTimer.Stop(); groundFlashTimer.Stop(); capsLockTimer.Stop(); ReleasePiecesIfLast(); };
 
             // 게임 중에는 입력창이 포커스를 잃지 않게 유지한다(화면 클릭 등으로 타이핑이 무시되는 것 방지).
             InputBox.LostFocus += (s, e) =>
@@ -672,425 +675,89 @@ namespace OpenTyping
             SkyBottomStop.Color = SkyBottomBase;
         }
 
-        // ── 배경 그림: 구름과 지면 클립 아트 (<261024_1>, acidrain-bg3) ──
-        // 썰렁이 지시 <261024_1>로 지면 클립 아트를 '자라는 꽃밭'(나무 2그루·꽃 식물·벌·나비)으로 바꿨다. 그림은 `기준 장면 + 개별
-        // 생성 방식`을 응용해 캔바 AI로 그리고 캔바의 배경 지우기로 투명하게 한 것으로, 같은 종류 여러 개를 한 장에 그린 '모음
-        // 그림'이다(Resources\AcidRain\*.png). 캔바 약관상 출처 정보(C2PA)를 지우면 안 되므로 받은 파일은 다시 저장하거나 고치지
-        // 않는다 — 조각을 떼어 내고(SheetPiece) 크기·자리를 정하는 일은 모두 실행 중에 메모리에서 한다. 나무의 녹색 큰 원·작은 원
-        // (열매)과 날벌레가 지나간 길(선)은 코드로 그린다.
-        // 자리는 게임 영역(너비 900) 좌표다. 지면 클립 아트의 높이는 땅선(SceneryLayer 바닥 = 땅 띠 윗선)에서 위로 잰다.
-        // 장면의 하늘판은 쓰지 않는다 — 이 창의 하늘은 생명이 줄수록 주황으로 물드는 그라데이션(UpdateSky)이라, 그림으로 덮으면 그
-        // 표시가 사라진다.
+        // ── 배경 그림: `배경 세트`(<261025_3>) ──
+        // 구름과 지면 클립 아트는 배경 세트(AcidRainBackgrounds\ — BackgroundSet·BackgroundSets)가 정한다. 이 창은 자판에 배정된 배경
+        // 세트(BackgroundSets.For)를 골라, 오락 단계에 맞는 배경 단계(BackgroundSets.SceneFor — 단계 수가 달라도 규칙대로)를 놓고 레벨에
+        // 따라 지면 클립 아트를 땅에서 올린다. (계획) 오락 전에 배경을 고르는 드롭다운이 생기면 background 만 바꾸면 된다 — BuildScenery 가
+        // 바뀐 배경 세트를 알아보고 다시 놓는다.
 
-        /// <summary>지면 클립 아트가 올라오는 방식의 종류(<261024_1>(3.2.3)). 나무·꽃 식물은 '식물'로 같이 올라온다.</summary>
-        internal enum RiseKind { Tree, Plant, Bee, Butterfly }
+        private const int SceneRiseMs = 900;              // 레벨업 때 지면 클립 아트가 올라오는 시간(<261024_1>(3.2.3) '짧게 천천히')
 
-        /// <summary>실행 파일에 든 배경 그림(모음 그림) 파일 이름. -acidscenetest 가 출처 정보(C2PA)가 남았는지 본다.</summary>
-        internal static readonly string[] SceneFiles = { "clouds", "sprouts", "stems", "flowers", "buds", "trees", "tree_small", "insects" };
-
-        // 구름(clouds.png 속 조각 → 게임 영역의 왼쪽·위·너비). 단계와 관계없이 늘 같은 자리이고, 셋의 높이를 서로 다르게 둔다(썰렁이 지시).
-        internal static readonly (Int32Rect Piece, double Left, double Top, double Width)[] SceneClouds =
-        {
-            (new Int32Rect(179, 216, 143, 85),    66, 50,  56),
-            (new Int32Rect(694, 214, 263, 88),   372, 92, 102),
-            (new Int32Rect(1298, 198, 207, 103), 704, 30,  80),
-        };
-
-        // 나무(<261024_1>(1)): 그림 파일, 줄기·가지 조각, 그림 속 줄기 가운데 x·가장 낮은 가지 y, 게임 영역의 줄기 x, 줄기 그림의 높이(px),
-        // 익은 열매 색, 열매가 익는 단계, 열매 수, 녹색 큰 타원의 너비(기준 원 반지름의 몇 배). 작은 나무는 왼쪽, 큰 나무(꽃의 약 5배, 썰렁이
-        // 검토)는 오른쪽이다. trees.png 의 왼쪽 나무는 쓰지 않는다(썰렁이 검토로 tree_small.png 로 바꿈). 큰 나무의 타원은 썰렁이 검토로 조금 좁다.
-        internal static readonly (string File, Int32Rect Piece, double TrunkX, double LowBranchY, double GameX, double Height,
-                                  Color Ripe, int RipeScene, int Fruits, double CrownWidth)[] SceneTrees =
-        {
-            ("tree_small", new Int32Rect(282, 141, 519, 1189),  529.5, 682,  62, 150, Color.FromRgb(0xf0, 0x3e, 0x3e), 4,  7, 1.03),
-            ("trees",      new Int32Rect(946, 176, 328, 823),  1117.5, 585, 815, 245, Color.FromRgb(0x70, 0x48, 0xe8), 5, 11, 0.95),
-        };
-
-        // 2단계의 싹(sprouts.png) 다섯 가지.
-        private static readonly Int32Rect[] PlantSprouts =
-        {
-            new Int32Rect(101, 527, 151, 145), new Int32Rect(467, 500, 86, 172), new Int32Rect(764, 449, 136, 223),
-            new Int32Rect(1138, 559, 56, 113), new Int32Rect(1430, 449, 126, 223),
-        };
-
-        // 3단계부터의 줄기와 잎(stems.png): 조각, 그림 속 줄기 x, 줄기 끝 y. 모두 곧은 줄기에 잎 2장이다. 그림의 왼쪽에서 3번째(떡잎처럼
-        // 보이는 것)는 쓰지 않는다(썰렁이 검토).
-        private static readonly (Int32Rect Piece, double StemX, double TopY)[] PlantStems =
-        {
-            (new Int32Rect(55, 466, 168, 325),    128.1, 466),
-            (new Int32Rect(325, 308, 192, 482),   418.6, 331),
-            (new Int32Rect(911, 307, 164, 484),   993.0, 307),
-            (new Int32Rect(1163, 481, 186, 310), 1254.6, 481),
-            (new Int32Rect(1428, 243, 159, 547), 1502.4, 243),
-        };
-
-        // 5단계의 꽃(flowers.png)과 4단계의 봉오리(buds.png): 같은 차례끼리 짝이다(봉오리가 같은 꽃으로 핀다). 조각, 그림 속 밑동 x, 밑동
-        // 토막의 길이(줄). 밑동 토막은 줄기와 녹색이 조금 달라, 떼어 내고 꽃 아랫부분이 줄기 끝을 덮게 놓는다. 차례: 코스모스 분홍·보라·흰색,
-        // 튤립 빨강·노랑·분홍, 백합 흰색·분홍, 데이지, 파란 들꽃.
-        private static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantFlowers =
-        {
-            (new Int32Rect(134, 170, 188, 200),  225.6, 16), (new Int32Rect(440, 170, 186, 200),  532.6, 18),
-            (new Int32Rect(755, 170, 185, 200),  846.8, 19), (new Int32Rect(1108, 169, 140, 201), 1176.0, 27),
-            (new Int32Rect(1407, 183, 128, 187), 1470.8, 24), (new Int32Rect(150, 588, 134, 187),  216.1, 24),
-            (new Int32Rect(438, 565, 182, 210),  528.9, 34), (new Int32Rect(753, 580, 176, 195),  841.7, 33),
-            (new Int32Rect(1083, 594, 166, 181), 1165.8, 26), (new Int32Rect(1417, 622, 111, 153), 1470.8, 39),
-        };
-        private static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantBuds =
-        {
-            (new Int32Rect(186, 235, 52, 83),   211.7, 15), (new Int32Rect(493, 224, 60, 94),   522.9, 15),
-            (new Int32Rect(817, 237, 49, 81),   840.7, 15), (new Int32Rect(1129, 205, 65, 113), 1160.9, 14),
-            (new Int32Rect(1430, 216, 63, 102), 1459.9, 14), (new Int32Rect(182, 605, 60, 138),  211.8, 15),
-            (new Int32Rect(493, 603, 60, 140),  522.8, 15), (new Int32Rect(812, 604, 58, 139),  840.5, 15),
-            (new Int32Rect(1136, 655, 51, 88),  1160.6, 15), (new Int32Rect(1438, 674, 44, 69),  1459.8, 15),
-        };
-
-        // 날벌레(insects.png, 모두 오른쪽을 본다): 벌 두 가지, 나비 두 가지(분홍·노랑). 조각과 그림 속 배 끝(벌은 침 끝 — 가장 왼쪽의 어두운
-        // 픽셀, 나비는 몸통의 가장 아래 갈색 픽셀로 잼). 지나온 길 선은 여기서 시작한다(썰렁이 지시). 분홍 나비는 배 끝이 왼쪽 아래, 노란
-        // 나비는 오른쪽 아래다.
-        private static readonly (Int32Rect Piece, double TipX, double TipY)[] BeePieces =
-        {
-            (new Int32Rect(217, 407, 124, 128), 225, 515.2), (new Int32Rect(584, 421, 126, 117), 594, 515.2),
-        };
-        private static readonly (Int32Rect Piece, double TipX, double TipY)[] ButterflyPieces =
-        {
-            (new Int32Rect(961, 409, 149, 151), 1011.0, 529), (new Int32Rect(1321, 418, 140, 138), 1416.7, 523),
-        };
-
-        // 날벌레의 자리(<261024_1>(1) 6·10단계): 그림, 게임 영역의 가운데 x, 땅선에서 밑변까지의 높이, 오른쪽을 보는가, 지나온 길 선이
-        // 오른쪽에 있는가, 선의 길이. 길 선은 대개 보는 방향의 반대쪽(뒤)이지만, 가운데 나비는 썰렁이 검토로 그림만 뒤집고 선은 오른쪽에 둔다.
-        // 벌끼리·나비끼리 높이를 서로 다르게 둔다(썰렁이 지시). 꽃 위나 꽃 사이에 두어 꽃(앞 레이어)에 덜 가린다(<261024_1>(4)).
-        internal static readonly (int Piece, double X, double Bottom, bool Right, bool TrailRight, double Trail)[] SceneBees =
-        {
-            (0, 214, 70, true, false, 44), (1, 392, 96, false, true, 38), (0, 548, 79, false, true, 50), (1, 676, 104, true, false, 36),
-        };
-        internal static readonly (int Piece, double X, double Bottom, bool Right, bool TrailRight, double Trail)[] SceneButterflies =
-        {
-            (0, 300, 112, true, false, 46), (1, 468, 86, true, true, 40), (0, 612, 128, true, false, 52),
-        };
-
-        private const double SproutScale = 0.075;    // 싹: 모음 그림 1px → 게임 영역 px
-        private const double StemScale = 0.088;      // 줄기와 잎
-        private const double HeadScale = 1.2;        // 꽃·봉오리는 줄기보다 이만큼 크게
-        private const double HeadOverlap = 2.2;      // 꽃·봉오리 아래 끝이 줄기 끝보다 이만큼(px) 아래로 내려와 줄기 끝을 덮는다
-        private const double BeeHeight = 16, ButterflyHeight = 22;
-        private const int SceneRiseMs = 900;         // 레벨업 때 지면 클립 아트가 올라오는 시간(<261024_1>(3.2.3) '짧게 천천히')
-
-        private static readonly Brush CrownBrush = Frozen(Color.FromRgb(0x7e, 0xa8, 0x50));   // 녹색 큰 원(기준 장면의 나무색)
-        private static readonly Color UnripeColor = Color.FromRgb(0xa9, 0xd6, 0x4b);          // 덜 익은 열매(연두, 썰렁이 검토로 조금 어둡게)
-        private static readonly Brush TrailBrush = Frozen(Color.FromArgb(0x99, 0x6b, 0x82, 0x99));   // 날벌레가 지나간 길
-
-        private static Brush Frozen(Color c)
-        {
-            var b = new SolidColorBrush(c);
-            b.Freeze();
-            return b;
-        }
-
-        /// <summary>
-        /// 이 오락 단계의 배경이 두벌식 표준 한글 몇 단계의 배경인가(1~6, 10. <261024_1>(1)·(2)). 마지막('연습한 키 전체') 단계는 늘 10단계
-        /// (완성된 장면)다. 두벌식은 오락이 1~6·10단계라 차례(0부터)+1이 곧 단계이고, QWERTY 영문은 1~5단계가 같은 번호, 6단계(마지막)가
-        /// 10단계 배경이다.
-        /// </summary>
-        internal static int SceneNumberFor(int ordinal, int stageCount)
-        {
-            if (ordinal >= stageCount - 1) return 10;
-            return Math.Min(ordinal + 1, 6);
-        }
-
-        /// <summary>
-        /// <261024_1>(3) 레벨 level 에서 이 종류의 지면 클립 아트가 얼마나 올라왔나(0 = 땅속에 숨음, 1 = 다 올라옴). 처음 레벨에서 0,
-        /// 다 올라오는 레벨에서 1이고 그 사이는 같은 간격이다. 식물(나무·꽃 식물)은 5단계까지 레벨 8, 6단계 레벨 4, 10단계 레벨 3에서
-        /// 다 올라온다. 벌은 6단계에서 레벨 5부터 나타나 레벨 8, 10단계에서 레벨 3부터 나타나 레벨 5에 다 올라오고, 나비는 10단계에서
-        /// 레벨 6부터 나타나 레벨 8에 다 올라온다.
-        /// </summary>
-        internal static double RiseFraction(RiseKind kind, int scene, int level)
-        {
-            int from, full;
-            switch (kind)
-            {
-                case RiseKind.Tree:
-                case RiseKind.Plant:
-                    from = 1;
-                    full = scene >= 10 ? 3 : scene == 6 ? 4 : 8;
-                    break;
-                case RiseKind.Bee:
-                    if (scene < 6) return 0;
-                    if (scene >= 10) { from = 2; full = 5; }
-                    else { from = 4; full = 8; }
-                    break;
-                default:
-                    if (scene < 10) return 0;
-                    from = 5; full = 8;
-                    break;
-            }
-            return Math.Max(0, Math.Min(1, (double)(level - from) / (full - from)));
-        }
-
-        // ── 모음 그림에서 조각 떼어 내기 ──
-
-        private sealed class Piece
-        {
-            public BitmapSource Bitmap;
-            public int Left, Top;   // 떼어 낸 그림의 왼쪽 위가 모음 그림에서 어디인가(px)
-        }
-
-        private static readonly Dictionary<string, BitmapSource> sheetBitmaps = new Dictionary<string, BitmapSource>();
-        private static readonly Dictionary<string, Piece> pieces = new Dictionary<string, Piece>();
-
-        /// <summary>모음 그림 한 장을 한 번만 읽어 둔다(Bgra32). 못 읽으면 null(그 그림만 빠지고 게임은 계속된다).</summary>
-        private static BitmapSource SheetBitmap(string file)
-        {
-            if (sheetBitmaps.TryGetValue(file, out BitmapSource cached)) return cached;
-            BitmapSource result = null;
-            try
-            {
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.UriSource = new Uri("pack://application:,,,/Resources/AcidRain/" + file + ".png");
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.EndInit();
-                var bgra = new FormatConvertedBitmap(bmp, PixelFormats.Bgra32, null, 0);
-                bgra.Freeze();
-                result = bgra;
-            }
-            catch (Exception) { result = null; }
-            sheetBitmaps[file] = result;
-            return result;
-        }
-
-        /// <summary>
-        /// 모음 그림 file 에서 rect 둘레(여유 3px)를 메모리에서 떼어 낸다. 그 안에서 가장 큰 덩어리(알파 8 넘는 픽셀이 8방향으로 이어진 것)만
-        /// 남겨 떨어진 잡티를 빼고, 아래 cutBottom 줄(꽃·봉오리의 밑동 토막)을 지운 뒤, 그림이 있는 부분만 남긴다. 파일은 건드리지 않는다.
-        /// 못 읽으면 null.
-        /// </summary>
-        private static Piece SheetPiece(string file, Int32Rect rect, int cutBottom = 0)
-        {
-            string key = file + "/" + rect + "/" + cutBottom;
-            if (pieces.TryGetValue(key, out Piece cached)) return cached;
-            Piece result = null;
-            BitmapSource sheet = SheetBitmap(file);
-            if (sheet != null)
-            {
-                try { result = CutPiece(sheet, rect, cutBottom); }
-                catch (Exception) { result = null; }
-            }
-            pieces[key] = result;
-            return result;
-        }
-
-        private static Piece CutPiece(BitmapSource sheet, Int32Rect rect, int cutBottom)
-        {
-            const int Margin = 3;
-            int x0 = Math.Max(0, rect.X - Margin), y0 = Math.Max(0, rect.Y - Margin);
-            int x1 = Math.Min(sheet.PixelWidth, rect.X + rect.Width + Margin);
-            int y1 = Math.Min(sheet.PixelHeight, rect.Y + rect.Height + Margin);
-            int w = x1 - x0, h = y1 - y0, stride = w * 4;
-            if (w <= 0 || h <= 0) return null;
-            var px = new byte[stride * h];
-            sheet.CopyPixels(new Int32Rect(x0, y0, w, h), px, stride, 0);
-
-            // 덩어리마다 번호를 매기며 가장 큰 것을 찾는다.
-            var label = new int[w * h];
-            var queue = new int[w * h];
-            int next = 0, best = 0, bestSize = 0;
-            for (int start = 0; start < w * h; start++)
-            {
-                if (label[start] != 0 || px[start * 4 + 3] <= 8) continue;
-                next++;
-                int head = 0, tail = 0;
-                queue[tail++] = start;
-                label[start] = next;
-                while (head < tail)
-                {
-                    int p = queue[head++], py = p / w, pxl = p % w;
-                    for (int dy = -1; dy <= 1; dy++)
-                        for (int dx = -1; dx <= 1; dx++)
-                        {
-                            int ny = py + dy, nx = pxl + dx;
-                            if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
-                            int q = ny * w + nx;
-                            if (label[q] != 0 || px[q * 4 + 3] <= 8) continue;
-                            label[q] = next;
-                            queue[tail++] = q;
-                        }
-                }
-                if (tail > bestSize) { bestSize = tail; best = next; }
-            }
-            if (best == 0) return null;
-
-            int cutFrom = cutBottom > 0 ? rect.Y + rect.Height - cutBottom - y0 : h;   // 이 줄부터 아래는 지운다
-            int bx0 = w, by0 = h, bx1 = -1, by1 = -1;
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                {
-                    int p = y * w + x;
-                    if (label[p] != best || y >= cutFrom)
-                    {
-                        px[p * 4] = px[p * 4 + 1] = px[p * 4 + 2] = px[p * 4 + 3] = 0;
-                        continue;
-                    }
-                    if (x < bx0) bx0 = x;
-                    if (x > bx1) bx1 = x;
-                    if (y < by0) by0 = y;
-                    if (y > by1) by1 = y;
-                }
-            if (bx1 < 0) return null;
-
-            int bw = bx1 - bx0 + 1, bh = by1 - by0 + 1, bstride = bw * 4;
-            var cut = new byte[bstride * bh];
-            for (int y = 0; y < bh; y++)
-                Buffer.BlockCopy(px, (by0 + y) * stride + bx0 * 4, cut, y * bstride, bstride);
-            BitmapSource bmp = BitmapSource.Create(bw, bh, 96, 96, PixelFormats.Bgra32, null, cut, bstride);
-            bmp.Freeze();
-            return new Piece { Bitmap = bmp, Left = x0 + bx0, Top = y0 + by0 };
-        }
-
-        private static Image PieceImage(Piece p, double scale, bool flip)
-        {
-            var img = new Image
-            {
-                Source = p.Bitmap,
-                Width = p.Bitmap.PixelWidth * scale,
-                Height = p.Bitmap.PixelHeight * scale,
-                Stretch = Stretch.Fill,
-            };
-            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
-            if (flip) img.RenderTransform = new ScaleTransform(-1, 1, img.Width / 2, 0);
-            return img;
-        }
-
-        // ── 구름 ──
-
-        private void BuildClouds()
-        {
-            CloudLayer.Children.Clear();
-            foreach (var c in SceneClouds)
-            {
-                Piece p = SheetPiece("clouds", c.Piece);
-                if (p == null) continue;
-                Image img = PieceImage(p, c.Width / p.Bitmap.PixelWidth, false);
-                Canvas.SetLeft(img, c.Left);
-                Canvas.SetTop(img, c.Top);
-                CloudLayer.Children.Add(img);
-            }
-        }
-
-        // ── 지면 클립 아트 ──
+        private BackgroundSet background;                 // 이 오락에 쓰는 배경 세트
+        private BackgroundSet builtBackground;            // SceneryLayer 에 놓인 배경 세트와
+        private int builtScene;                           // 그 배경 단계(0 = 아직 놓지 않음)
+        private int sceneNumber = 10;                     // 지금 배경 단계(구름·올라오기 규칙이 따른다)
 
         private sealed class SceneUnit
         {
             public FrameworkElement Element;
             public TranslateTransform Shift;   // 아래로 밀어 둔 거리(땅선 아래는 SceneryLayer 가 잘라 낸다)
-            public double Travel;              // 다 숨었을 때 밀어 두는 거리: 땅선에서 그림 위 끝까지
+            public double Travel;              // 다 숨었을 때 밀어 두는 거리
             public RiseKind Kind;
+            public bool Fade;                  // 올라온 만큼 진해진다(연기)
         }
 
         private readonly List<SceneUnit> sceneUnits = new List<SceneUnit>();
-        private int sceneNumber = 10;
-
-        private sealed class PlantSpot
-        {
-            public double X;                         // 게임 영역의 가운데 x
-            public int Sprout, Stem, Head;           // 싹·줄기와 잎·꽃(봉오리)의 차례
-            public bool SproutFlip, StemFlip, HeadFlip;
-            public double SproutSize, StemSize;      // 크기 배율
-        }
-
-        private static List<PlantSpot> plantSpots;
 
         /// <summary>
-        /// 꽃 식물의 자리와 모양(<261024_1>(1) 2단계). 몇 가지 그림을 규칙이 보이지 않는 순서로 흩어 촘촘히 놓는다 — 바로 앞(싹·꽃은
-        /// 앞의 둘)과 같은 그림이 이어지지 않게 고르고, 간격·크기·좌우 방향도 조금씩 다르게 한다. 씨앗이 정해진 난수라 늘 같은 배치가
-        /// 나오므로 단계가 바뀌어도 같은 자리에 선다. 나무 줄기 둘레는 비워 둔다(<261024_1>(4)).
+        /// 창이 닫힐 때 떼어 낸 조각을 놓아 준다. 조각 캐시는 모든 오락 창이 함께 쓰므로(static), 다른 오락 창이 아직 열려 있으면 놓아 주지
+        /// 않는다 — 그 창이 단계를 바꿀 때 모음 그림을 다시 읽어 조각을 다시 떼어 내지 않게 한다.
         /// </summary>
-        private static List<PlantSpot> PlantSpots
+        private void ReleasePiecesIfLast()
         {
-            get
+            bool othersOpen = Application.Current != null
+                && Application.Current.Windows.OfType<AcidRainWindow>().Any(w => !ReferenceEquals(w, this));
+            if (!othersOpen) SceneKit.ReleasePieces();
+        }
+
+        /// <summary>배경 세트의 구름을 지금 배경 단계의 모습(CloudLook — 가운데를 둔 채 크기·밝기)으로 놓는다.</summary>
+        private void BuildClouds()
+        {
+            CloudLayer.Children.Clear();
+            (double scale, double shade) = background.CloudLook(sceneNumber);
+            foreach (var c in background.Clouds)
             {
-                if (plantSpots != null) return plantSpots;
-                var rnd = new Random(261024);
-                int Pick(int n, int avoid1, int avoid2)
-                {
-                    int v;
-                    do v = rnd.Next(n); while (v == avoid1 || v == avoid2);
-                    return v;
-                }
-                var spots = new List<PlantSpot>();
-                double x = 9;
-                while (x < 893)
-                {
-                    if (SceneTrees.Any(t => Math.Abs(x - t.GameX) < 16))
-                    {
-                        x += 4;
-                        continue;
-                    }
-                    PlantSpot prev = spots.Count > 0 ? spots[spots.Count - 1] : null;
-                    PlantSpot prev2 = spots.Count > 1 ? spots[spots.Count - 2] : null;
-                    spots.Add(new PlantSpot
-                    {
-                        X = x,
-                        Sprout = Pick(PlantSprouts.Length, prev?.Sprout ?? -1, prev2?.Sprout ?? -1),
-                        Stem = Pick(PlantStems.Length, prev?.Stem ?? -1, -1),
-                        Head = Pick(PlantFlowers.Length, prev?.Head ?? -1, prev2?.Head ?? -1),
-                        SproutFlip = rnd.Next(2) == 0,
-                        StemFlip = rnd.Next(2) == 0,
-                        HeadFlip = rnd.Next(2) == 0,
-                        SproutSize = 0.85 + rnd.NextDouble() * 0.3,
-                        StemSize = 0.88 + rnd.NextDouble() * 0.24,
-                    });
-                    x += 21 + rnd.NextDouble() * 10;
-                }
-                plantSpots = spots;
-                return spots;
+                // 구름 그림은 가장자리가 번진 흰 구름이라, 크게 키우면(예: 매연 구름) 번진 띠도 커져 흐린 테두리로 보인다
+                // (썰렁이 지적 2026-10-25, 태그 없는 지시). 키운 배율만큼 띠를 좁혀 흰 구름일 때와 같은 또렷함으로 맞춘다.
+                ScenePiece p = SceneKit.Shaded(SceneKit.SheetPiece(background.Id, background.CloudFile, c.Piece), false, shade, edge: scale);
+                if (p == null) continue;
+                double width = c.Width * scale;
+                Image img = SceneKit.PieceImage(p, width / p.Bitmap.PixelWidth, false);
+                // 흰 구름일 때의 가운데를 그대로 두고 크기만 바꾼다.
+                double baseHeight = c.Width * p.Bitmap.PixelHeight / p.Bitmap.PixelWidth;
+                Canvas.SetLeft(img, c.Left + c.Width / 2 - img.Width / 2);
+                Canvas.SetTop(img, c.Top + baseHeight / 2 - img.Height / 2);
+                CloudLayer.Children.Add(img);
             }
+            SceneKit.ReleaseSheets();
         }
 
         /// <summary>
-        /// 단계에 맞는 지면 클립 아트를 놓는다(<261024_1>(1)·(2)). 겹치는 차례(뒤 → 앞)는 나무, 날벌레, 꽃 식물이다(<261024_1>(3.2.3.2)·(4)).
-        /// 놓은 뒤에는 레벨 1의 모습(모두 땅속)이 된다(<261024_1>(3.1) — 오락 시작 전 화면도 이 모습이다).
+        /// 오락 단계 stageId 에 맞는 배경 단계의 구름과 지면 클립 아트를 놓는다. 놓은 뒤에는 레벨 1의 모습(모두 땅속)이 된다(오락 시작 전
+        /// 화면도 이 모습이다 — <261024_1>(3.1)).
         /// </summary>
         private void BuildScenery(int stageId)
         {
+            // 창을 열 때·다시 하기·시작 때 같은 단계로 여러 번 불리므로, 같은 배경 세트의 그 배경 단계가 이미 놓여 있으면 다시 만들지 않고
+            // 레벨 1의 모습으로만 되돌린다.
+            int scene = BackgroundSets.SceneFor(BackgroundSets.StageSequence(background, stageSet.Key), StageOrdinal(stageId), stages.Count);
+            if (scene == builtScene && background == builtBackground)
+            {
+                ApplySceneLevel(1, animate: false);
+                return;
+            }
             SceneryLayer.Children.Clear();
             sceneUnits.Clear();
-            sceneNumber = SceneNumberFor(StageOrdinal(stageId), stages.Count);
-
-            for (int i = 0; i < SceneTrees.Length; i++)
-            {
-                (Canvas unit, double anchor) = BuildTree(i, sceneNumber);
-                AddSceneUnit(unit, anchor, SceneTrees[i].GameX, 0, RiseKind.Tree);
-            }
-            if (sceneNumber >= 6)
-            {
-                foreach (var b in SceneBees)
-                {
-                    var bp = BeePieces[b.Piece];
-                    (Canvas unit, double anchor) = BuildInsect(SheetPiece("insects", bp.Piece), bp.TipX, bp.TipY, BeeHeight, b.Right, b.TrailRight, b.Trail);
-                    AddSceneUnit(unit, anchor, b.X, b.Bottom, RiseKind.Bee);
-                }
-            }
-            if (sceneNumber >= 10)
-            {
-                foreach (var b in SceneButterflies)
-                {
-                    var fp = ButterflyPieces[b.Piece];
-                    (Canvas unit, double anchor) = BuildInsect(SheetPiece("insects", fp.Piece), fp.TipX, fp.TipY, ButterflyHeight, b.Right, b.TrailRight, b.Trail);
-                    AddSceneUnit(unit, anchor, b.X, b.Bottom, RiseKind.Butterfly);
-                }
-            }
-            if (sceneNumber >= 2)
-            {
-                foreach (PlantSpot spot in PlantSpots)
-                {
-                    (Canvas unit, double anchor) = BuildPlant(spot, sceneNumber);
-                    AddSceneUnit(unit, anchor, spot.X, 0, RiseKind.Plant);
-                }
-            }
+            sceneNumber = scene;
+            BuildClouds();
+            background.Build(this, scene);
+            builtScene = scene;
+            builtBackground = background;
+            SceneKit.ReleaseSheets();
             ApplySceneLevel(1, animate: false);
         }
 
-        /// <summary>unit 안의 x 위치 anchor 가 게임 영역의 gameX 에 오도록, 밑변을 땅선에서 bottom 위에 놓는다.</summary>
-        private void AddSceneUnit(Canvas unit, double anchor, double gameX, double bottom, RiseKind kind)
+        void ISceneCanvas.Add(Canvas unit, double anchor, double gameX, double bottom, RiseKind kind, double? travel, bool fade)
         {
             if (unit == null) return;
             var shift = new TranslateTransform();
@@ -1098,228 +765,64 @@ namespace OpenTyping
             Canvas.SetLeft(unit, gameX - anchor);
             Canvas.SetBottom(unit, bottom);
             SceneryLayer.Children.Add(unit);
-            sceneUnits.Add(new SceneUnit { Element = unit, Shift = shift, Travel = bottom + unit.Height, Kind = kind });
+            sceneUnits.Add(new SceneUnit
+            {
+                Element = unit, Shift = shift, Travel = travel ?? bottom + unit.Height, Kind = kind, Fade = fade,
+            });
         }
 
         /// <summary>
-        /// 레벨 lv 의 높이로 지면 클립 아트를 올린다(<261024_1>(3)). 덜 올라온 만큼 아래로 밀어 두면 땅선 아래는 잘려 보이지 않는다.
-        /// animate 면 레벨업 문구·폭죽에 맞춰 짧게 천천히 올라온다.
+        /// 레벨 lv 의 높이로 지면 클립 아트를 올린다(배경 세트의 RiseFraction). 덜 올라온 만큼 아래로 밀어 두면 땅선 아래는 잘려 보이지
+        /// 않는다. animate 면 레벨업 문구·폭죽에 맞춰 짧게 천천히 올라온다.
         /// </summary>
         private void ApplySceneLevel(int lv, bool animate)
         {
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            ease.Freeze();
             foreach (SceneUnit u in sceneUnits)
             {
-                double y = (1 - RiseFraction(u.Kind, sceneNumber, lv)) * u.Travel;
+                double f = background.RiseFraction(u.Kind, sceneNumber, lv);
+                double y = (1 - f) * u.Travel;
                 if (animate && Math.Abs(u.Shift.Y - y) > 0.01)
                 {
-                    var anim = new DoubleAnimation(y, TimeSpan.FromMilliseconds(SceneRiseMs))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-                    };
-                    u.Shift.BeginAnimation(TranslateTransform.YProperty, anim);
+                    u.Shift.BeginAnimation(TranslateTransform.YProperty,
+                        new DoubleAnimation(y, TimeSpan.FromMilliseconds(SceneRiseMs)) { EasingFunction = ease });
+                    if (u.Fade)
+                        u.Element.BeginAnimation(UIElement.OpacityProperty,
+                            new DoubleAnimation(f, TimeSpan.FromMilliseconds(SceneRiseMs)) { EasingFunction = ease });
                 }
                 else
                 {
                     u.Shift.BeginAnimation(TranslateTransform.YProperty, null);
                     u.Shift.Y = y;
+                    if (u.Fade)
+                    {
+                        u.Element.BeginAnimation(UIElement.OpacityProperty, null);
+                        u.Element.Opacity = f;
+                    }
                 }
             }
-        }
-
-        /// <summary>
-        /// 나무 한 그루(<261024_1>(1)): 1단계 줄기와 가지, 2단계부터 줄기 뒤의 녹색 큰 원, 3단계부터 원 안의 연두색 작은 원(덜 익은 열매)이
-        /// 겹친다. 작은 원은 RipeScene 단계부터 익은 색(작은 나무 빨강, 큰 나무 포도색)이다. 겹치는 차례는 녹색 큰 원 → 줄기 → 작은 원이다
-        /// (<261024_1>(4)). 반환값의 anchor 는 그림 안의 줄기 가운데 x.
-        /// </summary>
-        private (Canvas Unit, double Anchor) BuildTree(int index, int scene)
-        {
-            var t = SceneTrees[index];
-            Piece p = SheetPiece(t.File, t.Piece);
-            if (p == null) return (null, 0);
-            double s = t.Height / p.Bitmap.PixelHeight;
-            double iw = p.Bitmap.PixelWidth * s, ih = t.Height;
-            double cx = (t.TrunkX - p.Left) * s;
-            double low = (t.LowBranchY - p.Top) * s;
-            // 기준 원: 가지가 난 부분(그림 위 끝 ~ 가장 낮은 가지)의 가운데에 두고, 가지 끝까지 덮을 만큼 조금 넉넉한 반지름. 열매 자리는 이 원을 기준으로 잡는다.
-            double r = Math.Max(Math.Max(cx, iw - cx), low / 2) + ih * 0.036;
-            double cy = low / 2;
-            // 녹색 큰 원은 썰렁이 검토(첨부 그림)로 세로로 긴 타원이다 — 기준 원보다 높이가 많이 크고 가운데가 아래로 내려가, 가장 높은
-            // 가지 위로 여유가 있고 줄기만 있는 곳도 조금 덮는다. 너비는 나무마다 정한다(CrownWidth).
-            double rx = r * t.CrownWidth, ry = r * 1.27, ey = cy + r * 0.18;
-            double minX = Math.Min(0, cx - rx), maxX = Math.Max(iw, cx + rx), minY = Math.Min(0, ey - ry);
-            var unit = new Canvas { Width = maxX - minX, Height = Math.Max(ih, ey + ry) - minY };
-            double ox = -minX, oy = -minY;   // 줄기 그림의 왼쪽 위
-
-            if (scene >= 2)
-            {
-                var crown = new Ellipse { Width = 2 * rx, Height = 2 * ry, Fill = CrownBrush };
-                Canvas.SetLeft(crown, ox + cx - rx);
-                Canvas.SetTop(crown, oy + ey - ry);
-                unit.Children.Add(crown);
-            }
-            Image trunk = PieceImage(p, s, false);
-            Canvas.SetLeft(trunk, ox);
-            Canvas.SetTop(trunk, oy);
-            unit.Children.Add(trunk);
-            if (scene >= 3)
-            {
-                Brush fill = Frozen(scene >= t.RipeScene ? t.Ripe : UnripeColor);
-                foreach ((double fx, double fy, double fr) in FruitSpots(index, t.Fruits, r))
-                {
-                    var fruit = new Ellipse { Width = 2 * fr, Height = 2 * fr, Fill = fill };
-                    Canvas.SetLeft(fruit, ox + cx + fx - fr);
-                    Canvas.SetTop(fruit, oy + cy + fy - fr);
-                    unit.Children.Add(fruit);
-                }
-            }
-            return (unit, ox + cx);
-        }
-
-        // 썰렁이 검토로 손으로 옮긴 열매: 나무, 열매 차례, 새 자리(기준 원 가운데에서 잰 x·y ÷ 반지름). 난수로 정한 자리 대신 쓴다.
-        // 모든 단계가 같은 자리를 쓰므로 3단계의 연두 열매도 함께 옮겨진다.
-        private static readonly (int Tree, int Index, double X, double Y)[] FruitMoves =
-        {
-            (0, 0, -0.605, 0.108),   // 작은 나무: 가운데 세 열매 중 위에서 두 번째 → 왼쪽 두 열매 사이에 조금 어긋나게(2026-10-25)
-        };
-
-        /// <summary>
-        /// 기준 원(반지름 r, 녹색 큰 원 타원 안에 들어간다) 안의 열매 자리와 크기(원 가운데 기준). 크기와 자리를 고르게 흩어 좌우 대칭이 되지 않게 하고(썰렁이 지시),
-        /// 서로 겹치지 않게 한다. 나무마다 씨앗이 정해진 난수라 오락을 다시 켜도 늘 같은 자리다. FruitMoves 의 열매만 손으로 정한 자리로 옮긴다.
-        /// </summary>
-        private static List<(double X, double Y, double R)> FruitSpots(int tree, int count, double r)
-        {
-            var rnd = new Random(2610240 + tree);
-            var list = new List<(double X, double Y, double R)>();
-            for (int tries = 0; list.Count < count && tries < 2000; tries++)
-            {
-                double fr = r * (0.075 + rnd.NextDouble() * 0.03);
-                double a = rnd.NextDouble() * Math.PI * 2, d = Math.Sqrt(rnd.NextDouble()) * (r * 0.86 - fr);
-                double fx = Math.Cos(a) * d, fy = Math.Sin(a) * d;
-                if (list.Any(o => Math.Sqrt((o.X - fx) * (o.X - fx) + (o.Y - fy) * (o.Y - fy)) < o.R + fr + r * 0.04)) continue;
-                list.Add((fx, fy, fr));
-            }
-            foreach (var mv in FruitMoves)
-            {
-                if (mv.Tree == tree && mv.Index < list.Count) list[mv.Index] = (mv.X * r, mv.Y * r, list[mv.Index].R);
-            }
-            return list;
-        }
-
-        /// <summary>
-        /// 꽃 식물 한 포기: 2단계는 싹, 3단계부터는 줄기와 잎, 4단계는 그 꼭대기에 봉오리, 5단계부터는 꽃(<261024_1>(1)). 줄기와 잎은
-        /// 3단계부터 같은 그림이고 봉오리·꽃만 코드로 겹친다(<261024_1>(0.1)). 반환값의 anchor 는 줄기(싹은 그림 가운데) x.
-        /// </summary>
-        private (Canvas Unit, double Anchor) BuildPlant(PlantSpot spot, int scene)
-        {
-            if (scene == 2)
-            {
-                Piece sp = SheetPiece("sprouts", PlantSprouts[spot.Sprout]);
-                if (sp == null) return (null, 0);
-                Image img = PieceImage(sp, SproutScale * spot.SproutSize, spot.SproutFlip);
-                var sproutUnit = new Canvas { Width = img.Width, Height = img.Height };
-                sproutUnit.Children.Add(img);
-                return (sproutUnit, img.Width / 2);
-            }
-
-            var st = PlantStems[spot.Stem];
-            Piece p = SheetPiece("stems", st.Piece);
-            if (p == null) return (null, 0);
-            double s = StemScale * spot.StemSize;
-            double iw = p.Bitmap.PixelWidth * s, ih = p.Bitmap.PixelHeight * s;
-            double stemX = (st.StemX - p.Left) * s;
-            if (spot.StemFlip) stemX = iw - stemX;
-            double topY = (st.TopY - p.Top) * s;
-
-            Image head = null;
-            double headLeft = 0, headTop = 0;
-            if (scene >= 4)
-            {
-                var hd = scene >= 5 ? PlantFlowers[spot.Head] : PlantBuds[spot.Head];
-                Piece hp = SheetPiece(scene >= 5 ? "flowers" : "buds", hd.Piece, hd.StubLen);
-                if (hp != null)
-                {
-                    double hs = s * HeadScale;
-                    head = PieceImage(hp, hs, spot.HeadFlip);
-                    double stubX = (hd.StubX - hp.Left) * hs;
-                    if (spot.HeadFlip) stubX = head.Width - stubX;
-                    headLeft = stemX - stubX;
-                    headTop = topY + HeadOverlap - head.Height;
-                }
-            }
-
-            double minX = Math.Min(0, head != null ? headLeft : 0);
-            double maxX = Math.Max(iw, head != null ? headLeft + head.Width : 0);
-            double minY = Math.Min(0, head != null ? headTop : 0);
-            var unit = new Canvas { Width = maxX - minX, Height = ih - minY };
-            Image stem = PieceImage(p, s, spot.StemFlip);
-            Canvas.SetLeft(stem, -minX);
-            Canvas.SetTop(stem, -minY);
-            unit.Children.Add(stem);
-            if (head != null)
-            {
-                Canvas.SetLeft(head, headLeft - minX);
-                Canvas.SetTop(head, headTop - minY);
-                unit.Children.Add(head);
-            }
-            return (unit, stemX - minX);
-        }
-
-        /// <summary>
-        /// 벌·나비 한 마리와 지나온 길(<261024_1>(1) 6·10단계). 애니메이션이 아닌 그림이고, 맴도는 모습은 바람처럼 물결치는 가로 점선으로
-        /// 나타낸다(<261024_1>(3.2.3.2) 수평 방향). 선은 날벌레의 배 끝(그림 속 tipX·tipY, 벌은 침 끝)에서 시작해 옆으로(trailRight 면 오른쪽)
-        /// 뻗는다(썰렁이 지시) — 물결이 배 끝에서 높이 0으로 시작하므로 선 끝이 배 끝과 정확히 만난다. 선은 날벌레 뒤에 깔려, 날개에 걸리는
-        /// 부분은 가려진다. 반환값의 anchor 는 날벌레 가운데 x.
-        /// </summary>
-        private static (Canvas Unit, double Anchor) BuildInsect(Piece p, double tipX, double tipY, double height, bool facingRight,
-                                                                bool trailRight, double trail)
-        {
-            if (p == null) return (null, 0);
-            double s = height / p.Bitmap.PixelHeight;
-            Image img = PieceImage(p, s, !facingRight);   // 그림은 모두 오른쪽을 본다
-            double iw = img.Width, ih = img.Height;
-            // 날벌레 그림의 왼쪽 위를 (0, 0)으로 본 배 끝 자리(뒤집으면 좌우가 바뀐다).
-            double tx = (tipX - p.Left) * s, ty = (tipY - p.Top) * s;
-            if (!facingRight) tx = iw - tx;
-            const double Amp = 2.2, Wave = 13;
-            double endX = trailRight ? tx + trail : tx - trail;
-            double minX = Math.Min(0, endX), maxX = Math.Max(iw, endX);
-            double minY = Math.Min(0, ty - Amp - 1), maxY = Math.Max(ih, ty + Amp + 1);
-            var unit = new Canvas { Width = maxX - minX, Height = maxY - minY };
-            double insectLeft = -minX, insectTop = -minY;
-
-            var geo = new StreamGeometry();
-            using (StreamGeometryContext g = geo.Open())
-            {
-                const int Steps = 40;
-                double dir = trailRight ? 1 : -1;
-                for (int i = 0; i <= Steps; i++)
-                {
-                    double d = trail * i / Steps;   // 배 끝에서 떨어진 거리
-                    var pt = new Point(insectLeft + tx + dir * d, insectTop + ty + Amp * Math.Sin(2 * Math.PI * d / Wave));
-                    if (i == 0) g.BeginFigure(pt, false, false);
-                    else g.LineTo(pt, true, true);
-                }
-            }
-            geo.Freeze();
-            var line = new System.Windows.Shapes.Path
-            {
-                Data = geo,
-                Stroke = TrailBrush,
-                StrokeThickness = 1.1,
-                StrokeDashArray = new DoubleCollection { 2, 2 },
-                StrokeDashCap = PenLineCap.Round,
-            };
-            unit.Children.Add(line);
-            Canvas.SetLeft(img, insectLeft);
-            Canvas.SetTop(img, insectTop);
-            unit.Children.Add(img);
-            return (unit, insectLeft + iw / 2);
         }
 
         /// <summary>검사용(-acidscenetest): 이 자판의 오락 단계 수.</summary>
         internal int GameStageCountForTest => stages.Count;
 
-        /// <summary>검사용(-acidscenetest): n번째(0부터) 오락 단계의 지면 클립 아트를 놓는다(레벨 1의 모습).</summary>
+        /// <summary>검사용(-acidscenetest): 이 자판의 단계 묶음 key("ko"·"en").</summary>
+        internal string KeyboardKeyForTest => stageSet.Key;
+
+        /// <summary>검사용(-acidscenetest): 이 오락에 쓰는 배경 세트. 바꾸면 다음 BuildSceneryForTest 가 그 배경 세트로 다시 놓는다.</summary>
+        internal BackgroundSet BackgroundForTest
+        {
+            get => background;
+            set
+            {
+                background = value;
+                sceneNumber = 10;
+                BuildClouds();
+            }
+        }
+
+        /// <summary>검사용(-acidscenetest): n번째(0부터) 오락 단계의 구름·지면 클립 아트를 놓는다(레벨 1의 모습).</summary>
         internal void BuildSceneryForTest(int ordinal) => BuildScenery(stages[Math.Max(0, Math.Min(ordinal, stages.Count - 1))].Id);
 
         /// <summary>검사용(-acidscenetest): 지금 배경을 레벨 lv 의 높이로 곧바로 올린다.</summary>
@@ -1328,15 +831,61 @@ namespace OpenTyping
         /// <summary>검사용(-acidscenetest): 레벨업 때처럼 레벨 lv 의 높이로 천천히 올린다.</summary>
         internal void AnimateSceneLevelForTest(int lv) => ApplySceneLevel(lv, animate: true);
 
-        /// <summary>검사용(-acidscenetest): 지금 배경이 몇 단계의 배경인가(1~6, 10).</summary>
+        /// <summary>검사용(-acidscenetest): 지금 배경 단계(1~6, 10).</summary>
         internal int SceneNumberForTest => sceneNumber;
 
-        /// <summary>검사용(-acidscenetest): 놓인 지면 클립 아트마다 (종류, 다 숨었을 때 밀어 두는 거리, 지금 밀어 둔 거리, 그림 수).</summary>
-        internal List<(RiseKind Kind, double Travel, double Shift, int Parts)> SceneUnitsForTest =>
-            sceneUnits.Select(u => (u.Kind, u.Travel, u.Shift.Y, ((Canvas)u.Element).Children.Count)).ToList();
+        /// <summary>검사용(-acidscenetest): 놓인 지면 클립 아트마다 (종류, 다 숨었을 때 밀어 두는 거리, 지금 밀어 둔 거리, 진하기, 진해지는가, 그림 수).</summary>
+        internal List<(RiseKind Kind, double Travel, double Shift, double Opacity, bool Fade, int Parts)> SceneUnitsForTest =>
+            sceneUnits.Select(u => (u.Kind, u.Travel, u.Shift.Y, u.Element.Opacity, u.Fade, ((Canvas)u.Element).Children.Count)).ToList();
 
-        /// <summary>검사용(-acidscenetest): 꽃 식물 포기 수.</summary>
-        internal static int PlantCountForTest => PlantSpots.Count;
+        /// <summary>
+        /// 검사용(-acidscenetest): 지금 배경에 놓인 태양광 판 수, 나무의 녹색 큰 원(잎) 수, 잿빛으로 바꾼 그림 수.
+        /// </summary>
+        internal (int Panels, int Crowns, int Grays) SceneDetailsForTest
+        {
+            get
+            {
+                var grayBitmaps = SceneKit.GrayBitmapsForTest;
+                int panels = 0, crowns = 0, grays = 0;
+                foreach (Canvas unit in SceneryLayer.Children.OfType<Canvas>())
+                    foreach (UIElement child in unit.Children)
+                    {
+                        if (child is Canvas inner && inner.Children.OfType<Rectangle>().Any(r => r.Fill == EcoEnergyVillage.PanelBrush)) panels++;
+                        else if (child is Ellipse e && e.Fill == SceneKit.CrownBrush) crowns++;
+                        else if (child is Image img && img.Source is BitmapSource bs && grayBitmaps.Contains(bs)) grays++;
+                    }
+                return (panels, crowns, grays);
+            }
+        }
+
+        /// <summary>검사용(-acidscenetest): 지금 구름 그림의 너비들.</summary>
+        internal List<double> CloudWidthsForTest => CloudLayer.Children.OfType<Image>().Select(i => i.Width).ToList();
+
+        /// <summary>
+        /// 검사용(-acidscenetest): 떨어지는 단어와 같은 글자(흰 윤곽선)를 게임 화면에 놓는다. Tone: 0 보통, 1 경고, 2 위험, 3 파란 단어.
+        /// 게임의 단어 목록에는 넣지 않는다(지우기는 ClearWordsForTest).
+        /// </summary>
+        internal void ShowWordsForTest(IEnumerable<(string Text, double X, double Y, int Tone)> words)
+        {
+            foreach (var w in words)
+            {
+                OutlinedText block = NewWordBlock(w.Text,
+                    w.Tone == 1 ? WordWarnBrush : w.Tone == 2 ? WordDangerBrush : w.Tone == 3 ? WordSpecialBrush : WordNormalBrush);
+                Canvas.SetLeft(block, w.X);
+                Canvas.SetTop(block, w.Y);
+                GameCanvas.Children.Add(block);
+                testWordBlocks.Add(block);
+            }
+        }
+
+        private readonly List<OutlinedText> testWordBlocks = new List<OutlinedText>();
+
+        /// <summary>검사용(-acidscenetest): ShowWordsForTest 로 놓은 글자만 지운다(게임의 단어·동물 그림은 그대로 둔다).</summary>
+        internal void ClearWordsForTest()
+        {
+            foreach (OutlinedText block in testWordBlocks) GameCanvas.Children.Remove(block);
+            testWordBlocks.Clear();
+        }
 
         /// <summary>검사용(-acidscenetest): 하늘을 산성 정도 t(0=처음, 1=생명을 다 잃음)의 색으로 곧바로 칠한다.</summary>
         internal void SetSkyForTest(double t)
@@ -2003,8 +1552,7 @@ namespace OpenTyping
             for (int i = 0; i < 8; i++)
             {
                 double a = i * Math.PI / 4;
-                var block = new TextBlock { Text = "시험", FontSize = 23 };
-                block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                OutlinedText block = NewWordBlock("시험", WordNormalBrush);
                 var word = new FallingWord
                 {
                     Block = block,
@@ -2339,6 +1887,24 @@ namespace OpenTyping
             EventBanner.BeginAnimation(UIElement.OpacityProperty, anim);
         }
 
+        /// <summary>
+        /// 떨어지는 단어의 글자(흰 윤곽선)를 만들어 크기를 잰다. 캔버스에 넣기 전에 재므로 창의 글꼴('맑은 고딕')을 직접 준다. 게임과 검사용
+        /// 그림(ShowWordsForTest)·검사(EarthFireworkTest)가 같은 모양을 쓰도록 여기 한 곳에서 만든다.
+        /// </summary>
+        private OutlinedText NewWordBlock(string text, Brush foreground)
+        {
+            var block = new OutlinedText
+            {
+                Text = text,
+                FontFamily = FontFamily,
+                FontSize = 23,   // <산성비 타자 오락 260812_25>
+                FontWeight = FontWeights.Bold,
+                Foreground = foreground,
+            };
+            block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            return block;
+        }
+
         private void SpawnWord()
         {
             // <260927_4>(0.2) 단어 공급 규칙(9:1 섞기·5개 단위 중복 금지)을 따르면서, 이미 떠 있는
@@ -2353,14 +1919,7 @@ namespace OpenTyping
                 ? random.Next(2) == 0
                 : specialCatchesLeft <= 0 && !active.Any(w => w.IsSpecial);
 
-            var block = new TextBlock
-            {
-                Text = text,
-                FontSize = 23,   // <산성비 타자 오락 260812_25>
-                FontWeight = FontWeights.Bold,
-                Foreground = special ? WordSpecialBrush : WordNormalBrush,
-            };
-            block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            OutlinedText block = NewWordBlock(text, special ? WordSpecialBrush : WordNormalBrush);
 
             double maxX = Math.Max(8, GameCanvas.ActualWidth - block.DesiredSize.Width - 8);
             double x = 8 + random.NextDouble() * (maxX - 8);
