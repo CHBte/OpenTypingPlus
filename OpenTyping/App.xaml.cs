@@ -85,7 +85,7 @@ namespace OpenTyping
             StageRecords.CheatChanged += UpdateCheatTheme;
             UpdateCheatTheme();
 
-            // 개발용 진단 스위치(아래 열두 가지: -stagetest, -edgetest 등)는 환경변수 OTP_DIAG=1 일 때만 동작한다. 배포된
+            // 개발용 진단 스위치(아래 열세 가지: -stagetest, -edgetest 등)는 환경변수 OTP_DIAG=1 일 때만 동작한다. 배포된
             // exe 가 명령줄 인자 하나로 아무 경로의 파일을 덮어쓰거나(-posesources "문서.docx"), 사용자의 실제 기록 파일을
             // 건드리는(-cheattest·-edgetest) 일이 없게 하려는 것이다. 개발 도구(update-hands.ps1 의 -posesources, 진단 실행
             // 스크립트)는 실행 전에 이 변수를 설정한다. 켜지 않고 스위치를 주면 평소 실행으로 취급한다.
@@ -144,6 +144,15 @@ namespace OpenTyping
                 try { RunEnglishTest(e.Args[1]); }
                 catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); Environment.Exit(0); }
                 return;   // 인트로를 기다려야 하므로 여기서 끝내지 않는다(테스트가 스스로 종료)
+            }
+
+            // 헤드리스 진단: "-acidscenetest <출력txt>" — 산성비 오락의 배경 그림(<261024_1>)이 단계마다 맞게 놓이고 레벨마다
+            // 정해진 만큼 올라오는지 보고, 단계별·올라오는 중의 모습을 그림으로 남긴다(출력txt 옆 .scene_*.png).
+            if (diag && e.Args != null && e.Args.Length >= 2 && e.Args[0] == "-acidscenetest")
+            {
+                try { RunAcidSceneTest(e.Args[1]); }
+                catch (Exception ex) { TryWrite(e.Args[1], "EXCEPTION: " + ex); Environment.Exit(0); }
+                return;   // 창이 다 뜬 뒤에 검사하므로 여기서 끝내지 않는다(테스트가 스스로 종료)
             }
 
             // 헤드리스 진단: "-layouttest <출력txt>" — 자판 파일에서 만든 '글자 → 키 입력' 규칙(KeyboardMap) 검사.
@@ -1773,13 +1782,196 @@ namespace OpenTyping
             TryWrite(outPath, sb.ToString());
         }
 
-        private static void SavePng(FrameworkElement el, string path)
+        /// <summary>
+        /// 산성비 오락의 배경 그림(<261024_1>, acidrain-bg3 — Resources\AcidRain\ 의 모음 그림)이 실제 창에서 단계마다 맞게 놓이고, 레벨마다
+        /// 정해진 만큼 땅에서 올라오는지 본다. 단계별 모습과 올라오는 중의 모습을 그림으로 남긴다(출력txt 옆 &lt;이름&gt;.scene_*.png).
+        /// </summary>
+        private static void RunAcidSceneTest(string outPath)
+        {
+            var sb = new StringBuilder();
+            var win = new AcidRainWindow(StageSets.DubeolsikStandard, 0)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000, ShowActivated = false,
+            };
+            win.Show();
+            win.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
+            {
+                int fail = 0;
+                try
+                {
+                    // 구름: 모음 그림에서 떼어 낸 조각을 실제로 읽었고, 셋의 높이가 서로 다른지(썰렁이 지시).
+                    var clouds = win.CloudLayer.Children.Cast<UIElement>().ToList();
+                    bool cloudsOk = clouds.Count == AcidRainWindow.SceneClouds.Length
+                        && clouds.All(el => el is System.Windows.Controls.Image img && img.Source is BitmapSource b && b.PixelWidth > 0)
+                        && AcidRainWindow.SceneClouds.Select(c => c.Top).Distinct().Count() == AcidRainWindow.SceneClouds.Length;
+                    sb.AppendLine($"구름 {clouds.Count}개(기대 {AcidRainWindow.SceneClouds.Length}, 높이 서로 다름) {(cloudsOk ? "PASS" : "FAIL")}");
+                    if (!cloudsOk) fail++;
+
+                    // 벌끼리·나비끼리 높이가 서로 다른지(썰렁이 지시).
+                    bool insectHeightsOk = AcidRainWindow.SceneBees.Select(b => b.Bottom).Distinct().Count() == AcidRainWindow.SceneBees.Length
+                        && AcidRainWindow.SceneButterflies.Select(b => b.Bottom).Distinct().Count() == AcidRainWindow.SceneButterflies.Length;
+                    sb.AppendLine($"벌끼리·나비끼리 높이 서로 다름 {(insectHeightsOk ? "PASS" : "FAIL")}");
+                    if (!insectHeightsOk) fail++;
+
+                    // 단계마다: 종류별 개수, 레벨 1 에서 모두 땅속, 레벨 2~7 에서 RiseFraction 대로, 레벨 8·9 에서 다 올라옴.
+                    int n = win.GameStageCountForTest;
+                    int plants = AcidRainWindow.PlantCountForTest;
+                    bool stagesOk = n == 7;
+                    sb.AppendLine($"두벌식 오락 단계 {n}개(기대 7), 꽃 식물 {plants}포기");
+                    for (int ord = 0; ord < n; ord++)
+                    {
+                        win.BuildSceneryForTest(ord);
+                        int scene = win.SceneNumberForTest;
+                        var units = win.SceneUnitsForTest;
+                        int Count(AcidRainWindow.RiseKind k) => units.Count(u => u.Kind == k);
+                        int expPlants = scene >= 2 ? plants : 0, expBees = scene >= 6 ? AcidRainWindow.SceneBees.Length : 0;
+                        int expFlies = scene >= 10 ? AcidRainWindow.SceneButterflies.Length : 0;
+                        bool countOk = Count(AcidRainWindow.RiseKind.Tree) == 2 && Count(AcidRainWindow.RiseKind.Plant) == expPlants
+                                       && Count(AcidRainWindow.RiseKind.Bee) == expBees && Count(AcidRainWindow.RiseKind.Butterfly) == expFlies;
+                        // 나무 그림 수: 1단계 줄기만, 2단계 + 큰 원, 3단계부터 + 열매(작은 나무 7, 큰 나무 11). 꽃 식물: 2·3단계 1장, 4단계부터 2장.
+                        var trees = units.Where(u => u.Kind == AcidRainWindow.RiseKind.Tree).Select(u => u.Parts).ToList();
+                        bool partsOk = trees.Count == 2
+                            && trees[0] == (scene >= 3 ? 9 : scene >= 2 ? 2 : 1) && trees[1] == (scene >= 3 ? 13 : scene >= 2 ? 2 : 1)
+                            && units.Where(u => u.Kind == AcidRainWindow.RiseKind.Plant).All(u => u.Parts == (scene >= 4 ? 2 : 1));
+                        bool hiddenOk = units.All(u => Math.Abs(u.Shift - u.Travel) < 0.01 && u.Travel > 0);
+                        bool riseOk = true;
+                        for (int lv = 2; lv <= 9; lv++)
+                        {
+                            win.SetSceneLevelForTest(lv);
+                            riseOk &= win.SceneUnitsForTest.All(u =>
+                                Math.Abs(u.Shift - (1 - AcidRainWindow.RiseFraction(u.Kind, scene, lv)) * u.Travel) < 0.01);
+                            if (lv >= 8) riseOk &= win.SceneUnitsForTest.All(u => Math.Abs(u.Shift) < 0.01);
+                        }
+                        bool ok = countOk && partsOk && hiddenOk && riseOk;
+                        stagesOk &= ok;
+                        sb.AppendLine($"  {ord + 1}번째 단계 → {scene}단계 배경: 나무 {Count(AcidRainWindow.RiseKind.Tree)}, 꽃 식물 {Count(AcidRainWindow.RiseKind.Plant)}, " +
+                                      $"벌 {Count(AcidRainWindow.RiseKind.Bee)}, 나비 {Count(AcidRainWindow.RiseKind.Butterfly)} / 그림 수 {partsOk} / 레벨 1 땅속 {hiddenOk} / " +
+                                      $"레벨 2~9 높이 {riseOk} {(ok ? "PASS" : "FAIL")}");
+                    }
+                    if (!stagesOk) fail++;
+
+                    // 크기: 큰 나무가 꽃 식물(5단계, 꽃까지)의 약 5배인지 참고로 적는다.
+                    win.BuildSceneryForTest(4);
+                    win.SetSceneLevelForTest(8);
+                    var u5 = win.SceneUnitsForTest;
+                    double avgPlant = u5.Where(u => u.Kind == AcidRainWindow.RiseKind.Plant).Average(u => u.Travel);
+                    var treeH = u5.Where(u => u.Kind == AcidRainWindow.RiseKind.Tree).Select(u => u.Travel).ToList();
+                    sb.AppendLine($"참고: 꽃 식물 평균 높이 {avgPlant:F1}px, 나무(큰 원 포함) {treeH[0]:F0}px·{treeH[1]:F0}px " +
+                                  $"(꽃의 {treeH[0] / avgPlant:F1}배·{treeH[1] / avgPlant:F1}배)");
+
+                    // 영문: 1~5단계는 같은 번호, 6단계(마지막)는 10단계 배경.
+                    var en = new AcidRainWindow(StageSets.QwertyEnglish, 0)
+                    {
+                        WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000, ShowActivated = false,
+                    };
+                    en.Show();
+                    var enScenes = new List<int>();
+                    for (int ord = 0; ord < en.GameStageCountForTest; ord++)
+                    {
+                        en.BuildSceneryForTest(ord);
+                        enScenes.Add(en.SceneNumberForTest);
+                    }
+                    en.Close();
+                    bool enOk = string.Join(",", enScenes) == "1,2,3,4,5,10";
+                    sb.AppendLine($"영문 단계별 배경: {string.Join(",", enScenes)} (기대 1,2,3,4,5,10) {(enOk ? "PASS" : "FAIL")}");
+                    if (!enOk) fail++;
+
+                    // 실행 파일 안에 든 그림이 받은 파일 그대로인지 — 캔바 약관상 지우면 안 되는 출처 정보(C2PA, PNG 의 'caBX'
+                    // 덩어리)가 남아 있는지 본다.
+                    var noC2pa = new List<string>();
+                    foreach (string f in AcidRainWindow.SceneFiles)
+                    {
+                        var info = GetResourceStream(new Uri("pack://application:,,,/Resources/AcidRain/" + f + ".png"));
+                        byte[] bytes;
+                        using (var ms = new MemoryStream()) { info.Stream.CopyTo(ms); info.Stream.Dispose(); bytes = ms.ToArray(); }
+                        if (Encoding.ASCII.GetString(bytes).IndexOf("caBX", StringComparison.Ordinal) < 0) noC2pa.Add(f);
+                    }
+                    bool c2paOk = noC2pa.Count == 0;
+                    sb.AppendLine($"실행 파일 안 그림 {AcidRainWindow.SceneFiles.Length}개의 출처 정보(C2PA) 보존={c2paOk}" +
+                                  (c2paOk ? "" : " 없음: " + string.Join(", ", noC2pa)) + $" {(c2paOk ? "PASS" : "FAIL")}");
+                    if (!c2paOk) fail++;
+
+                    // 그림: 단계마다 다 올라온 모습(레벨 8), 산성 하늘, 올라오는 중의 모습.
+                    string Png(string tag) => Path.ChangeExtension(outPath, "." + tag + ".png");
+                    win.StartOverlay.Visibility = Visibility.Collapsed;   // 시작 화면에 가려지지 않은 게임 중의 모습
+                    win.SetSkyForTest(0);
+                    for (int ord = 0; ord < n; ord++)
+                    {
+                        win.BuildSceneryForTest(ord);
+                        win.SetSceneLevelForTest(8);
+                        SavePng(win, Png("scene_stage" + (ord + 1)));
+                        if (ord == n - 1) SavePng(win, Png("scene_big"), 2);   // 완성된 장면을 2배 해상도로(검토용 큰 그림)
+                    }
+                    win.SetSkyForTest(1);
+                    SavePng(win, Png("scene_acid"));
+                    win.SetSkyForTest(0);
+                    win.BuildSceneryForTest(n - 1);
+                    win.SetSceneLevelForTest(2);
+                    SavePng(win, Png("scene_last_lv2"));
+                    win.SetSceneLevelForTest(4);
+                    SavePng(win, Png("scene_last_lv4"));
+                    win.SetSceneLevelForTest(6);
+                    SavePng(win, Png("scene_last_lv6"));
+                    win.BuildSceneryForTest(5);
+                    win.SetSceneLevelForTest(5);
+                    SavePng(win, Png("scene_stage6_lv5"));
+                    win.BuildSceneryForTest(2);
+                    win.SetSceneLevelForTest(4);
+                    SavePng(win, Png("scene_stage3_lv4"));
+
+                    // 레벨업 때처럼 천천히 올라오는지: 마지막 단계에서 레벨 2 → 3으로 올리고, 도중(0.3초)에는 아직 올라오는 중이며
+                    // 끝(1.3초)에는 레벨 3의 높이에 있는지 본다. 도중의 모습은 그림으로 남긴다.
+                    win.BuildSceneryForTest(n - 1);
+                    win.SetSceneLevelForTest(2);
+                    var start = win.SceneUnitsForTest;
+                    win.AnimateSceneLevelForTest(3);
+                    DateTime t0 = DateTime.Now;
+                    bool midOk = false, midChecked = false;
+                    var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                    timer.Tick += (s, ev) =>
+                    {
+                        double ms = (DateTime.Now - t0).TotalMilliseconds;
+                        if (!midChecked && ms >= 300)
+                        {
+                            midChecked = true;
+                            var mid = win.SceneUnitsForTest;
+                            midOk = mid.Select((u, i) => (u, i)).Where(x => x.u.Kind == AcidRainWindow.RiseKind.Plant)
+                                       .All(x => x.u.Shift > 0.01 && x.u.Shift < start[x.i].Shift - 0.01);
+                            SavePng(win, Png("scene_rising"));
+                        }
+                        if (ms < 1300) return;
+                        timer.Stop();
+                        bool endOk = win.SceneUnitsForTest.All(u =>
+                            Math.Abs(u.Shift - (1 - AcidRainWindow.RiseFraction(u.Kind, 10, 3)) * u.Travel) < 0.01);
+                        bool ok = midOk && endOk;
+                        sb.AppendLine($"레벨업 때 천천히 올라옴(마지막 단계 레벨 2→3): 0.3초에 올라오는 중 {midOk}, 1.3초에 제자리 {endOk} {(ok ? "PASS" : "FAIL")}");
+                        if (!ok) fail++;
+                        Finish();
+                    };
+                    timer.Start();
+                    return;   // 끝은 타이머가 맺는다
+                }
+                catch (Exception ex) { sb.AppendLine("EXCEPTION: " + ex); fail++; }
+                Finish();
+
+                void Finish()
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("ACIDSCENE: " + (fail == 0 ? "PASS" : $"FAIL ({fail}건)"));
+                    TryWrite(outPath, sb.ToString());
+                    Environment.Exit(0);
+                }
+            }));
+        }
+
+        /// <summary>el 을 그림으로 남긴다. scale 배 해상도(2면 가로세로 2배)로 찍을 수 있다.</summary>
+        private static void SavePng(FrameworkElement el, string path, double scale = 1)
         {
             try
             {
                 el.UpdateLayout();
-                var rtb = new RenderTargetBitmap((int)Math.Ceiling(el.ActualWidth), (int)Math.Ceiling(el.ActualHeight),
-                                                 96, 96, PixelFormats.Pbgra32);
+                var rtb = new RenderTargetBitmap((int)Math.Ceiling(el.ActualWidth * scale), (int)Math.Ceiling(el.ActualHeight * scale),
+                                                 96 * scale, 96 * scale, PixelFormats.Pbgra32);
                 rtb.Render(el);
                 var enc = new PngBitmapEncoder();
                 enc.Frames.Add(BitmapFrame.Create(rtb));

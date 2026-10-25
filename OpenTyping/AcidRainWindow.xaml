@@ -90,11 +90,14 @@
                     <GradientStop x:Name="SkyBottomStop" Color="#f8fbff" Offset="1"/>
                 </LinearGradientBrush>
             </Grid.Background>
-            <!-- 지면 클립 아트(산·나무·꽃·동물·사람). 단계가 오를수록 코드에서 누적해 추가한다. -->
+            <!-- 하늘의 구름(늘 같은 자리, 코드의 BuildClouds). 하늘색 그라데이션 위, 지면 클립 아트보다 뒤. -->
+            <Canvas x:Name="CloudLayer" IsHitTestVisible="False" Panel.ZIndex="0"/>
+            <!-- 지면 클립 아트(나무·꽃 식물·날벌레, <261024_1>). 단계마다 코드(BuildScenery)가 놓고, 레벨이 오를수록 땅에서 올라온다. -->
             <!-- 겹치는 차례를 선언 순서가 아니라 ZIndex 로 못박는다 (<산성비 타자 오락 260812_26>).
-                 지면 클립 아트(0) < 안내 배너(10) < 산성비(20) < 땅(30). 배너가 산성비보다 뒤라
-                 떨어지는 글자를 가리지 않는다. 필요할 때만 코드에서 앞으로(40) 올린다. -->
-            <Canvas x:Name="SceneryLayer" Height="90" VerticalAlignment="Bottom" IsHitTestVisible="False"
+                 구름·지면 클립 아트(0) < 안내 배너(10) < 산성비(20) < 땅(30). 배너가 산성비보다 뒤라
+                 떨어지는 글자를 가리지 않는다. 필요할 때만 코드에서 앞으로(40) 올린다.
+                 바닥이 땅 띠(GroundStrip, 26) 윗선이고 넘친 부분을 잘라 내므로, 아직 덜 올라온 지면 클립 아트는 땅선 아래가 보이지 않는다. -->
+            <Canvas x:Name="SceneryLayer" Margin="0 0 0 26" ClipToBounds="True" IsHitTestVisible="False"
                     Panel.ZIndex="0"/>
             <Canvas x:Name="GameCanvas" ClipToBounds="True" Panel.ZIndex="20"/>
             <Border x:Name="GroundStrip" Height="26" VerticalAlignment="Bottom"
