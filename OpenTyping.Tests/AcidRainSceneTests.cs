@@ -21,6 +21,14 @@ public class AcidRainSceneTests
         Assert.All(BackgroundSets.ByKeyboard.Values, id => Assert.NotNull(BackgroundSets.Find(id)));
         Assert.NotNull(BackgroundSets.Find(BackgroundSets.DefaultId));
         Assert.All(BackgroundSets.All, s => Assert.NotEmpty(s.Stages));
+        // Id(그림 폴더 이름)와 그림 파일 이름은 그림 주소(pack URI — SceneKit.SheetUri)에 그대로 이어 붙으므로, 주소에서 특별한 뜻을
+        // 갖는 문자('#'·'?'·'%'·'/'·빈칸 등)와 겹치지 않게 영문·숫자·밑줄만 쓴다.
+        Assert.All(BackgroundSets.All, s =>
+        {
+            Assert.Matches("^[A-Za-z0-9_]+$", s.Id);
+            Assert.Matches("^[A-Za-z0-9_]+$", s.CloudFile);
+            Assert.All(s.SheetFiles, f => Assert.Matches("^[A-Za-z0-9_]+$", f));
+        });
     }
 
     [Fact]

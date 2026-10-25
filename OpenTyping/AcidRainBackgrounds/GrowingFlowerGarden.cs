@@ -183,9 +183,6 @@ namespace OpenTyping
             }
         }
 
-        /// <summary>검사용(-acidscenetest): 꽃 식물 포기 수.</summary>
-        internal static int PlantCountForTest => PlantSpots.Count;
-
         public override void Build(ISceneCanvas canvas, int scene)
         {
             for (int i = 0; i < Trees.Length; i++)

@@ -1416,9 +1416,15 @@ namespace OpenTyping
                 bool embeddedOnlySyllables = embedded != null && embeddedEntries.Count > 0
                     && embeddedEntries.All(x => x.Problem == null && x.IsSyllable) && !embedded.Contains('#');
                 bool oldResourceGone = typeof(WordCatalog).Assembly.GetManifestResourceStream("OpenTyping.FilterWords.txt") == null;
-                bool embedAll = embeddedOnlySyllables && oldResourceGone;
+                // <261017_1> 예전 24번이 하던 확인(dotnet test 로 옮기며 빠졌던 것): 배포본이 실제 필터링 파일(저장소에 없음)로
+                // 빌드됐는지. 필터링 파일이 없으면 빌드 도구가 예시 파일(Resources\필터링_단어.example.txt — 예전에 공개된 한 음절
+                // 18개)로 대신하고 알림만 띄우므로, 실행 파일 안의 한 음절이 그 18개뿐이면 실패로 알린다.
+                const string ExampleSyllables = "년놈뒈똥뽕섹술썅씹엿젖졷좃좆좇죽총칼";
+                bool builtFromRealFile = embeddedEntries.Any(x => x.Text.Length > 0 && ExampleSyllables.IndexOf(x.Text[0]) < 0);
+                bool embedAll = embeddedOnlySyllables && oldResourceGone && builtFromRealFile;
                 sb.AppendLine($"실행 파일 포함 내용: 한 음절만={embeddedOnlySyllables} ({embeddedEntries.Count}개: " +
                               $"{string.Concat(embeddedEntries.Select(x => x.Text))}) 예전 전체 리소스 없음={oldResourceGone} " +
+                              $"실제 필터링 파일로 빌드됨(예시 파일 18개뿐이 아님)={builtFromRealFile} " +
                               $"{(embedAll ? "PASS" : "FAIL")}");
                 if (!embedAll) fail++;
 
@@ -2005,20 +2011,33 @@ namespace OpenTyping
                     var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
                     timer.Tick += (s, ev) =>
                     {
-                        double ms = (DateTime.Now - t0).TotalMilliseconds;
-                        if (!midChecked && ms >= 300)
+                        // 여기서 난 예외는 바깥 try 가 받지 못하므로(타이머가 나중에 부른다) 직접 받아 결과를 쓰고 끝낸다 — 안 그러면
+                        // 결과 파일 없이 프로그램이 끝나지 않는다.
+                        try
                         {
-                            midChecked = true;
-                            var mid = win.SceneUnitsForTest;
-                            midOk = mid.Select((u, i) => (u, i)).Where(x => x.u.Kind == RiseKind.Ground)
-                                       .All(x => x.u.Shift > 0.01 && x.u.Shift < start[x.i].Shift - 0.01);
-                            SavePng(win, Png("scene_rising"));
+                            double ms = (DateTime.Now - t0).TotalMilliseconds;
+                            if (!midChecked && ms >= 300)
+                            {
+                                midChecked = true;
+                                var mid = win.SceneUnitsForTest;
+                                midOk = mid.Select((u, i) => (u, i)).Where(x => x.u.Kind == RiseKind.Ground)
+                                           .All(x => x.u.Shift > 0.01 && x.u.Shift < start[x.i].Shift - 0.01);
+                                SavePng(win, Png("scene_rising"));
+                            }
+                            if (ms < 1300) return;
+                            timer.Stop();
+                            BackgroundSet bgNow = win.BackgroundForTest;
+                            int sceneNow = win.SceneNumberForTest;
+                            bool endOk = win.SceneUnitsForTest.All(u =>
+                                Math.Abs(u.Shift - (1 - bgNow.RiseFraction(u.Kind, sceneNow, 3)) * u.Travel) < 0.01);
+                            Check(midOk && endOk, $"레벨업 때 천천히 올라옴(마지막 단계 레벨 2→3): 0.3초에 올라오는 중 {midOk}, 1.3초에 제자리 {endOk}");
                         }
-                        if (ms < 1300) return;
-                        timer.Stop();
-                        bool endOk = win.SceneUnitsForTest.All(u =>
-                            Math.Abs(u.Shift - (1 - BackgroundSets.RiseFraction(u.Kind, 10, 3)) * u.Travel) < 0.01);
-                        Check(midOk && endOk, $"레벨업 때 천천히 올라옴(마지막 단계 레벨 2→3): 0.3초에 올라오는 중 {midOk}, 1.3초에 제자리 {endOk}");
+                        catch (Exception ex)
+                        {
+                            timer.Stop();
+                            sb.AppendLine("EXCEPTION: " + ex);
+                            fail++;
+                        }
                         Finish();
                     };
                     timer.Start();
