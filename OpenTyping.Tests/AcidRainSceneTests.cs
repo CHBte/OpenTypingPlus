@@ -24,6 +24,26 @@ public class AcidRainSceneTests
     }
 
     [Fact]
+    public void 기본_배경은_두벌식이_자라는_꽃밭_영문이_친환경_에너지_마을로다()
+    {
+        // <261025_4>
+        Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.DefaultFor("ko").Id);
+        Assert.Equal(EcoEnergyVillage.SetId, BackgroundSets.DefaultFor("en").Id);
+        Assert.Equal(BackgroundSets.DefaultId, BackgroundSets.DefaultFor("다른 자판").Id);
+        Assert.Equal(BackgroundSets.DefaultId, BackgroundSets.DefaultFor(null).Id);
+    }
+
+    [Fact]
+    public void 사용자가_고른_배경을_쓰고_없거나_모르는_배경이면_자판의_기본_배경을_쓴다()
+    {
+        // <261025_4> '배경 선택'으로 고른 것(설정 파일의 Id)
+        Assert.Equal(EcoEnergyVillage.SetId, BackgroundSets.Resolve("ko", EcoEnergyVillage.SetId).Id);
+        Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.Resolve("en", GrowingFlowerGarden.SetId).Id);
+        Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.Resolve("ko", null).Id);
+        Assert.Equal(EcoEnergyVillage.SetId, BackgroundSets.Resolve("en", "없어진 배경").Id);
+    }
+
+    [Fact]
     public void 두_배경_세트는_두벌식_7단계_영문_6단계로_맞춰져_있다()
     {
         foreach (string id in new[] { GrowingFlowerGarden.SetId, EcoEnergyVillage.SetId })

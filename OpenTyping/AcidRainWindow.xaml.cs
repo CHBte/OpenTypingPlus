@@ -676,10 +676,10 @@ namespace OpenTyping
         }
 
         // ── 배경 그림: `배경 세트`(<261025_3>) ──
-        // 구름과 지면 클립 아트는 배경 세트(AcidRainBackgrounds\ — BackgroundSet·BackgroundSets)가 정한다. 이 창은 자판에 배정된 배경
-        // 세트(BackgroundSets.For)를 골라, 오락 단계에 맞는 배경 단계(BackgroundSets.SceneFor — 단계 수가 달라도 규칙대로)를 놓고 레벨에
-        // 따라 지면 클립 아트를 땅에서 올린다. (계획) 오락 전에 배경을 고르는 드롭다운이 생기면 background 만 바꾸면 된다 — BuildScenery 가
-        // 바뀐 배경 세트를 알아보고 다시 놓는다.
+        // 구름과 지면 클립 아트는 배경 세트(AcidRainBackgrounds\ — BackgroundSet·BackgroundSets)가 정한다. 이 창은 창을 열 때 이 자판의
+        // 배경 세트(BackgroundSets.For — 사용자가 '자리연습' 화면 '오락 열기' → '배경 선택'으로 고른 것, 없으면 자판별 기본 배경, <261025_4>)를
+        // 골라, 오락 단계에 맞는 배경 단계(BackgroundSets.SceneFor — 단계 수가 달라도 규칙대로)를 놓고 레벨에 따라 지면 클립 아트를 땅에서
+        // 올린다. background 를 바꾸면 BuildScenery 가 바뀐 배경 세트를 알아보고 다시 놓는다.
 
         private const int SceneRiseMs = 900;              // 레벨업 때 지면 클립 아트가 올라오는 시간(<261024_1>(3.2.3) '짧게 천천히')
 
@@ -818,6 +818,8 @@ namespace OpenTyping
             {
                 background = value;
                 sceneNumber = 10;
+                builtBackground = null;   // 같은 배경 세트로 다시 넣어도 다음 BuildScenery 가 다시 놓게(지금 단계 번호를 바꿨으므로)
+                builtScene = 0;
                 BuildClouds();
             }
         }

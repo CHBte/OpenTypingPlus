@@ -8,8 +8,10 @@ namespace OpenTyping
     /// 산성비 오락의 `배경 세트`(<261025_3>) 목록과 자판별 배정, 오락 단계 → 배경 단계 대응 규칙.
     /// - 추가: BackgroundSet 을 이어받은 클래스 하나 + 그림 폴더 Resources\AcidRain\&lt;Id&gt;\ 를 만들고 All 에 한 줄 더한다.
     /// - 삭제: All 에서 빼고(ByKeyboard 에 그 Id 가 있으면 바꾸고) 클래스와 그림 폴더를 지운다.
-    /// - 자판별 교체: ByKeyboard 의 Id 만 바꾼다. 같은 배경을 여러 자판에 써도 된다.
-    /// - 메뉴에서만 숨기기: 그 클래스의 ShowInMenu 를 false 로(배경 고르기 드롭다운은 계획 — 아직 없다).
+    /// - 자판별 기본 배경 교체: ByKeyboard 의 Id 만 바꾼다. 같은 배경을 여러 자판에 써도 된다.
+    /// - 사용자는 '자리연습' 화면의 '오락 열기' → '배경 선택'(BackgroundSelectWindow, <261025_4>)으로 자판마다 배경을 고른다(설정 파일에
+    ///   저장 — UserSettingsStore.AcidRainBackgrounds). 고르지 않았으면 ByKeyboard 의 기본 배경.
+    /// - '배경 선택'에서만 숨기기: 그 클래스의 ShowInMenu 를 false 로.
     /// </summary>
     internal static class BackgroundSets
     {
@@ -20,28 +22,45 @@ namespace OpenTyping
             new EcoEnergyVillage(),
         };
 
-        /// <summary>(계획) 배경 고르기 드롭다운에 보일 배경 세트.</summary>
+        /// <summary>'배경 선택' 창에 보일 배경 세트(ShowInMenu 인 것).</summary>
         internal static IEnumerable<BackgroundSet> Menu => All.Where(s => s.ShowInMenu);
 
         internal static BackgroundSet Find(string id) => All.FirstOrDefault(s => s.Id == id);
 
         /// <summary>
-        /// 자판(단계 묶음의 key — 두벌식 표준 한글 "ko", QWERTY 영문 "en")마다 쓰는 배경 세트의 Id. 여기에 없는 자판은 DefaultId.
-        /// (계획) 배경 고르기 드롭다운이 생기면 이것은 '사용자가 고르기 전의 기본값'이 된다.
+        /// 자판(단계 묶음의 key — 두벌식 표준 한글 "ko", QWERTY 영문 "en")마다의 기본 배경 세트 Id(<261025_4>: 두벌식은 '자라는 꽃밭',
+        /// 영문은 '친환경 에너지 마을로'). 사용자가 '배경 선택'으로 고르기 전에 쓴다. 여기에 없는 자판은 DefaultId.
         /// </summary>
         internal static readonly IReadOnlyDictionary<string, string> ByKeyboard = new Dictionary<string, string>
         {
-            ["ko"] = EcoEnergyVillage.SetId,
+            ["ko"] = GrowingFlowerGarden.SetId,
             ["en"] = EcoEnergyVillage.SetId,
         };
 
-        internal const string DefaultId = EcoEnergyVillage.SetId;
+        internal const string DefaultId = GrowingFlowerGarden.SetId;
 
-        /// <summary>이 자판의 오락에 쓰는 배경 세트.</summary>
+        /// <summary>이 자판(key)의 기본 배경 세트.</summary>
+        internal static BackgroundSet DefaultFor(string keyboardKey)
+        {
+            string id = keyboardKey != null && ByKeyboard.TryGetValue(keyboardKey, out string kid) ? kid : DefaultId;
+            return Find(id) ?? Find(DefaultId) ?? All[0];
+        }
+
+        /// <summary>
+        /// 자판 keyboardKey 에서 사용자가 고른 배경 세트 Id(chosenId)를 따라 쓸 배경 세트. 고르지 않았거나, 그 배경 세트가 없어졌거나
+        /// '배경 선택'에서 숨긴 것이면 자판의 기본 배경.
+        /// </summary>
+        internal static BackgroundSet Resolve(string keyboardKey, string chosenId)
+        {
+            BackgroundSet chosen = chosenId != null ? Find(chosenId) : null;
+            return chosen != null && chosen.ShowInMenu ? chosen : DefaultFor(keyboardKey);
+        }
+
+        /// <summary>이 자판의 오락에 쓰는 배경 세트(사용자가 고른 것 또는 기본 배경).</summary>
         internal static BackgroundSet For(IStageSet keyboard)
         {
-            string id = keyboard != null && ByKeyboard.TryGetValue(keyboard.Key, out string kid) ? kid : DefaultId;
-            return Find(id) ?? Find(DefaultId) ?? All[0];
+            string key = keyboard?.Key;
+            return Resolve(key, UserSettingsStore.GetAcidRainBackground(key));
         }
 
         /// <summary>배경 세트 bg 를 자판 keyboardKey 의 오락에 쓸 때의 배경 단계 차례(그 자판에 따로 맞춘 것이 있으면 그것).</summary>

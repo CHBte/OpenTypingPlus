@@ -1929,8 +1929,33 @@ namespace OpenTyping
                     Check(noC2pa.Count == 0, $"실행 파일 안 그림 {sheetCount}개의 출처 정보(C2PA) 보존={noC2pa.Count == 0}" +
                                              (noC2pa.Count == 0 ? "" : " 없음: " + string.Join(", ", noC2pa)));
 
-                    // 그림: 배경 세트마다 두벌식 단계별로 다 올라온 모습(레벨 8).
                     string Png(string tag) => Path.ChangeExtension(outPath, "." + tag + ".png");
+
+                    // <261025_4> 자판별 기본 배경: 두벌식은 '자라는 꽃밭', 영문은 '친환경 에너지 마을로'.
+                    Check(BackgroundSets.DefaultFor("ko").Id == GrowingFlowerGarden.SetId && BackgroundSets.DefaultFor("en").Id == EcoEnergyVillage.SetId,
+                          $"자판별 기본 배경: ko→{BackgroundSets.DefaultFor("ko").Name}, en→{BackgroundSets.DefaultFor("en").Name}");
+
+                    // <261025_4> '배경 선택' 창: 고를 수 있는 배경(ShowInMenu)이 모두 있고 기본 배경에 '(기본)'이 붙으며, 지금 쓰는 배경 하나만
+                    // 골라져 있는지. 확인 단추는 누르지 않는다(사용자의 설정 파일에 쓰지 않는다).
+                    var selWin = new BackgroundSelectWindow
+                    {
+                        WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000, ShowActivated = false,
+                        WindowTransitionsEnabled = false,   // 등장 효과(반투명으로 미끄러져 들어옴) 도중에 찍히지 않게
+                    };
+                    selWin.Show();
+                    selWin.UpdateLayout();
+                    var radios = selWin.ChoicePanel.Children.OfType<System.Windows.Controls.RadioButton>().ToList();
+                    BackgroundSet expectedSel = BackgroundSets.For(StageSets.Current);
+                    BackgroundSet expectedDefault = BackgroundSets.DefaultFor(StageSets.Current?.Key);
+                    bool selOk = radios.Count == BackgroundSets.Menu.Count()
+                                 && radios.Select(r => (BackgroundSet)r.Tag).SequenceEqual(BackgroundSets.Menu)
+                                 && radios.Count(r => r.IsChecked == true) == 1 && selWin.SelectedBackground == expectedSel
+                                 && radios.All(r => ((string)r.Content).EndsWith("(기본)") == ((BackgroundSet)r.Tag == expectedDefault));
+                    SavePng(selWin, Png("background_select"));
+                    selWin.Close();
+                    Check(selOk, $"'배경 선택' 창({StageSets.Current?.Key}): " + string.Join(", ", radios.Select(r => (r.IsChecked == true ? "●" : "○") + r.Content)));
+
+                    // 그림: 배경 세트마다 두벌식 단계별로 다 올라온 모습(레벨 8).
                     win.StartOverlay.Visibility = Visibility.Collapsed;   // 시작 화면에 가려지지 않은 게임 중의 모습
                     win.SetSkyForTest(0);
                     foreach (BackgroundSet bg in BackgroundSets.All)
@@ -1944,10 +1969,8 @@ namespace OpenTyping
                         }
                     }
 
-                    // 이 아래는 두벌식에 배정된 배경 세트로 본다.
-                    win.BackgroundForTest = BackgroundSets.For(StageSets.DubeolsikStandard);
-                    int last = win.GameStageCountForTest - 1;
-                    // 흰 윤곽선 단어가 1단계 배경 위에서 읽히는지(보통·경고·위험·파란 단어).
+                    // 흰 윤곽선 단어가 가장 어두운 배경('친환경 에너지 마을로' 1단계의 짙은 연기·매연 구름) 위에서 읽히는지(보통·경고·위험·파란 단어).
+                    win.BackgroundForTest = BackgroundSets.Find(EcoEnergyVillage.SetId);
                     win.BuildSceneryForTest(0);
                     win.SetSceneLevelForTest(8);
                     win.ShowWordsForTest(new[]
@@ -1957,6 +1980,10 @@ namespace OpenTyping
                     });
                     SavePng(win, Png("scene_words"), 2);
                     win.ClearWordsForTest();
+
+                    // 이 아래는 두벌식의 기본 배경 세트로 본다(사용자가 고른 배경과 관계없이 늘 같게).
+                    win.BackgroundForTest = BackgroundSets.DefaultFor("ko");
+                    int last = win.GameStageCountForTest - 1;
 
                     // 같은 단계로 다시 놓으면(창을 열 때·다시 하기·시작 때) 다시 만들지 않고 레벨 1의 모습(모두 땅속)으로만 되돌린다.
                     win.BuildSceneryForTest(last);

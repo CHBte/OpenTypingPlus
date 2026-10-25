@@ -35,8 +35,8 @@ namespace OpenTyping
         public abstract string Name { get; }
 
         /// <summary>
-        /// (계획) 오락 전에 배경을 고르는 드롭다운에 보일지. false 면 프로그램에는 들어 있되 메뉴에만 보이지 않는다 — 자판별 배정
-        /// (BackgroundSets.ByKeyboard)으로는 여전히 쓸 수 있다.
+        /// '자리연습' 화면 '오락 열기' → '배경 선택' 창(<261025_4>)에 보일지. false 면 프로그램에는 들어 있되 그 창에만 보이지 않는다 —
+        /// 자판별 기본 배경(BackgroundSets.ByKeyboard)으로는 여전히 쓸 수 있다.
         /// </summary>
         public virtual bool ShowInMenu => true;
 

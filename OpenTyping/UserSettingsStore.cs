@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -31,6 +32,8 @@ namespace OpenTyping
             public double FingerLayerThickness { get; set; } = 3.5;
             public string FingerLayerColor { get; set; } = DefaultFingerLayerColor;
             public double FingerLayerOpacity { get; set; } = 0.65;
+            // <261025_4> 자판(단계 묶음 key — "ko"·"en")마다 사용자가 고른 산성비 오락 배경 세트의 Id. 없으면 자판별 기본 배경.
+            public Dictionary<string, string> AcidRainBackgrounds { get; set; } = new Dictionary<string, string>();
         }
 
         private static readonly string FilePath = BuildPath();
@@ -94,6 +97,7 @@ namespace OpenTyping
                 ? 3.5 : Math.Max(0.5, Math.Min(12.0, s.FingerLayerThickness));
             s.FingerLayerOpacity = double.IsNaN(s.FingerLayerOpacity)
                 ? 0.65 : Math.Max(0.05, Math.Min(1.0, s.FingerLayerOpacity));
+            s.AcidRainBackgrounds = s.AcidRainBackgrounds ?? new Dictionary<string, string>();
         }
 
         public static string KeyLayout
@@ -142,6 +146,21 @@ namespace OpenTyping
         {
             get => Data.FingerLayerOpacity;
             set => Data.FingerLayerOpacity = value;
+        }
+
+        /// <summary>
+        /// <261025_4> 자판(단계 묶음 key)에서 사용자가 '배경 선택'으로 고른 산성비 오락 배경 세트의 Id. 고른 적이 없거나 기본 배경을
+        /// 골랐으면 null(자판별 기본 배경 — BackgroundSets.DefaultFor).
+        /// </summary>
+        public static string GetAcidRainBackground(string keyboardKey) =>
+            keyboardKey != null && Data.AcidRainBackgrounds.TryGetValue(keyboardKey, out string id) ? id : null;
+
+        /// <summary><261025_4> 고른 배경 세트의 Id 를 적는다. null·빈 값이면 지워 자판별 기본 배경을 따르게 한다(디스크에는 Save 때 쓴다).</summary>
+        public static void SetAcidRainBackground(string keyboardKey, string id)
+        {
+            if (keyboardKey == null) return;
+            if (string.IsNullOrEmpty(id)) Data.AcidRainBackgrounds.Remove(keyboardKey);
+            else Data.AcidRainBackgrounds[keyboardKey] = id;
         }
 
         /// <summary>
