@@ -22,6 +22,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -84,8 +85,18 @@
                    Margin="0 16 0 0"
                    Text="이 프로그램은 Gear의 열린타자(OpenTyping)를 포크하여 제작했으며, MIT 라이선스를 따릅니다."/>
 
+        <!-- <261026_5> 그림 출처: 산성비 타자 오락의 배경 그림 조각은 대부분 캔바로 만들었다(README "그림 출처"). 한 줄에 다 들어가지
+             않아, 자동 줄바꿈이 낱말 가운데("제작하였습니 / 다")에서 끊지 않도록 낱말 사이에서 직접 줄을 바꾼다. -->
+        <TextBlock x:Name="CanvaText"
+                   Grid.Row="4"
+                   Style="{StaticResource NormalTextBlock}"
+                   FontSize="10.5pt"
+                   Foreground="#495057"
+                   TextWrapping="Wrap"
+                   Margin="0 6 0 0"><Run Text="산성비 타자 오락의 배경 그림 조각 대부분은"/><LineBreak/><Run Text="캔바(Canva)를 활용하여 제작하였습니다."/></TextBlock>
+
         <!-- 하단 버튼: 라이선스 / 닫기 -->
-        <DockPanel Grid.Row="5"
+        <DockPanel Grid.Row="6"
                    LastChildFill="False"
                    Margin="0 12 0 0">
             <Button x:Name="LicenseButton"

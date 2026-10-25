@@ -330,6 +330,18 @@ namespace OpenTyping
             ThemeManager.Current.ChangeTheme(this, StageRecords.CheatOn ? "Light.Cyan" : "Light.Cobalt");
         }
 
+        /// <summary>검사용: root 아래의 화면 요소를 모두(깊이 우선으로) 늘어놓는다.</summary>
+        private static IEnumerable<DependencyObject> VisualDescendants(DependencyObject root)
+        {
+            int n = VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < n; i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                yield return child;
+                foreach (DependencyObject d in VisualDescendants(child)) yield return d;
+            }
+        }
+
         private static void TryWrite(string path, string text)
         {
             try
@@ -526,6 +538,34 @@ namespace OpenTyping
             foreach (string l in lines) sb.AppendLine("    " + l);
             recWin.Close();
 
+            // <261026_5> '정보' 창의 캔바 안내 문구: 창 안에 다 보이는지(아래 단추와 겹치지 않고, 단추가 창 밖으로 밀려나지 않는지) 보고
+            // 그림으로 남긴다.
+            try
+            {
+                var about = new AboutWindow
+                {
+                    WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000, ShowActivated = false,
+                    WindowTransitionsEnabled = false,
+                };
+                about.Show();
+                about.UpdateLayout();
+                var aboutRoot = (FrameworkElement)about.Content;
+                double canvaBottom = about.CanvaText.TranslatePoint(new Point(0, about.CanvaText.ActualHeight), aboutRoot).Y;
+                double buttonTop = about.CloseButton.TranslatePoint(new Point(0, 0), aboutRoot).Y;
+                double buttonBottom = buttonTop + about.CloseButton.ActualHeight;
+                string canvaText = string.Join(" / ", about.CanvaText.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text));
+                bool aboutOk = canvaText.Contains("캔바") && canvaBottom <= buttonTop - 4 && buttonBottom <= aboutRoot.ActualHeight;
+                sb.AppendLine($"정보 창 캔바 문구: \"{canvaText}\" 문구 바닥 {canvaBottom:0} 단추 {buttonTop:0}~{buttonBottom:0} " +
+                              $"내용 높이 {aboutRoot.ActualHeight:0} {(aboutOk ? "PASS" : "FAIL")}");
+                var artb = new RenderTargetBitmap((int)about.ActualWidth, (int)about.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                artb.Render(about);
+                var aenc = new PngBitmapEncoder();
+                aenc.Frames.Add(BitmapFrame.Create(artb));
+                using (var fs = File.Create(Path.ChangeExtension(outPath, ".about.png"))) aenc.Save(fs);
+                about.Close();
+            }
+            catch (Exception ex) { sb.AppendLine("정보 창 캔바 문구: " + ex.Message + " FAIL"); }
+
             // <260812_9> '오락 열기' 드롭다운: 닫힌 글자와 펼친 목록의 첫 항목
             var combo = main.KeyPracticeMenu.GameStageCombo;
             var shown = combo.Items.OfType<System.Windows.Controls.ComboBoxItem>()
@@ -548,6 +588,46 @@ namespace OpenTyping
                 using (var fs = File.Create(Path.ChangeExtension(outPath, ".main.png"))) menc.Save(fs);
             }
             catch { /* 그림은 참고용 */ }
+
+            // <261026_3> '오락 열기' 목록의 '최고 기록'은 가운데 정렬: 목록을 펼쳐 그 항목 안에서 글자의 왼쪽·오른쪽 여백이 같은지 보고,
+            // 펼친 목록을 그림으로 남긴다.
+            try
+            {
+                var bestItem = combo.Items.OfType<System.Windows.Controls.ComboBoxItem>().FirstOrDefault(i => "최고 기록".Equals(i.Content));
+                combo.IsDropDownOpen = true;
+                combo.UpdateLayout();
+                // 펼친 목록은 따로 떠 있는 창(Popup)이라 combo 의 배치만으로는 항목이 그려지지 않는다 — 대기 중인 화면 일을 먼저 처리하게
+                // 하고(목록 창이 실제로 뜨고 배치됨) 그 안을 다시 배치한다.
+                for (int pump = 0; pump < 3; pump++)
+                    main.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() => { }));
+                var dropPopup = combo.Template.FindName("PART_Popup", combo) as System.Windows.Controls.Primitives.Popup;
+                (dropPopup?.Child as UIElement)?.UpdateLayout();
+                bestItem?.ApplyTemplate();
+                bestItem?.UpdateLayout();
+                var bestText = bestItem == null ? null
+                    : VisualDescendants(bestItem).OfType<System.Windows.Controls.ContentPresenter>().FirstOrDefault();
+                if (bestItem == null) sb.AppendLine("'최고 기록' 가운데 정렬: 목록에 항목이 없음 FAIL");
+                else if (bestText == null)
+                    sb.AppendLine($"'최고 기록' 가운데 정렬: 항목의 글자 칸을 찾지 못함(목록 펼침 {combo.IsDropDownOpen}, 항목 너비 {bestItem.ActualWidth:0}) FAIL");
+                else
+                {
+                    double left = bestText.TranslatePoint(new Point(0, 0), bestItem).X;
+                    double right = bestItem.ActualWidth - left - bestText.ActualWidth;
+                    bool centered = Math.Abs(left - right) <= 2 && left > 10;
+                    sb.AppendLine($"'최고 기록' 가운데 정렬: 항목 너비 {bestItem.ActualWidth:0}, 글자 왼쪽 여백 {left:0.0} 오른쪽 여백 {right:0.0} " +
+                                  (centered ? "PASS" : "FAIL"));
+                }
+                if (dropPopup?.Child is FrameworkElement popupChild && popupChild.ActualWidth > 0)
+                {
+                    var prtb = new RenderTargetBitmap((int)popupChild.ActualWidth, (int)popupChild.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                    prtb.Render(popupChild);
+                    var penc = new PngBitmapEncoder();
+                    penc.Frames.Add(BitmapFrame.Create(prtb));
+                    using (var fs = File.Create(Path.ChangeExtension(outPath, ".dropdown.png"))) penc.Save(fs);
+                }
+                combo.IsDropDownOpen = false;
+            }
+            catch (Exception ex) { sb.AppendLine("'최고 기록' 가운데 정렬: " + ex.Message + " FAIL"); }
 
             sb.AppendLine($"현재 자판=\"{OpenTyping.MainWindow.CurrentKeyLayout?.Name}\" " +
                           $"단계 자판=\"{KeyPracticeMenu.StageLayoutName}\" " +
@@ -1963,7 +2043,7 @@ namespace OpenTyping
 
                     // 그림: 배경 세트마다 두벌식 단계별로 다 올라온 모습(레벨 8).
                     win.StartOverlay.Visibility = Visibility.Collapsed;   // 시작 화면에 가려지지 않은 게임 중의 모습
-                    win.SetSkyForTest(0);
+                    win.SetLivesLookForTest(AcidRainWindow.StartLives);
                     foreach (BackgroundSet bg in BackgroundSets.All)
                     {
                         win.BackgroundForTest = bg;
@@ -1986,6 +2066,50 @@ namespace OpenTyping
                     });
                     SavePng(win, Png("scene_words"), 2);
                     win.ClearWordsForTest();
+
+                    // <261026_4> 산성비가 땅에 닿아 생명이 줄면 밤이 되고, 구름·지면 클립 아트가 생명 하나에 10%씩 투명해져 0이면 보이지 않는다.
+                    // 생명 5·1·0의 모습을 두벌식 기본 배경의 마지막 단계(다 올라온 모습)로 보고, 생명 1에는 단어와 레벨업 안내 문구도 띄워
+                    // 어두운 하늘에서 읽히는지 그림으로 남긴다.
+                    win.BackgroundForTest = BackgroundSets.DefaultFor("ko");
+                    win.BuildSceneryForTest(win.GameStageCountForTest - 1);
+                    win.SetSceneLevelForTest(8);
+                    foreach (int lv in new[] { 5, 1, 0 })
+                    {
+                        win.SetLivesLookForTest(lv);
+                        (Color skyTop, Color skyBottom) = AcidRainWindow.SkyColors(lv);
+                        double op = AcidRainWindow.ClipArtOpacity(lv);
+                        bool lookOk = win.SkyTopStop.Color == skyTop && win.SkyBottomStop.Color == skyBottom
+                                      && Math.Abs(win.CloudLayer.Opacity - op) < 1e-9 && Math.Abs(win.SceneryLayer.Opacity - op) < 1e-9;
+                        Check(lookOk, $"생명 {lv}: 하늘 위 {skyTop} 아래 {skyBottom}, 구름·지면 클립 아트 불투명도 " +
+                                      $"{win.CloudLayer.Opacity:0.0}·{win.SceneryLayer.Opacity:0.0}(기대 {op:0.0})");
+                        if (lv == 1)
+                        {
+                            win.ShowWordsForTest(new[] { ("강아지", 228.0, 300.0, 0), ("하늘", 70.0, 40.0, 1), ("바다", 600.0, 380.0, 2), ("구름", 520.0, 120.0, 3) });
+                            win.EventBanner.Text = "레벨 5에 도달하였습니다!";
+                            win.EventBanner.Opacity = 1;
+                        }
+                        SavePng(win, Png($"scene_lives{lv}"));
+                        if (lv == 1)
+                        {
+                            win.ClearWordsForTest();
+                            win.EventBanner.Text = "";
+                            win.EventBanner.Opacity = 0;
+                        }
+                    }
+                    win.SetLivesLookForTest(AcidRainWindow.StartLives);
+
+                    // <261026_7> 화면 흔들림 효과(3번)는 5초: 안내 문구에 "5초", 효과가 4.9초까지는 흔들리고 5초가 지나면 멈추며, 치트 창의 이름도
+                    // 같은 시간을 가리킨다.
+                    win.TriggerSpecialForTest(3);
+                    string shakeBanner = win.BannerTextForTest;
+                    double shakeStart = win.ShakeRemainingForTest;
+                    win.StepEffectTimersForTest(4.9);
+                    bool shakingAt49 = win.ShakeRemainingForTest > 0 && (win.ShakeShiftForTest.X != 0 || win.ShakeShiftForTest.Y != 0);
+                    win.StepEffectTimersForTest(0.2);
+                    bool stoppedAt51 = win.ShakeRemainingForTest <= 0 && win.ShakeShiftForTest == (0.0, 0.0);
+                    string shakeCheatName = AcidCheatWindow.Effects.First(e => e.Type == 3).Name;
+                    Check(shakeBanner == "화면 흔들림! (5초)" && shakeStart == 5 && shakingAt49 && stoppedAt51 && shakeCheatName == "화면 흔들림 (5초)",
+                          $"화면 흔들림: 안내 문구 \"{shakeBanner}\", 시작 {shakeStart}초, 4.9초 뒤 흔들리는 중 {shakingAt49}, 5.1초 뒤 멈춤 {stoppedAt51}, 치트 창 \"{shakeCheatName}\"");
 
                     // 이 아래는 두벌식의 기본 배경 세트로 본다(사용자가 고른 배경과 관계없이 늘 같게).
                     win.BackgroundForTest = BackgroundSets.DefaultFor("ko");

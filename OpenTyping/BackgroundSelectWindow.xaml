@@ -13,7 +13,8 @@
                  ShowMinButton="False"
                  ShowMaxRestoreButton="False"
                  Icon="{StaticResource AppIcon}">
-    <!-- <261025_4> 자리연습 화면 '오락 열기' 목록의 '배경 선택'을 고르면 뜨는 창(디자인은 '최고 기록' 창과 같다). -->
+    <!-- <261025_4> 자리연습 화면 '오락 열기' 목록의 '배경 선택'을 고르면 뜨는 창(디자인은 '최고 기록' 창과 같다).
+         <261026_1>로 그 목록 항목을 뺐다 — 지금은 이 창을 여는 곳이 없다(-acidscenetest 진단만 연다). -->
     <StackPanel Orientation="Vertical"
                 Margin="24 16 24 18"
                 MinWidth="260">

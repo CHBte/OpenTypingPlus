@@ -81,13 +81,14 @@ namespace OpenTyping
         private static readonly Brush GroundNormalBrush = new SolidColorBrush(Color.FromRgb(0x69, 0xdb, 0x7c));
         private static readonly Brush GroundHitBrush = new SolidColorBrush(Color.FromRgb(0xff, 0x87, 0x87));
 
-        // 하늘색: 생명이 줄수록 기본색(맑은 하늘)에서 산성색(주황)으로 점점 번진다.
+        // 하늘색: 생명이 줄수록 기본색(맑은 낮 하늘)에서 밤하늘 색으로 점점 어두워진다(<261026_4> — 예전에는 산성색인 주황으로 물들었는데,
+        // 밝은 이야기도 있는 배경과 어긋나서 바꿨다). 위·아래 두 색을 함께 옮겨 아래로 갈수록 밝아지는 그라데이션은 그대로다.
         private static readonly Color SkyTopBase = Color.FromRgb(0xd0, 0xeb, 0xff);
         private static readonly Color SkyBottomBase = Color.FromRgb(0xf8, 0xfb, 0xff);
-        private static readonly Color SkyTopAcid = Color.FromRgb(0xf7, 0x67, 0x07);
-        private static readonly Color SkyBottomAcid = Color.FromRgb(0xff, 0xe8, 0xcc);
+        private static readonly Color SkyTopNight = Color.FromRgb(0x0b, 0x13, 0x2b);
+        private static readonly Color SkyBottomNight = Color.FromRgb(0x2c, 0x3a, 0x66);
 
-        private const int StartLives = 10;          // 땅에 산성비가 10개 닿으면 게임 종료
+        internal const int StartLives = 10;         // 땅에 산성비가 10개 닿으면 게임 종료
         private const double BaseFallSpeed = 34;    // px/s (레벨 1)
         private const double BaseSpawnInterval = 2.4; // s (레벨 1)
         private const int CatchesPerLevel = 10;
@@ -117,7 +118,7 @@ namespace OpenTyping
         // 효과 지속 시간 (<산성비 타자 오락 260812_13>(2), 가림은 <산성비 타자 오락 260812_18>로 3초).
         private const double SpeedEffectDuration = 10;   // s (가속·감속)
         private const double MaskDuration = 3;           // s (■ 가림)
-        private const double ShakeDuration = 10;         // s (화면 흔들림)
+        internal const double ShakeDuration = 5;         // s (화면 흔들림 — <261026_7>로 10초에서 5초로. 안내 문구와 치트 창의 이름도 이 값을 쓴다)
 
         private readonly DispatcherTimer frameTimer = new DispatcherTimer();
         private readonly DispatcherTimer groundFlashTimer = new DispatcherTimer();
@@ -565,6 +566,7 @@ namespace OpenTyping
         private void RetryButton_Click(object sender, RoutedEventArgs e)
         {
             ClearWords(); // 종료 화면 뒤에 비쳐 보이던 이전 게임 단어를 지운다
+            ResetSky();   // <261026_4> 밤하늘·투명해진 클립 아트를 시작 화면 뒤에서도 처음 모습으로
             GameOverOverlay.Visibility = Visibility.Collapsed;
             RefreshStageCombo(); // 갱신된 기록을 목록에 반영(고른 단계는 그대로)
             StartOverlay.Visibility = Visibility.Visible; // 단계 재선택 가능
@@ -647,7 +649,7 @@ namespace OpenTyping
             FireworkLayer.Children.Clear();
         }
 
-        // ── 하늘색(산성비 피해 표시) ──
+        // ── 하늘색과 클립 아트(산성비 피해 표시, <261026_4>) ──
 
         private static Color LerpColor(Color a, Color b, double t)
         {
@@ -656,23 +658,42 @@ namespace OpenTyping
             return Color.FromRgb(L(a.R, b.R), L(a.G, b.G), L(a.B, b.B));
         }
 
-        // 남은 생명이 줄수록(맞은 횟수가 늘수록) 하늘이 산성(주황)색으로 점점 물든다.
-        private void UpdateSky()
+        /// <summary>남은 생명 lives 일 때 하늘의 위·아래 색. 생명을 잃을수록 밤하늘 색에 가까워지고, 생명이 0이면 밤하늘 색이다.</summary>
+        internal static (Color Top, Color Bottom) SkyColors(int lives)
         {
             double t = (double)(StartLives - lives) / StartLives;
-            Color top = LerpColor(SkyTopBase, SkyTopAcid, t);
-            Color bottom = LerpColor(SkyBottomBase, SkyBottomAcid, t);
+            return (LerpColor(SkyTopBase, SkyTopNight, t), LerpColor(SkyBottomBase, SkyBottomNight, t));
+        }
+
+        /// <summary>
+        /// 남은 생명 lives 일 때 하늘 클립 아트(구름)와 지면 클립 아트의 불투명도. 생명 하나를 잃을 때마다 10%씩 투명해져, 생명이 0이면 보이지
+        /// 않는다(생명 10개 기준 — 생명 하나가 1/StartLives).
+        /// </summary>
+        internal static double ClipArtOpacity(int lives) => Math.Max(0, Math.Min(1, (double)lives / StartLives));
+
+        // 남은 생명이 줄수록(맞은 횟수가 늘수록) 하늘이 밤으로 어두워지고 구름·지면 클립 아트가 투명해진다.
+        private void UpdateSky()
+        {
+            (Color top, Color bottom) = SkyColors(lives);
             var duration = new Duration(TimeSpan.FromMilliseconds(500));
             SkyTopStop.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(top, duration));
             SkyBottomStop.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(bottom, duration));
+            var fade = new DoubleAnimation(ClipArtOpacity(lives), duration);
+            CloudLayer.BeginAnimation(UIElement.OpacityProperty, fade);
+            SceneryLayer.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
-        private void ResetSky()
+        private void ResetSky() => ApplyLivesLook(StartLives);
+
+        // 남은 생명 livesLeft 의 하늘색·클립 아트 불투명도로 곧바로 바꾼다(애니메이션 없이).
+        private void ApplyLivesLook(int livesLeft)
         {
             SkyTopStop.BeginAnimation(GradientStop.ColorProperty, null);
             SkyBottomStop.BeginAnimation(GradientStop.ColorProperty, null);
-            SkyTopStop.Color = SkyTopBase;
-            SkyBottomStop.Color = SkyBottomBase;
+            CloudLayer.BeginAnimation(UIElement.OpacityProperty, null);
+            SceneryLayer.BeginAnimation(UIElement.OpacityProperty, null);
+            (SkyTopStop.Color, SkyBottomStop.Color) = SkyColors(livesLeft);
+            CloudLayer.Opacity = SceneryLayer.Opacity = ClipArtOpacity(livesLeft);
         }
 
         // ── 배경 그림: `배경 세트`(<261025_3>) ──
@@ -889,14 +910,15 @@ namespace OpenTyping
             testWordBlocks.Clear();
         }
 
-        /// <summary>검사용(-acidscenetest): 하늘을 산성 정도 t(0=처음, 1=생명을 다 잃음)의 색으로 곧바로 칠한다.</summary>
-        internal void SetSkyForTest(double t)
-        {
-            SkyTopStop.BeginAnimation(GradientStop.ColorProperty, null);
-            SkyBottomStop.BeginAnimation(GradientStop.ColorProperty, null);
-            SkyTopStop.Color = LerpColor(SkyTopBase, SkyTopAcid, t);
-            SkyBottomStop.Color = LerpColor(SkyBottomBase, SkyBottomAcid, t);
-        }
+        /// <summary>검사용(-acidscenetest): 특수 효과 type 을 터뜨리고, 효과 시간을 dt 초씩 흘려 보낸다(<261026_7> 흔들림 시간 검사).</summary>
+        internal void TriggerSpecialForTest(int type) => TriggerSpecial(type);
+        internal void StepEffectTimersForTest(double dt) => UpdateEffectTimers(dt);
+        internal double ShakeRemainingForTest => shakeTimer;
+        internal string BannerTextForTest => EventBanner.Text;
+        internal (double X, double Y) ShakeShiftForTest => (shakeShift.X, shakeShift.Y);
+
+        /// <summary>검사용(-acidscenetest): 남은 생명 lives 의 하늘색·클립 아트 불투명도로 곧바로 바꾼다(<261026_4>).</summary>
+        internal void SetLivesLookForTest(int lives) => ApplyLivesLook(lives);
 
         // ── 프레임 루프 ──
 

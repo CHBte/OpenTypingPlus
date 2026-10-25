@@ -70,7 +70,7 @@ namespace OpenTyping
         // 5단계의 꽃(flowers.png)과 4단계의 봉오리(buds.png): 같은 차례끼리 짝이다(봉오리가 같은 꽃으로 핀다). 조각, 그림 속 밑동 x, 밑동
         // 토막의 길이(줄). 밑동 토막은 줄기와 녹색이 조금 달라, 떼어 내고 꽃 아랫부분이 줄기 끝을 덮게 놓는다. 차례: 코스모스 분홍·보라·흰색,
         // 튤립 빨강·노랑·분홍, 백합 흰색·분홍, 데이지, 파란 들꽃.
-        private static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantFlowers =
+        internal static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantFlowers =
         {
             (new Int32Rect(134, 170, 188, 200),  225.6, 16), (new Int32Rect(440, 170, 186, 200),  532.6, 18),
             (new Int32Rect(755, 170, 185, 200),  846.8, 19), (new Int32Rect(1108, 169, 140, 201), 1176.0, 27),
@@ -78,7 +78,7 @@ namespace OpenTyping
             (new Int32Rect(438, 565, 182, 210),  528.9, 34), (new Int32Rect(753, 580, 176, 195),  841.7, 33),
             (new Int32Rect(1083, 594, 166, 181), 1165.8, 26), (new Int32Rect(1417, 622, 111, 153), 1470.8, 39),
         };
-        private static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantBuds =
+        internal static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantBuds =
         {
             (new Int32Rect(186, 235, 52, 83),   211.7, 15), (new Int32Rect(493, 224, 60, 94),   522.9, 15),
             (new Int32Rect(817, 237, 49, 81),   840.7, 15), (new Int32Rect(1129, 205, 65, 113), 1160.9, 14),
@@ -86,6 +86,17 @@ namespace OpenTyping
             (new Int32Rect(493, 603, 60, 140),  522.8, 15), (new Int32Rect(812, 604, 58, 139),  840.5, 15),
             (new Int32Rect(1136, 655, 51, 88),  1160.6, 15), (new Int32Rect(1438, 674, 44, 69),  1459.8, 15),
         };
+
+        // 꽃·봉오리의 흰 꽃잎에 입히는 색(PlantFlowers·PlantBuds 와 같은 차례, null 이면 그대로 — SceneKit.Tinted): 흰 코스모스·흰 백합은
+        // 주황, 데이지는 보라(썰렁이 지시 2026-10-26, 태그 없는 지시 — 흰 하늘에서 잘 안 보여서).
+        internal static readonly Color?[] HeadTints =
+        {
+            null, null, SceneKit.FlowerOrange, null, null, null, SceneKit.FlowerOrange, null, SceneKit.FlowerPurple, null,
+        };
+
+        // 꽃의 크기 배율(PlantFlowers 와 같은 차례, 1 이면 그대로): 파란 들꽃은 모음 그림에서 다른 꽃보다 작게 그려져(꽃 부분 약 105×112px,
+        // 보라 코스모스는 180×180px) 줄기의 잎에 비해 작아 보여, 보라 코스모스만 하게 1.65배로 키운다(썰렁이 지시 2026-10-26, 태그 없는 지시).
+        internal static readonly double[] FlowerSizes = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.65 };
 
         // 날벌레(insects.png, 모두 오른쪽을 본다): 벌 두 가지, 나비 두 가지(분홍·노랑). 조각과 그림 속 배 끝(벌은 침 끝 — 가장 왼쪽의 어두운
         // 픽셀, 나비는 몸통의 가장 아래 갈색 픽셀로 잼). 지나온 길 선은 여기서 시작한다(썰렁이 지시). 분홍 나비는 배 끝이 왼쪽 아래, 노란
@@ -284,15 +295,16 @@ namespace OpenTyping
 
             var st = PlantStems[spot.Stem];
             ScenePiece head = null;
-            double stubX = 0;
+            double stubX = 0, headScale = HeadScale;
             if (scene >= 4)
             {
                 var hd = scene >= 5 ? PlantFlowers[spot.Head] : PlantBuds[spot.Head];
-                head = Piece(scene >= 5 ? "flowers" : "buds", hd.Piece, hd.StubLen);
+                head = SceneKit.Tinted(Piece(scene >= 5 ? "flowers" : "buds", hd.Piece, hd.StubLen), HeadTints[spot.Head]);
                 stubX = hd.StubX;
+                if (scene >= 5) headScale *= FlowerSizes[spot.Head];
             }
             return SceneKit.StemWithHead(Piece("stems", st.Piece), st.StemX, st.TopY, spot.StemFlip, StemScale * spot.StemSize,
-                                         head, stubX, spot.HeadFlip, HeadScale, HeadOverlap);
+                                         head, stubX, spot.HeadFlip, headScale, HeadOverlap);
         }
     }
 }

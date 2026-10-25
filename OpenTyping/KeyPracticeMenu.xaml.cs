@@ -155,9 +155,12 @@ namespace OpenTyping
             }
 
             // <산성비 타자 오락 260812_20>(2) 목록 맨 아래의 '최고 기록'. 단계가 아니므로 Tag 로 구분한다.
-            GameStageCombo.Items.Add(new ComboBoxItem { Content = "최고 기록", Tag = BestRecordTag });
-            // <261025_4> 그 아래 '배경 선택'(오락 배경 `배경 세트` 고르기).
-            GameStageCombo.Items.Add(new ComboBoxItem { Content = "배경 선택", Tag = BackgroundTag });
+            // <261026_3> 가운데 정렬.
+            GameStageCombo.Items.Add(new ComboBoxItem
+            {
+                Content = "최고 기록", Tag = BestRecordTag, HorizontalContentAlignment = HorizontalAlignment.Center,
+            });
+            // <261026_1> '최고 기록' 아래의 '배경 선택'(<261025_4>)은 목록에서 뺐다. BackgroundSelectWindow 와 설정 저장 코드는 그대로 남겨 두었다.
 
             GameStageCombo.SelectedIndex = 0;
             suppressGameComboEvent = false;
@@ -165,9 +168,6 @@ namespace OpenTyping
 
         /// <summary>'최고 기록' 항목 표시용(단계 id 와 겹치지 않는 값) (<산성비 타자 오락 260812_20>(2)).</summary>
         private const string BestRecordTag = "bestrecord";
-
-        /// <summary>'배경 선택' 항목 표시용(단계 id 와 겹치지 않는 값) (<261025_4>).</summary>
-        private const string BackgroundTag = "background";
 
         private void GameStageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -181,16 +181,6 @@ namespace OpenTyping
                 suppressGameComboEvent = false;
                 // 최고 기록 창은 다른 2단계 창과 달리 메인 창을 숨기지 않는다(사용자 지정).
                 new BestRecordWindow { Owner = Window.GetWindow(this) }.ShowDialog();
-                return;
-            }
-
-            if (BackgroundTag.Equals(item.Tag))
-            {
-                suppressGameComboEvent = true;
-                GameStageCombo.SelectedIndex = 0;   // 메뉴처럼 곧바로 원래 자리로
-                suppressGameComboEvent = false;
-                // '최고 기록' 창처럼 메인 창을 숨기지 않는다. 고른 배경은 다음에 여는 오락부터 쓴다.
-                new BackgroundSelectWindow { Owner = Window.GetWindow(this) }.ShowDialog();
                 return;
             }
 

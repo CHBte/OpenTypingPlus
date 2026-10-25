@@ -50,6 +50,7 @@ namespace OpenTyping
             new Dictionary<(string, string, Int32Rect, int, bool), ScenePiece>();
         private static readonly Dictionary<(ScenePiece, bool, double, double), ScenePiece> shadedPieces =
             new Dictionary<(ScenePiece, bool, double, double), ScenePiece>();
+        private static readonly Dictionary<(ScenePiece, Color), ScenePiece> tintedPieces = new Dictionary<(ScenePiece, Color), ScenePiece>();
 
         /// <summary>배경 세트 folder 의 그림 file(확장자 뺀 이름)의 주소.</summary>
         internal static Uri SheetUri(string folder, string file) =>
@@ -90,6 +91,7 @@ namespace OpenTyping
         {
             pieces.Clear();
             shadedPieces.Clear();
+            tintedPieces.Clear();
         }
 
         /// <summary>검사용(-acidscenetest): 들고 있는 모음 그림 수(배경을 다 놓은 뒤에는 0이어야 한다).</summary>
@@ -242,6 +244,52 @@ namespace OpenTyping
         /// 윤곽선의 위치와 모양은 바뀌지 않는다.
         /// </summary>
         internal static byte SharpenAlpha(byte a, double k) => (byte)Math.Max(0, Math.Min(255, Math.Round(127.5 + (a - 127.5) * k)));
+
+        // 흰 꽃(흰 코스모스·흰 백합·데이지)과 그 봉오리는 처음 하늘의 아래쪽(거의 흰색)에서 잘 안 보여, 꽃잎에 주황·보라를 입힌다(썰렁이
+        // 지시 2026-10-26, 태그 없는 지시). 어느 꽃에 어느 색을 입힐지는 배경 세트마다 HeadTints 에 적는다.
+        internal static readonly Color FlowerOrange = Color.FromRgb(0xf7, 0x8c, 0x1f);
+        internal static readonly Color FlowerPurple = Color.FromRgb(0x9b, 0x5d, 0xe5);
+
+        /// <summary>
+        /// 조각의 흰 부분(밝고 색이 거의 없는 픽셀 — 흰 꽃잎과 그 음영)에만 tint 를 입힌 사본(TintWhite). 노란 꽃술·녹색 밑동처럼 색이 있는
+        /// 부분과 어두운 윤곽선은 그대로다. 파일은 그대로다. tint 가 null 이면 p 를 그대로 돌려준다.
+        /// </summary>
+        internal static ScenePiece Tinted(ScenePiece p, Color? tint)
+        {
+            if (p == null || tint == null) return p;
+            Color c = tint.Value;
+            if (tintedPieces.TryGetValue((p, c), out ScenePiece cached)) return cached;
+            BitmapSource src = p.Bitmap;
+            int w = src.PixelWidth, h = src.PixelHeight, stride = w * 4;
+            var px = new byte[stride * h];
+            src.CopyPixels(px, stride, 0);
+            for (int i = 0; i < px.Length; i += 4)
+                (px[i], px[i + 1], px[i + 2]) = TintWhite(px[i], px[i + 1], px[i + 2], c);
+            ScenePiece result = ToPiece(px, w, h, p.Left, p.Top);
+            tintedPieces[(p, c)] = result;
+            return result;
+        }
+
+        private const double WhitePetalLevel = 0.92;   // 흰 꽃잎의 밝은 곳의 밝기(0~1). 이 밝기가 입히는 색 그대로가 된다.
+
+        /// <summary>
+        /// 한 픽셀(B·G·R)의 흰 부분 물들이기. 흰색은 색상값이 없어 색상을 돌려서는 바뀌지 않으므로 tint 를 새로 입히되 밝기에 비례하게
+        /// 입혀 꽃잎의 음영(회색 그림자)을 살린다. 흰 정도에 따라 원래 색과 부드럽게 섞어 꽃잎 가장자리가 끊겨 보이지 않게 한다 — 채도 0.10
+        /// 이하·밝기 0.70 이상이면 다 입히고, 채도 0.25 이상이거나 밝기 0.45 이하면 그대로 둔다(채도 = 가장 큰 값 − 가장 작은 값, 밝기 =
+        /// 가장 큰 값, 모두 255 로 나눈 값).
+        /// </summary>
+        internal static (byte B, byte G, byte R) TintWhite(byte b, byte g, byte r, Color tint)
+        {
+            int mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
+            double weight = Ramp((mx - mn) / 255.0, 0.25, 0.10) * Ramp(mx / 255.0, 0.45, 0.70);
+            if (weight <= 0) return (b, g, r);
+            double lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0 / WhitePetalLevel;
+            byte Mix(byte orig, byte t) => (byte)Math.Round(orig + (Math.Min(255, t * lum) - orig) * weight);
+            return (Mix(b, tint.B), Mix(g, tint.G), Mix(r, tint.R));
+        }
+
+        /// <summary>x 가 zeroAt 이면 0, oneAt 이면 1, 그 사이는 같은 간격(밖은 0·1 로 자른다). zeroAt 이 더 커도 된다.</summary>
+        private static double Ramp(double x, double zeroAt, double oneAt) => Math.Max(0, Math.Min(1, (x - zeroAt) / (oneAt - zeroAt)));
 
         // ── 지면 클립 아트 만들기 ──
 

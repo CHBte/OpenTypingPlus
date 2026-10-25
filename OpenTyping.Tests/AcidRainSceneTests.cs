@@ -1,3 +1,7 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using OpenTyping;
 
 namespace OpenTyping.Tests;
@@ -49,6 +53,48 @@ public class AcidRainSceneTests
         Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.Resolve("en", GrowingFlowerGarden.SetId).Id);
         Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.Resolve("ko", null).Id);
         Assert.Equal(EcoEnergyVillage.SetId, BackgroundSets.Resolve("en", "없어진 배경").Id);
+    }
+
+    [Fact]
+    public void 배경_선택을_가린_동안은_예전에_고른_것과_관계없이_자판별_기본_배경을_쓴다()
+    {
+        // <261026_1>·<261026_2>: 설정 파일에 남은 선택은 읽지 않는다.
+        Assert.False(BackgroundSets.UserChoiceEnabled);
+        Assert.Equal(GrowingFlowerGarden.SetId, BackgroundSets.For(StageSets.DubeolsikStandard).Id);
+        Assert.Equal(EcoEnergyVillage.SetId, BackgroundSets.For(StageSets.QwertyEnglish).Id);
+    }
+
+    [Fact]
+    public void 생명을_잃을수록_하늘이_밤으로_어두워지고_아래로_갈수록_밝은_그라데이션은_그대로다()
+    {
+        // <261026_4>
+        static double Lum(Color c) => 0.299 * c.R + 0.587 * c.G + 0.114 * c.B;
+        var day = AcidRainWindow.SkyColors(AcidRainWindow.StartLives);
+        Assert.Equal(Color.FromRgb(0xd0, 0xeb, 0xff), day.Top);      // 처음은 예전과 같은 맑은 하늘
+        Assert.Equal(Color.FromRgb(0xf8, 0xfb, 0xff), day.Bottom);
+        for (int lives = AcidRainWindow.StartLives; lives >= 0; lives--)
+        {
+            var sky = AcidRainWindow.SkyColors(lives);
+            Assert.True(Lum(sky.Bottom) > Lum(sky.Top));                              // 아래가 더 밝다
+            Assert.True(sky.Top.B >= sky.Top.R && sky.Bottom.B >= sky.Bottom.R);       // 주황으로 물들지 않고 푸른 기운 그대로
+            if (lives < AcidRainWindow.StartLives)
+            {
+                var prev = AcidRainWindow.SkyColors(lives + 1);
+                Assert.True(Lum(sky.Top) < Lum(prev.Top) && Lum(sky.Bottom) < Lum(prev.Bottom));   // 생명 하나마다 더 어둡다
+            }
+        }
+        var night = AcidRainWindow.SkyColors(0);
+        Assert.True(Lum(night.Top) < 40 && Lum(night.Bottom) < 90);   // 생명 0이면 밤하늘
+    }
+
+    [Fact]
+    public void 구름과_지면_클립_아트는_생명_하나에_10퍼센트씩_투명해져_생명_0이면_보이지_않는다()
+    {
+        // <261026_4>
+        Assert.Equal(10, AcidRainWindow.StartLives);
+        for (int lives = 0; lives <= 10; lives++) Assert.Equal(lives / 10.0, AcidRainWindow.ClipArtOpacity(lives), 9);
+        Assert.Equal(0, AcidRainWindow.ClipArtOpacity(-1));
+        Assert.Equal(1, AcidRainWindow.ClipArtOpacity(11));
     }
 
     [Fact]
@@ -182,5 +228,113 @@ public class AcidRainSceneTests
         // 반투명(1~254)으로 남는 알파 값의 수가 약 1/2.6 로 준다 = 번진 띠가 그만큼 좁아진다.
         int band = Enumerable.Range(0, 256).Count(a => SceneKit.SharpenAlpha((byte)a, 2.6) is > 0 and < 255);
         Assert.InRange(band, 254 / 2.6 - 2, 254 / 2.6 + 2);
+    }
+
+    [Fact]
+    public void 흰_꽃잎에만_색을_입히고_음영은_살리며_색이_있는_곳과_윤곽선은_그대로다()
+    {
+        // 썰렁이 지시 2026-10-26(태그 없는 지시): 흰 꽃이 흰 하늘에서 잘 안 보여 꽃잎에 주황·보라를 입힌다(SceneKit.TintWhite).
+        Color t = SceneKit.FlowerOrange;
+        (byte B, byte G, byte R) white = SceneKit.TintWhite(255, 255, 255, t);
+        Assert.InRange(white.R, t.R - 15, 255);
+        Assert.InRange(white.G, t.G - 15, t.G + 15);
+        Assert.InRange(white.B, t.B - 15, t.B + 15);
+        // 꽃잎의 회색 그림자는 같은 색의 더 어두운 쪽이 된다.
+        (byte B, byte G, byte R) shadow = SceneKit.TintWhite(190, 190, 190, t);
+        Assert.True(shadow.R < white.R && shadow.G < white.G && shadow.R > shadow.G && shadow.G > shadow.B);
+        // 노란 꽃술·녹색 밑동·분홍 꽃잎·어두운 윤곽선은 그대로다(B, G, R 차례).
+        Assert.Equal(((byte)60, (byte)210, (byte)250), SceneKit.TintWhite(60, 210, 250, t));
+        Assert.Equal(((byte)60, (byte)160, (byte)90), SceneKit.TintWhite(60, 160, 90, t));
+        Assert.Equal(((byte)180, (byte)150, (byte)240), SceneKit.TintWhite(180, 150, 240, t));
+        Assert.Equal(((byte)60, (byte)60, (byte)60), SceneKit.TintWhite(60, 60, 60, t));
+        // 흰 정도가 애매한 곳(채도 0.10~0.25)은 원래 색과 섞인다 — 가장자리가 끊겨 보이지 않게.
+        (byte B, byte G, byte R) half = SceneKit.TintWhite(200, 240, 245, t);
+        Assert.True(half.B < 200 && half.B > SceneKit.TintWhite(255, 255, 255, t).B);
+    }
+
+    // 꽃 그림에서 거의 흰 픽셀(가장 작은 값 205 초과, 가장 큰 값과 가장 작은 값의 차 30 미만)이 불투명 픽셀 가운데 얼마인가.
+    private static double WhiteShare(byte[] px, bool tinted, Color? tint)
+    {
+        int opaque = 0, white = 0;
+        for (int i = 0; i < px.Length; i += 4)
+        {
+            if (px[i + 3] < 200) continue;
+            byte b = px[i], g = px[i + 1], r = px[i + 2];
+            if (tinted && tint != null) (b, g, r) = SceneKit.TintWhite(b, g, r, tint.Value);
+            opaque++;
+            int mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
+            if (mn > 205 && mx - mn < 30) white++;
+        }
+        return opaque == 0 ? 0 : (double)white / opaque;
+    }
+
+    private static string AcidRainFolder(string setId)
+    {
+        for (DirectoryInfo d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            string p = Path.Combine(d.FullName, "OpenTyping", "Resources", "AcidRain", setId);
+            if (Directory.Exists(p)) return p;
+        }
+        throw new DirectoryNotFoundException("Resources\\AcidRain\\" + setId);
+    }
+
+    // 저장소의 그림 파일을 읽기만 한다(다시 저장하지 않는다 — 캔바 출처 정보).
+    private static FormatConvertedBitmap LoadSheet(string setId, string file) =>
+        new FormatConvertedBitmap(BitmapFrame.Create(new Uri(Path.Combine(AcidRainFolder(setId), file + ".png")),
+                                                     BitmapCreateOptions.None, BitmapCacheOption.OnLoad), PixelFormats.Bgra32, null, 0);
+
+    [Theory]
+    [InlineData("GrowingFlowerGarden", "flowers")]
+    [InlineData("GrowingFlowerGarden", "buds")]
+    [InlineData("EcoEnergyVillage", "flowers")]
+    public void 흰_꽃과_봉오리는_빠짐없이_색을_입혀_거의_흰_곳이_남지_않는다(string setId, string file)
+    {
+        (Int32Rect Piece, double StubX, int StubLen)[] heads = setId == "EcoEnergyVillage" ? EcoEnergyVillage.PlantFlowers
+            : file == "buds" ? GrowingFlowerGarden.PlantBuds : GrowingFlowerGarden.PlantFlowers;
+        Color?[] tints = setId == "EcoEnergyVillage" ? EcoEnergyVillage.HeadTints : GrowingFlowerGarden.HeadTints;
+        Assert.Equal(heads.Length, tints.Length);
+
+        FormatConvertedBitmap sheet = LoadSheet(setId, file);
+        var report = new List<string>();
+        for (int i = 0; i < heads.Length; i++)
+        {
+            Int32Rect r = heads[i].Piece;
+            var px = new byte[r.Width * r.Height * 4];
+            sheet.CopyPixels(r, px, r.Width * 4, 0);
+            double before = WhiteShare(px, false, null), after = WhiteShare(px, true, tints[i]);
+            // 흰 부분이 20% 이상인 꽃·봉오리에는 색이 정해져 있어야 하고, 색을 입힌 뒤에는 거의 흰 곳이 3% 미만이어야 한다.
+            if ((before >= 0.2 && tints[i] == null) || after >= 0.03) report.Add($"{i + 1}번째: 흰 곳 {before:P0} → {after:P0}");
+        }
+        Assert.True(report.Count == 0, $"{setId}\\{file}.png: " + string.Join(", ", report));
+    }
+
+    [Theory]
+    [InlineData("GrowingFlowerGarden")]
+    [InlineData("EcoEnergyVillage")]
+    public void 꽃마다_보이는_크기가_다른_꽃들의_가운데_값보다_많이_작지_않다(string setId)
+    {
+        // 썰렁이 지시 2026-10-26(태그 없는 지시): 파란 들꽃이 줄기의 잎에 비해 작아 보여 키웠다(FlowerSizes). 꽃 부분(밑동 토막을 뺀 불투명
+        // 영역의 너비×높이)의 제곱근에 크기 배율을 곱한 값이 꽃들의 가운데 값의 75% 이상이어야 한다(키우기 전 파란 들꽃은 약 66%).
+        (Int32Rect Piece, double StubX, int StubLen)[] heads = setId == "EcoEnergyVillage" ? EcoEnergyVillage.PlantFlowers : GrowingFlowerGarden.PlantFlowers;
+        double[] sizes = setId == "EcoEnergyVillage" ? EcoEnergyVillage.FlowerSizes : GrowingFlowerGarden.FlowerSizes;
+        Assert.Equal(heads.Length, sizes.Length);
+
+        FormatConvertedBitmap sheet = LoadSheet(setId, "flowers");
+        var shown = new double[heads.Length];
+        for (int i = 0; i < heads.Length; i++)
+        {
+            Int32Rect r = heads[i].Piece;
+            int h = r.Height - heads[i].StubLen;
+            var px = new byte[r.Width * h * 4];
+            sheet.CopyPixels(new Int32Rect(r.X, r.Y, r.Width, h), px, r.Width * 4, 0);
+            int x0 = int.MaxValue, x1 = -1, y0 = int.MaxValue, y1 = -1;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < r.Width; x++)
+                    if (px[(y * r.Width + x) * 4 + 3] >= 128) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
+            shown[i] = Math.Sqrt((x1 - x0 + 1.0) * (y1 - y0 + 1.0)) * sizes[i];
+        }
+        double median = shown.OrderBy(v => v).ElementAt(shown.Length / 2);
+        var small = shown.Select((v, i) => (v, i)).Where(t => t.v < median * 0.75).Select(t => $"{t.i + 1}번째 {t.v / median:P0}").ToList();
+        Assert.True(small.Count == 0, setId + " — 가운데 값보다 많이 작은 꽃: " + string.Join(", ", small));
     }
 }

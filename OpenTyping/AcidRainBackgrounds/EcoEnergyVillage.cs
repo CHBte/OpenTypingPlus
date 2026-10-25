@@ -116,7 +116,7 @@ namespace OpenTyping
             (new Int32Rect(1163, 481, 186, 310), 1254.6, 481),
             (new Int32Rect(1428, 243, 159, 547), 1502.4, 243),
         };
-        private static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantFlowers =
+        internal static readonly (Int32Rect Piece, double StubX, int StubLen)[] PlantFlowers =
         {
             (new Int32Rect(134, 170, 188, 200),  225.6, 16), (new Int32Rect(440, 170, 186, 200),  532.6, 18),
             (new Int32Rect(755, 170, 185, 200),  846.8, 19), (new Int32Rect(1108, 169, 140, 201), 1176.0, 27),
@@ -124,6 +124,15 @@ namespace OpenTyping
             (new Int32Rect(438, 565, 182, 210),  528.9, 34), (new Int32Rect(753, 580, 176, 195),  841.7, 33),
             (new Int32Rect(1083, 594, 166, 181), 1165.8, 26), (new Int32Rect(1417, 622, 111, 153), 1470.8, 39),
         };
+        // 꽃의 흰 꽃잎에 입히는 색(PlantFlowers 와 같은 차례, null 이면 그대로 — SceneKit.Tinted): '자라는 꽃밭'과 같다(흰 코스모스·흰
+        // 백합은 주황, 데이지는 보라 — 썰렁이 지시 2026-10-26, 태그 없는 지시).
+        internal static readonly Color?[] HeadTints =
+        {
+            null, null, SceneKit.FlowerOrange, null, null, null, SceneKit.FlowerOrange, null, SceneKit.FlowerPurple, null,
+        };
+        // 꽃의 크기 배율(PlantFlowers 와 같은 차례): '자라는 꽃밭'과 같다(파란 들꽃만 보라 코스모스만 하게 1.65배 — 썰렁이 지시 2026-10-26,
+        // 태그 없는 지시).
+        internal static readonly double[] FlowerSizes = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.65 };
         private const double FlowerBedLeft = 372, FlowerBedRight = 520;
 
         // 새(birds.png, 6단계부터, 모두 오른쪽을 본다): 조각과 그림 속 꼬리 끝(가장 왼쪽 픽셀). 지나간 길 선은 꼬리 끝에서 시작한다.
@@ -280,7 +289,8 @@ namespace OpenTyping
                     var st = PlantStems[spot.Stem];
                     var hd = PlantFlowers[spot.Head];
                     (Canvas unit, double anchor) = SceneKit.StemWithHead(Piece("stems", st.Piece), st.StemX, st.TopY, spot.StemFlip,
-                        StemScale * spot.StemSize, Piece("flowers", hd.Piece, hd.StubLen), hd.StubX, spot.HeadFlip, HeadScale, HeadOverlap);
+                        StemScale * spot.StemSize, SceneKit.Tinted(Piece("flowers", hd.Piece, hd.StubLen), HeadTints[spot.Head]), hd.StubX,
+                        spot.HeadFlip, HeadScale * FlowerSizes[spot.Head], HeadOverlap);
                     canvas.Add(unit, anchor, spot.X, 0, RiseKind.Ground);
                 }
             }

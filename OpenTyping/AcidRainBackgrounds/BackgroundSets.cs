@@ -9,8 +9,8 @@ namespace OpenTyping
     /// - 추가: BackgroundSet 을 이어받은 클래스 하나 + 그림 폴더 Resources\AcidRain\&lt;Id&gt;\ 를 만들고 All 에 한 줄 더한다.
     /// - 삭제: All 에서 빼고(ByKeyboard 에 그 Id 가 있으면 바꾸고) 클래스와 그림 폴더를 지운다.
     /// - 자판별 기본 배경 교체: ByKeyboard 의 Id 만 바꾼다. 같은 배경을 여러 자판에 써도 된다.
-    /// - 사용자는 '자리연습' 화면의 '오락 열기' → '배경 선택'(BackgroundSelectWindow, <261025_4>)으로 자판마다 배경을 고른다(설정 파일에
-    ///   저장 — UserSettingsStore.AcidRainBackgrounds). 고르지 않았으면 ByKeyboard 의 기본 배경.
+    /// - 자판마다 고른 배경은 설정 파일에 저장된다(UserSettingsStore.AcidRainBackgrounds). 고르지 않았으면 ByKeyboard 의 기본 배경.
+    ///   고르는 창(BackgroundSelectWindow, <261025_4>)은 <261026_1>로 '오락 열기' 목록에서 뺐다 — 창과 저장 코드는 남아 있다.
     /// - '배경 선택'에서만 숨기기: 그 클래스의 ShowInMenu 를 false 로.
     /// </summary>
     internal static class BackgroundSets
@@ -56,11 +56,17 @@ namespace OpenTyping
             return chosen != null && chosen.ShowInMenu ? chosen : DefaultFor(keyboardKey);
         }
 
-        /// <summary>이 자판의 오락에 쓰는 배경 세트(사용자가 고른 것 또는 기본 배경).</summary>
+        /// <summary>
+        /// 사용자가 고른 배경을 쓰는가. '배경 선택' 메뉴를 가린 동안(<261026_1>)은 false 라, 예전에 골라 설정 파일에 남은 선택이 있어도
+        /// 자판별 기본 배경을 쓴다(<261026_2>). 설정 파일의 선택은 지우지 않고 그대로 둔다. 메뉴를 되살리면 true 로 바꾼다.
+        /// </summary>
+        internal static readonly bool UserChoiceEnabled = false;
+
+        /// <summary>이 자판의 오락에 쓰는 배경 세트(UserChoiceEnabled 면 사용자가 고른 것, 아니면 자판별 기본 배경).</summary>
         internal static BackgroundSet For(IStageSet keyboard)
         {
             string key = keyboard?.Key;
-            return Resolve(key, UserSettingsStore.GetAcidRainBackground(key));
+            return UserChoiceEnabled ? Resolve(key, UserSettingsStore.GetAcidRainBackground(key)) : DefaultFor(key);
         }
 
         /// <summary>배경 세트 bg 를 자판 keyboardKey 의 오락에 쓸 때의 배경 단계 차례(그 자판에 따로 맞춘 것이 있으면 그것).</summary>
